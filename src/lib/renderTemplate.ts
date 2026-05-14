@@ -104,17 +104,51 @@ async function drawBackgroundImage(
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      // Use provided position or default centering
-      if (position) {
-        const scaleFactor = width / 1080
-        const scaledWidth = img.width * position.scale * scaleFactor
-        const scaledHeight = img.height * position.scale * scaleFactor
+      const scaleFactor = width / 1080
+
+      if (position && (position.offsetX !== 0 || position.offsetY !== 0 || position.scale !== 1)) {
+        // Custom positioning: image should always fill canvas, positioned/cropped via offsets
+        const imgRatio = img.width / img.height
+        const canvasRatio = width / height
+
+        // Calculate how large the image needs to be to cover the canvas
+        let imgDisplayWidth = width
+        let imgDisplayHeight = height
+
+        if (imgRatio > canvasRatio) {
+          // Image is wider: scale by height
+          imgDisplayHeight = height
+          imgDisplayWidth = height * imgRatio
+        } else {
+          // Image is taller: scale by width
+          imgDisplayWidth = width
+          imgDisplayHeight = width / imgRatio
+        }
+
+        // Apply user zoom
+        imgDisplayWidth *= position.scale
+        imgDisplayHeight *= position.scale
+
+        // Apply user offsets (scale the offset to canvas resolution)
         const scaledOffsetX = position.offsetX * scaleFactor
         const scaledOffsetY = position.offsetY * scaleFactor
 
-        ctx.drawImage(img, scaledOffsetX, scaledOffsetY, scaledWidth, scaledHeight)
+        // Draw the zoomed/positioned image
+        ctx.drawImage(
+          img,
+          scaledOffsetX,
+          scaledOffsetY,
+          imgDisplayWidth,
+          imgDisplayHeight
+        )
+
+        // Clip to canvas bounds if image extends beyond (for cropping effect)
+        ctx.globalCompositeOperation = 'destination-in'
+        ctx.fillStyle = 'rgba(0,0,0,1)'
+        ctx.fillRect(0, 0, width, height)
+        ctx.globalCompositeOperation = 'source-over'
       } else {
-        // Default: center and cover
+        // Default: center image to cover canvas
         const imgRatio = img.width / img.height
         const canvasRatio = width / height
 
@@ -124,15 +158,18 @@ async function drawBackgroundImage(
         let drawY = 0
 
         if (imgRatio > canvasRatio) {
+          // Image wider than canvas
           drawWidth = height * imgRatio
           drawX = (width - drawWidth) / 2
         } else {
+          // Image taller than canvas
           drawHeight = width / imgRatio
           drawY = (height - drawHeight) / 2
         }
 
         ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
       }
+
       resolve()
     }
     img.onerror = () => {

@@ -34,23 +34,48 @@ export const ImagePositioner: React.FC<ImagePositionerProps> = ({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Draw canvas background
+    // Clear canvas
     ctx.fillStyle = '#1a1a1a'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw image with current positioning
+    // Draw image with current positioning - image always fills canvas
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      const scaledWidth = img.width * scale
-      const scaledHeight = img.height * scale
+      const imgRatio = img.width / img.height
+      const canvasRatio = canvas.width / canvas.height
 
-      ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight)
+      // Calculate how large image needs to be to fill canvas
+      let displayWidth = canvas.width
+      let displayHeight = canvas.height
 
-      // Draw canvas bounds
+      if (imgRatio > canvasRatio) {
+        displayWidth = canvas.height * imgRatio
+      } else {
+        displayHeight = canvas.width / imgRatio
+      }
+
+      // Apply zoom
+      displayWidth *= scale
+      displayHeight *= scale
+
+      // Apply offset and draw
+      ctx.drawImage(img, offsetX, offsetY, displayWidth, displayHeight)
+
+      // Draw canvas bounds (safe area)
       ctx.strokeStyle = '#FF6B35'
       ctx.lineWidth = 2
       ctx.strokeRect(0, 0, canvas.width, canvas.height)
+
+      // Draw crosshair in center
+      ctx.strokeStyle = 'rgba(255, 107, 53, 0.3)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(canvas.width / 2 - 20, canvas.height / 2)
+      ctx.lineTo(canvas.width / 2 + 20, canvas.height / 2)
+      ctx.moveTo(canvas.width / 2, canvas.height / 2 - 20)
+      ctx.lineTo(canvas.width / 2, canvas.height / 2 + 20)
+      ctx.stroke()
     }
     img.src = imageUrl
   }
@@ -196,7 +221,7 @@ export const ImagePositioner: React.FC<ImagePositionerProps> = ({
             </p>
           </div>
 
-          {/* Preset Buttons */}
+          {/* Preset Buttons -->
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => {
@@ -206,61 +231,61 @@ export const ImagePositioner: React.FC<ImagePositionerProps> = ({
               }}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-semibold text-sm"
             >
-              🔄 Opnieuw instellen
+              🔄 Reset
             </button>
             <button
               onClick={() => {
-                setOffsetX(-100)
-                setOffsetY(-100)
+                setOffsetX(-150)
+                setOffsetY(-150)
               }}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
             >
-              ↖ Linksboven
-            </button>
-            <button
-              onClick={() => {
-                setOffsetX(0)
-                setOffsetY(-100)
-              }}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
-            >
-              ⬆ Boven
-            </button>
-            <button
-              onClick={() => {
-                setOffsetX(100)
-                setOffsetY(-100)
-              }}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
-            >
-              ↗ Rechtsboven
-            </button>
-            <button
-              onClick={() => {
-                setOffsetX(-100)
-                setOffsetY(0)
-              }}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
-            >
-              ⬅ Links
+              ↖ Top-left
             </button>
             <button
               onClick={() => {
                 setOffsetX(0)
-                setOffsetY(0)
+                setOffsetY(-150)
               }}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
             >
-              ◉ Midden
+              ⬆ Top
             </button>
             <button
               onClick={() => {
-                setOffsetX(100)
+                setOffsetX(150)
+                setOffsetY(-150)
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
+            >
+              ↗ Top-right
+            </button>
+            <button
+              onClick={() => {
+                setOffsetX(-150)
                 setOffsetY(0)
               }}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
             >
-              ➡ Rechts
+              ⬅ Left
+            </button>
+            <button
+              onClick={() => {
+                setOffsetX(0)
+                setOffsetY(0)
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold text-sm"
+            >
+              ◉ Center
+            </button>
+            <button
+              onClick={() => {
+                setOffsetX(150)
+                setOffsetY(0)
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
+            >
+              ➡ Right
             </button>
           </div>
 
