@@ -90,3 +90,43 @@ export interface CollageConfig {
 }
 
 export type CollageFormat = 'hhc-2-social' | 'hhc-2-website' | 'hhc-3-social' | 'hhc-3-website' | 'hhc-4-social' | 'hhc-4-website'
+
+export interface ThumbnailConfig {
+  id: string
+  name: string
+  description: string
+  canvasWidth: number
+  canvasHeight: number
+  sidebarWidth: number // Orange sidebar width
+  sidebarColor: string
+  nameLabel: {
+    x: number
+    y: number
+    width: number
+    height: number
+    backgroundColor: string
+    textColor: string
+    fontSize: number
+    fontFamily: string
+    fontWeight: string
+    paddingLeft: number
+    paddingRight: number
+  }
+  quote: {
+    openingQuoteX: number
+    openingQuoteY: number
+    openingQuoteFontSize: number
+    x: number
+    y: number
+    maxWidth: number
+    fontSize: number
+    fontFamily: string
+    fontWeight: string
+    textColor: string
+    lineHeight: number
+    shadowOffsetX: number
+    shadowOffsetY: number
+    shadowBlur: number
+    shadowColor: string
+  }
+}

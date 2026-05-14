@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { TemplateEditor } from './components/TemplateEditor'
 import { CollageBuilder } from './components/CollageBuilder'
+import { ThumbnailBuilder } from './components/ThumbnailBuilder'
 
-type Mode = 'editor' | 'collage'
+type Mode = 'editor' | 'collage' | 'thumbnail'
 
 export const App: React.FC = () => {
   const [mode, setMode] = useState<Mode>('editor')
@@ -31,10 +32,21 @@ export const App: React.FC = () => {
           >
             🖼️ Collage
           </button>
+          <button
+            onClick={() => setMode('thumbnail')}
+            className={`px-4 py-4 font-semibold border-b-2 transition ${
+              mode === 'thumbnail'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            🎬 Thumbnail
+          </button>
         </div>
       </div>
       {mode === 'editor' && <TemplateEditor />}
       {mode === 'collage' && <CollageBuilder />}
+      {mode === 'thumbnail' && <ThumbnailBuilder />}
     </div>
   )
 }
