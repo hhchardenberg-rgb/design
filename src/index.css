@@ -1,3 +1,21 @@
+@font-face {
+  font-family: 'FF DIN';
+  src: url('/fonts/FF_DIN_Medium.otf') format('opentype');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'FF DIN';
+  src: url('/fonts/FF_DIN_Bold.otf') format('opentype');
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: 'FF DIN';
+  src: url('/fonts/FF_DIN_Black.otf') format('opentype');
+  font-weight: 900;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

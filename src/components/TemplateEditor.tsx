@@ -1,17 +1,21 @@
 import React, { useState } from 'react'
 import { templates, formats } from '../templates'
-import { Format } from '../types/template'
+import { Format, TemplateConfig } from '../types/template'
 import { FieldEditor } from './FieldEditor'
 import { PreviewCanvas } from './PreviewCanvas'
 import { ExportButtons } from './ExportButtons'
+import { DesignImporter } from './DesignImporter'
 
 export const TemplateEditor: React.FC = () => {
+  const [customTemplates, setCustomTemplates] = useState<Record<string, TemplateConfig>>({})
   const [templateId, setTemplateId] = useState<string>('quote')
   const [format, setFormat] = useState<Format>('instagram-feed')
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [backgroundImage, setBackgroundImage] = useState<string>('')
+  const [showImporter, setShowImporter] = useState(false)
 
-  const template = templates[templateId]
+  const allTemplates = { ...templates, ...customTemplates }
+  const template = allTemplates[templateId]
   if (!template) return null
 
   const handleFieldChange = (fieldId: string, value: string) => {
@@ -29,12 +33,30 @@ export const TemplateEditor: React.FC = () => {
     reader.readAsDataURL(file)
   }
 
+  const handleImportTemplate = (newTemplate: TemplateConfig) => {
+    setCustomTemplates((prev) => ({
+      ...prev,
+      [newTemplate.id]: newTemplate,
+    }))
+    setTemplateId(newTemplate.id)
+    setFieldValues({})
+    setBackgroundImage('')
+    setShowImporter(false)
+  }
+
   const allRequiredFieldsFilled = template.fields
     .filter((f) => f.required)
     .every((f) => fieldValues[f.id]?.trim())
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
+      {showImporter && (
+        <DesignImporter
+          onImportTemplate={handleImportTemplate}
+          onCancel={() => setShowImporter(false)}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -44,6 +66,12 @@ export const TemplateEditor: React.FC = () => {
           <p className="text-gray-600">
             Maak snel professionele social media afbeeldingen met vaste templates
           </p>
+          <button
+            onClick={() => setShowImporter(true)}
+            className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-semibold text-sm"
+          >
+            📥 Design importeren
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -60,13 +88,39 @@ export const TemplateEditor: React.FC = () => {
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {Object.entries(templates).map(([id, tmpl]) => (
-                  <option key={id} value={id}>
-                    {tmpl.name}
-                  </option>
-                ))}
+                <optgroup label="Ingebouwde Templates">
+                  {Object.entries(templates).map(([id, tmpl]) => (
+                    <option key={id} value={id}>
+                      {tmpl.name}
+                    </option>
+                  ))}
+                </optgroup>
+                {Object.keys(customTemplates).length > 0 && (
+                  <optgroup label="Geïmporteerde Designs">
+                    {Object.entries(customTemplates).map(([id, tmpl]) => (
+                      <option key={id} value={id}>
+                        {tmpl.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               <p className="text-sm text-gray-600 mt-2">{template.description}</p>
+              {customTemplates[templateId] && (
+                <button
+                  onClick={() => {
+                    setCustomTemplates((prev) => {
+                      const next = { ...prev }
+                      delete next[templateId]
+                      setTemplateId('quote')
+                      return next
+                    })
+                  }}
+                  className="mt-2 text-xs text-red-600 hover:text-red-700 font-semibold"
+                >
+                  🗑 Template verwijderen
+                </button>
+              )}
             </div>
 
             {/* Format Selection */}
