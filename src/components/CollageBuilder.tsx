@@ -6,6 +6,9 @@ import { renderCollage } from '../lib/renderCollage'
 interface PanelImage {
   dataUrl: string
   objectPosition: string
+  offsetX?: number
+  offsetY?: number
+  scale?: number
 }
 
 type CollageFormatId = keyof typeof collageTemplates
@@ -13,6 +16,7 @@ type CollageFormatId = keyof typeof collageTemplates
 export const CollageBuilder: React.FC = () => {
   const [templateId, setTemplateId] = useState<CollageFormatId>('hhc-2-social')
   const [panelImages, setPanelImages] = useState<Record<string, PanelImage>>({})
+  const [positioningPanelId, setPositioningPanelId] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const template = collageTemplates[templateId]
@@ -41,6 +45,18 @@ export const CollageBuilder: React.FC = () => {
     }))
   }
 
+  const handleImagePositionChange = (panelId: string, offsetX: number, offsetY: number, scale: number) => {
+    setPanelImages((prev) => ({
+      ...prev,
+      [panelId]: {
+        ...prev[panelId],
+        offsetX,
+        offsetY,
+        scale,
+      },
+    }))
+  }
+
   const exportCollage = async () => {
     if (!canvasRef.current) return
 
@@ -56,8 +72,23 @@ export const CollageBuilder: React.FC = () => {
     }
   }
 
+  const currentPositioningImage = positioningPanelId ? panelImages[positioningPanelId] : null
+
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
+      {positioningPanelId && currentPositioningImage && (
+        <CollageImagePositioner
+          imageUrl={currentPositioningImage.dataUrl}
+          offsetX={currentPositioningImage.offsetX ?? 0}
+          offsetY={currentPositioningImage.offsetY ?? 0}
+          scale={currentPositioningImage.scale ?? 1}
+          onPositionChange={(offsetX, offsetY, scale) => {
+            handleImagePositionChange(positioningPanelId, offsetX, offsetY, scale)
+          }}
+          onClose={() => setPositioningPanelId(null)}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">HHC Collage Builder</h1>
@@ -111,29 +142,42 @@ export const CollageBuilder: React.FC = () => {
                     />
 
                     {panelImages[panel.id] && (
-                      <div className="mt-3">
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">
-                          Positie:
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {['top left', 'top center', 'top right', 'center left', 'center', 'center right', 'bottom left', 'bottom center', 'bottom right'].map(
-                            (pos) => (
-                              <button
-                                key={pos}
-                                onClick={() => handleObjectPositionChange(panel.id, pos)}
-                                className={`px-2 py-1 text-xs rounded ${
-                                  panelImages[panel.id]?.objectPosition === pos
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                              >
-                                {pos
-                                  .split(' ')
-                                  .map((w) => w.charAt(0).toUpperCase())
-                                  .join('')}
-                              </button>
-                            )
-                          )}
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1">
+                            Positie: X: {panelImages[panel.id]?.offsetX ?? 0}px, Y: {panelImages[panel.id]?.offsetY ?? 0}px, Zoom: {Math.round((panelImages[panel.id]?.scale ?? 1) * 100)}%
+                          </p>
+                          <button
+                            onClick={() => setPositioningPanelId(panel.id)}
+                            className="w-full px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 font-semibold"
+                          >
+                            ↔️ Verplaatsen & Inzoomen
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-2">
+                            Snelle positie:
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {['top left', 'top center', 'top right', 'center left', 'center', 'center right', 'bottom left', 'bottom center', 'bottom right'].map(
+                              (pos) => (
+                                <button
+                                  key={pos}
+                                  onClick={() => handleObjectPositionChange(panel.id, pos)}
+                                  className={`px-2 py-1 text-xs rounded ${
+                                    panelImages[panel.id]?.objectPosition === pos
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  {pos
+                                    .split(' ')
+                                    .map((w) => w.charAt(0).toUpperCase())
+                                    .join('')}
+                                </button>
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -210,18 +254,9 @@ const CollagePreview: React.FC<CollagePreviewProps> = ({ template, panelImages, 
         {/* Render image panels */}
         {template.panels.map((panel) => {
           const panelImage = panelImages[panel.id]
-          return (
-            <g key={panel.id} clipPath={`url(#clip-${panel.id})`}>
-              {panelImage ? (
-                <image
-                  xlinkHref={panelImage.dataUrl}
-                  x="0"
-                  y="0"
-                  width={template.canvasWidth}
-                  height={template.canvasHeight}
-                  preserveAspectRatio="xMidYMid slice"
-                />
-              ) : (
+          if (!panelImage) {
+            return (
+              <g key={panel.id} clipPath={`url(#clip-${panel.id})`}>
                 <rect
                   x="0"
                   y="0"
@@ -229,7 +264,24 @@ const CollagePreview: React.FC<CollagePreviewProps> = ({ template, panelImages, 
                   height={template.canvasHeight}
                   fill="#333"
                 />
-              )}
+              </g>
+            )
+          }
+
+          const scale = panelImage.scale ?? 1
+          const offsetX = panelImage.offsetX ?? 0
+          const offsetY = panelImage.offsetY ?? 0
+
+          return (
+            <g key={panel.id} clipPath={`url(#clip-${panel.id})`}>
+              <image
+                xlinkHref={panelImage.dataUrl}
+                x={offsetX}
+                y={offsetY}
+                width={template.canvasWidth * scale}
+                height={template.canvasHeight * scale}
+                preserveAspectRatio="xMidYMid slice"
+              />
             </g>
           )
         })}
@@ -279,6 +331,239 @@ const CollagePreview: React.FC<CollagePreviewProps> = ({ template, panelImages, 
         <p className="text-sm text-gray-700">
           <span className="font-semibold">Afmetingen:</span> {template.canvasWidth} × {template.canvasHeight}px
         </p>
+      </div>
+    </div>
+  )
+}
+
+interface CollageImagePositionerProps {
+  imageUrl: string
+  offsetX: number
+  offsetY: number
+  scale: number
+  onPositionChange: (offsetX: number, offsetY: number, scale: number) => void
+  onClose: () => void
+}
+
+const CollageImagePositioner: React.FC<CollageImagePositionerProps> = ({
+  imageUrl,
+  offsetX,
+  offsetY,
+  scale,
+  onPositionChange,
+  onClose,
+}) => {
+  const [localOffsetX, setLocalOffsetX] = React.useState(offsetX)
+  const [localOffsetY, setLocalOffsetY] = React.useState(offsetY)
+  const [localScale, setLocalScale] = React.useState(scale)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 })
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  React.useEffect(() => {
+    redrawPreview()
+  }, [localOffsetX, localOffsetY, localScale])
+
+  const redrawPreview = () => {
+    if (!canvasRef.current) return
+
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.fillStyle = '#1a1a1a'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const imgRatio = img.width / img.height
+      const canvasRatio = canvas.width / canvas.height
+
+      let displayWidth = canvas.width
+      let displayHeight = canvas.height
+
+      if (imgRatio > canvasRatio) {
+        displayWidth = canvas.height * imgRatio
+      } else {
+        displayHeight = canvas.width / imgRatio
+      }
+
+      displayWidth *= localScale
+      displayHeight *= localScale
+
+      ctx.drawImage(img, localOffsetX, localOffsetY, displayWidth, displayHeight)
+
+      ctx.strokeStyle = '#FF6B35'
+      ctx.lineWidth = 2
+      ctx.strokeRect(0, 0, canvas.width, canvas.height)
+
+      ctx.strokeStyle = 'rgba(255, 107, 53, 0.3)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(canvas.width / 2 - 20, canvas.height / 2)
+      ctx.lineTo(canvas.width / 2 + 20, canvas.height / 2)
+      ctx.moveTo(canvas.width / 2, canvas.height / 2 - 20)
+      ctx.lineTo(canvas.width / 2, canvas.height / 2 + 20)
+      ctx.stroke()
+    }
+    img.src = imageUrl
+  }
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return
+    setIsDragging(true)
+    const rect = canvasRef.current.getBoundingClientRect()
+    setDragStart({
+      x: e.clientX - rect.left - localOffsetX,
+      y: e.clientY - rect.top - localOffsetY,
+    })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !canvasRef.current) return
+
+    const rect = canvasRef.current.getBoundingClientRect()
+    const newX = e.clientX - rect.left - dragStart.x
+    const newY = e.clientY - rect.top - dragStart.y
+
+    setLocalOffsetX(newX)
+    setLocalOffsetY(newY)
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleScaleChange = (newScale: number) => {
+    setLocalScale(Math.max(0.5, Math.min(3, newScale)))
+  }
+
+  const handleApply = () => {
+    onPositionChange(localOffsetX, localOffsetY, localScale)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Afbeelding Verplaatsen & Zoomen</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
+            ×
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+            <p className="font-semibold mb-2">💡 Hoe te gebruiken:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Sleep de afbeelding om deze te verplaatsen</li>
+              <li>Gebruik zoom om in/uit te zoeken</li>
+              <li>De rode box geeft het canvas aan</li>
+            </ul>
+          </div>
+
+          <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-900">
+            <canvas
+              ref={canvasRef}
+              width={400}
+              height={400}
+              className="w-full cursor-move"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                X Offset: {Math.round(localOffsetX)}px
+              </label>
+              <input
+                type="range"
+                min="-1000"
+                max="1000"
+                value={localOffsetX}
+                onChange={(e) => setLocalOffsetX(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Y Offset: {Math.round(localOffsetY)}px
+              </label>
+              <input
+                type="range"
+                min="-1000"
+                max="1000"
+                value={localOffsetY}
+                onChange={(e) => setLocalOffsetY(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Zoom: {Math.round(localScale * 100)}%
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleScaleChange(localScale - 0.1)}
+                className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-semibold"
+              >
+                −
+              </button>
+              <input
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.1"
+                value={localScale}
+                onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
+                className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <button
+                onClick={() => handleScaleChange(localScale + 0.1)}
+                className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-semibold"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => {
+                setLocalOffsetX(0)
+                setLocalOffsetY(0)
+                setLocalScale(1)
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-semibold text-sm"
+            >
+              🔄 Reset
+            </button>
+          </div>
+
+          <div className="flex gap-3 pt-6 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-semibold"
+            >
+              Annuleren
+            </button>
+            <button
+              onClick={handleApply}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold"
+            >
+              Toepassen
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

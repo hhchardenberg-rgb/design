@@ -3,6 +3,9 @@ import { CollageConfig } from '../types/template'
 interface PanelImage {
   dataUrl: string
   objectPosition: string
+  offsetX?: number
+  offsetY?: number
+  scale?: number
 }
 
 export async function renderCollage(
@@ -69,45 +72,71 @@ async function drawPanelImage(
         return
       }
 
-      // Calculate image dimensions with object-fit: cover
-      const imgRatio = img.width / img.height
-      const canvasRatio = template.canvasWidth / template.canvasHeight
+      // Use custom positioning if available, otherwise use objectPosition
+      const offsetX = panelImage.offsetX ?? 0
+      const offsetY = panelImage.offsetY ?? 0
+      const scale = panelImage.scale ?? 1
 
-      let drawWidth = template.canvasWidth
-      let drawHeight = template.canvasHeight
+      if (panelImage.offsetX !== undefined || panelImage.offsetY !== undefined || panelImage.scale !== 1) {
+        // Custom positioning: calculate image dimensions with object-fit: cover
+        const imgRatio = img.width / img.height
+        const canvasRatio = template.canvasWidth / template.canvasHeight
 
-      if (imgRatio > canvasRatio) {
-        // Image is wider
-        drawHeight = template.canvasHeight
-        drawWidth = template.canvasHeight * imgRatio
+        let displayWidth = template.canvasWidth
+        let displayHeight = template.canvasHeight
+
+        if (imgRatio > canvasRatio) {
+          displayWidth = template.canvasHeight * imgRatio
+        } else {
+          displayHeight = template.canvasWidth / imgRatio
+        }
+
+        // Apply zoom
+        displayWidth *= scale
+        displayHeight *= scale
+
+        // Save context state for clipping
+        ctx.save()
+
+        // Apply clip path
+        applyClipPath(ctx, panel.clipPath)
+
+        // Draw image with offset and zoom
+        ctx.drawImage(img, offsetX, offsetY, displayWidth, displayHeight)
+
+        ctx.restore()
       } else {
-        // Image is taller
-        drawWidth = template.canvasWidth
-        drawHeight = template.canvasWidth / imgRatio
+        // Default objectPosition-based positioning
+        const imgRatio = img.width / img.height
+        const canvasRatio = template.canvasWidth / template.canvasHeight
+
+        let drawWidth = template.canvasWidth
+        let drawHeight = template.canvasHeight
+
+        if (imgRatio > canvasRatio) {
+          drawHeight = template.canvasHeight
+          drawWidth = template.canvasHeight * imgRatio
+        } else {
+          drawWidth = template.canvasWidth
+          drawHeight = template.canvasWidth / imgRatio
+        }
+
+        let drawX = (template.canvasWidth - drawWidth) / 2
+        let drawY = (template.canvasHeight - drawHeight) / 2
+
+        const [verticalPos, horizontalPos] = panelImage.objectPosition.split(' ')
+
+        if (verticalPos === 'top') drawY = 0
+        else if (verticalPos === 'bottom') drawY = template.canvasHeight - drawHeight
+
+        if (horizontalPos === 'left') drawX = 0
+        else if (horizontalPos === 'right') drawX = template.canvasWidth - drawWidth
+
+        ctx.save()
+        applyClipPath(ctx, panel.clipPath)
+        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
+        ctx.restore()
       }
-
-      // Calculate position based on objectPosition
-      let drawX = (template.canvasWidth - drawWidth) / 2
-      let drawY = (template.canvasHeight - drawHeight) / 2
-
-      const [verticalPos, horizontalPos] = panelImage.objectPosition.split(' ')
-
-      if (verticalPos === 'top') drawY = 0
-      else if (verticalPos === 'bottom') drawY = template.canvasHeight - drawHeight
-
-      if (horizontalPos === 'left') drawX = 0
-      else if (horizontalPos === 'right') drawX = template.canvasWidth - drawWidth
-
-      // Save context state for clipping
-      ctx.save()
-
-      // Apply clip path using polygon
-      applyClipPath(ctx, panel.clipPath)
-
-      // Draw image with calculated position
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
-
-      ctx.restore()
 
       resolve()
     }
