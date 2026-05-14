@@ -8,6 +8,7 @@ interface ExportButtonsProps {
   format: string
   fieldValues: Record<string, string>
   backgroundImageUrl?: string
+  backgroundOverlay?: number
   templateName: string
 }
 
@@ -16,6 +17,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   format,
   fieldValues,
   backgroundImageUrl,
+  backgroundOverlay = 0,
   templateName,
 }) => {
   const [isExporting, setIsExporting] = useState(false)
@@ -23,8 +25,12 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   const handleExport = async (exportFormat: 'png' | 'jpg') => {
     setIsExporting(true)
     try {
+      const templateWithOverlay: TemplateConfig = {
+        ...template,
+        backgroundOverlay,
+      }
       const canvas = await renderTemplate(
-        template,
+        templateWithOverlay,
         format as any,
         fieldValues,
         backgroundImageUrl

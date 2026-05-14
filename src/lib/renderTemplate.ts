@@ -31,6 +31,12 @@ export async function renderTemplate(
     ctx.fillRect(0, 0, canvas.width, canvas.height)
   }
 
+  // Draw background overlay (black fade)
+  if (template.backgroundOverlay && template.backgroundOverlay > 0) {
+    ctx.fillStyle = `rgba(0, 0, 0, ${template.backgroundOverlay})`
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
+
   // Draw fields
   for (const field of template.fields) {
     const value = fieldValues[field.id] || ''

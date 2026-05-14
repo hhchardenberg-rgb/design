@@ -8,6 +8,7 @@ interface PreviewCanvasProps {
   format: Format
   fieldValues: Record<string, string>
   backgroundImageUrl?: string
+  backgroundOverlay?: number
 }
 
 export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
@@ -15,14 +16,19 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
   format,
   fieldValues,
   backgroundImageUrl,
+  backgroundOverlay = 0,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const render = async () => {
       try {
+        const templateWithOverlay: TemplateConfig = {
+          ...template,
+          backgroundOverlay,
+        }
         const canvas = await renderTemplate(
-          template,
+          templateWithOverlay,
           format,
           fieldValues,
           backgroundImageUrl
@@ -45,7 +51,7 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
     }
 
     render()
-  }, [template, format, fieldValues, backgroundImageUrl])
+  }, [template, format, fieldValues, backgroundImageUrl, backgroundOverlay])
 
   const formatConfig = getFormat(format)
   if (!formatConfig) return null

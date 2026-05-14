@@ -32,6 +32,7 @@ export interface TemplateConfig {
   description: string
   backgroundColor?: string
   backgroundImage?: string
+  backgroundOverlay?: number // 0-1, opacity of black overlay over background image
   fields: TemplateField[]
   logo?: {
     text: string

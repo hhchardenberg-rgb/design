@@ -12,6 +12,7 @@ export const TemplateEditor: React.FC = () => {
   const [format, setFormat] = useState<Format>('instagram-feed')
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [backgroundImage, setBackgroundImage] = useState<string>('')
+  const [backgroundOverlay, setBackgroundOverlay] = useState<number>(0)
   const [showImporter, setShowImporter] = useState(false)
 
   const allTemplates = { ...templates, ...customTemplates }
@@ -156,10 +157,30 @@ export const TemplateEditor: React.FC = () => {
                 className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               {backgroundImage && (
-                <div className="mt-2">
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Zwart fade overlay: {Math.round(backgroundOverlay * 100)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={backgroundOverlay}
+                      onChange={(e) => setBackgroundOverlay(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-gray-700"
+                    />
+                    <p className="text-xs text-gray-600 mt-1">
+                      Voor betere leesbaarheid van tekst op foto's
+                    </p>
+                  </div>
                   <button
-                    onClick={() => setBackgroundImage('')}
-                    className="text-sm text-red-600 hover:text-red-700"
+                    onClick={() => {
+                      setBackgroundImage('')
+                      setBackgroundOverlay(0)
+                    }}
+                    className="text-sm text-red-600 hover:text-red-700 font-semibold"
                   >
                     Verwijderen
                   </button>
@@ -190,6 +211,7 @@ export const TemplateEditor: React.FC = () => {
                 format={format}
                 fieldValues={fieldValues}
                 backgroundImageUrl={backgroundImage}
+                backgroundOverlay={backgroundOverlay}
                 templateName={template.id}
               />
               {!allRequiredFieldsFilled && (
@@ -209,6 +231,7 @@ export const TemplateEditor: React.FC = () => {
                 format={format}
                 fieldValues={fieldValues}
                 backgroundImageUrl={backgroundImage}
+                backgroundOverlay={backgroundOverlay}
               />
             </div>
           </div>
