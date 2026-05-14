@@ -4,8 +4,7 @@ import { TemplateField, TextFitResult } from '../types/template'
 export function fitTextToField(
   text: string,
   field: TemplateField,
-  canvasWidth: number,
-  canvasHeight: number
+  canvasWidth: number
 ): TextFitResult {
   const maxFontSize = field.maxFontSize ?? 48
   const minFontSize = field.minFontSize ?? 12
@@ -102,10 +101,9 @@ function breakTextIntoLines(
 export function isTextTooLong(
   text: string,
   field: TemplateField,
-  canvasWidth: number,
-  canvasHeight: number
+  canvasWidth: number
 ): boolean {
-  const result = fitTextToField(text, field, canvasWidth, canvasHeight)
+  const result = fitTextToField(text, field, canvasWidth)
   const lineHeight = field.lineHeight ?? 1.2
   const scaleFactor = canvasWidth / 1080
   const scaledFieldHeight = field.height * scaleFactor

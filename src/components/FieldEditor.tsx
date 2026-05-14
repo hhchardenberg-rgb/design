@@ -8,7 +8,6 @@ interface FieldEditorProps {
   value: string
   onChange: (value: string) => void
   format: string
-  canvasWidth?: number
 }
 
 export const FieldEditor: React.FC<FieldEditorProps> = ({
@@ -16,12 +15,11 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   value,
   onChange,
   format,
-  canvasWidth = 1080,
 }) => {
   const formatConfig = getFormat(format as any)
   const actualCanvasWidth = formatConfig?.width || 1080
 
-  const isTooLong = isTextTooLong(value, field, actualCanvasWidth, actualCanvasWidth)
+  const isTooLong = isTextTooLong(value, field, actualCanvasWidth)
 
   const handleChange = (newValue: string) => {
     if (field.maxLength && newValue.length > field.maxLength) {

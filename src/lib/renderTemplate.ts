@@ -1,4 +1,4 @@
-import { TemplateConfig, EditorState, Format } from '../types/template'
+import { TemplateConfig, Format } from '../types/template'
 import { fitTextToField } from './textFit'
 import { getFormat } from '../templates'
 
@@ -35,7 +35,7 @@ export async function renderTemplate(
   for (const field of template.fields) {
     const value = fieldValues[field.id] || ''
     if (value) {
-      drawField(ctx, field, value, canvas.width, canvas.height, template.borderRadius)
+      drawField(ctx, field, value, canvas.width)
     }
   }
 
@@ -56,17 +56,14 @@ function drawField(
   ctx: CanvasRenderingContext2D,
   field: any,
   text: string,
-  canvasWidth: number,
-  canvasHeight: number,
-  borderRadius?: number
+  canvasWidth: number
 ): void {
   const scaleFactor = canvasWidth / 1080
 
   const { fontSize, lines } = fitTextToField(
     text,
     field,
-    canvasWidth,
-    canvasHeight
+    canvasWidth
   )
 
   const fontFamily = field.fontFamily ?? 'Arial'

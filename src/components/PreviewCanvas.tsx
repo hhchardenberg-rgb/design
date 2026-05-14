@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { TemplateConfig, EditorState, Format } from '../types/template'
+import { TemplateConfig, Format } from '../types/template'
 import { renderTemplate } from '../lib/renderTemplate'
 import { getFormat } from '../templates'
 
