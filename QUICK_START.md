@@ -1,100 +1,64 @@
-# Quick Start - Social Media Image Generator
+# ⚡ Quick Start - HHC Social Media Image Generator
 
-## Setup (2 minuten)
+## 📥 Installatie (30 seconden)
 
+### 1. Download & Extract
 ```bash
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
+unzip social-media-image-generator.zip
+cd social-media-image-generator
 ```
 
-Automatisch geopend op `http://localhost:5173`
+### 2. Start Webserver
+Kies één optie:
 
-## Basis workflow
-
-1. **Kies template** - Dropdown linksboven
-2. **Kies formaat** - Instagram/LinkedIn/Twitter
-3. **Vul teksten in** - In de editor velden
-4. **Upload achtergrond** (optioneel) - Afbeelding toevoegen
-5. **Bekijk preview** - Rechterkant update realtime
-6. **Export** - Klik PNG of JPG
-
-## Template overzicht
-
-| Template | Gebruik | Velden |
-|----------|---------|--------|
-| **Quote Post** | Citaten & inspiratie | Citaat, Auteur, Subtitel |
-| **Breaking News** | Nieuws & alerts | Headline, Subtitel, Datum |
-| **Announcement** | Events & mededelingen | Titel, Beschrijving, CTA, Footer |
-| **Carousel Slide** | Instagram carousel | Titel, Inhoud, Highlight, Slide# |
-
-## Test data
-
-### Quote Post
-```
-Citaat: "Success is not final, failure is not fatal."
-Auteur: Winston Churchill
-Subtitel: Daily inspiration
-```
-
-### Breaking News
-```
-Headline: Major Discovery Announced
-Subtitle: Scientists achieve breakthrough in renewable energy
-Datum: Today
-```
-
-### Announcement
-```
-Titel: Summer Sale 2026
-Beschrijving: Up to 50% off on selected items. Limited time offer!
-CTA: Shop Now
-Footer: Valid until June 30
-```
-
-### Carousel Slide
-```
-Titel: Tip #1
-Inhoud: Start your day with hydration. Drink a glass of water first thing in the morning.
-Highlight: Hydrate!
-Slide nummer: 1/5
-```
-
-## Build for production
-
+**🐍 Python (meest eenvoudig):**
 ```bash
-npm run build
-# Output in dist/ folder
+python3 -m http.server 8000 --directory dist
+# Bezoek: http://localhost:8000
 ```
 
-## Adding a new template
+**📦 Node.js:**
+```bash
+npx http-server dist -p 8000
+# Bezoek: http://localhost:8000
+```
 
-See `DEVELOPER_GUIDE.md` for detailed instructions.
+**🐳 Docker (aanbevolen voor servers):**
+```bash
+docker-compose up -d
+# Bezoek: http://localhost
+```
 
-Quick version:
-1. Create `src/templates/yourtemplate.ts`
-2. Add to exports in `src/templates/index.ts`
-3. Run `npm run dev` to see it in dropdown
+## 🎯 Gebruik
 
-## Common issues
+### 📝 Tekst Templates
+1. Vul tekstvelden in
+2. Selecteer format
+3. Upload optionele achtergrond
+4. Export als PNG/JPG
 
-### "Text is getting too small"
-→ Shorten your text or choose a longer format (Story instead of Feed)
+### 🖼️ Collages
+1. Selecteer collage type
+2. Upload foto's per paneel
+3. Positioneer foto's
+4. Export als PNG
 
-### "Text is cut off"
-→ Manually test in canvas (reload browser)
+### 🎬 Thumbnails
+1. Upload achtergrond
+2. Vul naam in
+3. Vul quote in
+4. Export als PNG
 
-### "Export not downloading"
-→ Check browser popup blocker
+## ✅ Alles werkt?
 
-### "Images not appearing"
-→ Use web-accessible URLs (CORS-friendly)
+- App laadt in browser
+- Fonts zien er goed uit
+- Foto's uploaden werkt
+- Export knop werkt
+- Geen errors in console (F12)
 
-## Tips
+Ja? Dan ben je klaar! 🎉
 
-- **Test with long text** - See how auto-sizing handles it
-- **Preview all formats** - Text fitting may differ slightly
-- **Use high-contrast colors** - Test on mobile to check readability
-- **Export early & often** - See the actual exported result, not just preview
+---
+
+**Meer info:** Zie `DEPLOYMENT.md` voor uitgebreide setup instructies
