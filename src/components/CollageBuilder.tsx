@@ -214,7 +214,7 @@ const CollagePreview: React.FC<CollagePreviewProps> = ({ template, panelImages, 
             <g key={panel.id} clipPath={`url(#clip-${panel.id})`}>
               {panelImage ? (
                 <image
-                  href={panelImage.dataUrl}
+                  xlinkHref={panelImage.dataUrl}
                   x="0"
                   y="0"
                   width={template.canvasWidth}
