@@ -26,12 +26,19 @@ export interface TemplateField {
   lineHeight?: number
 }
 
+export interface BackgroundPosition {
+  offsetX: number
+  offsetY: number
+  scale: number
+}
+
 export interface TemplateConfig {
   id: string
   name: string
   description: string
   backgroundColor?: string
   backgroundImage?: string
+  backgroundPosition?: BackgroundPosition // Position/scale of background image
   backgroundOverlay?: number // 0-1, opacity of black overlay over background image
   fields: TemplateField[]
   logo?: {

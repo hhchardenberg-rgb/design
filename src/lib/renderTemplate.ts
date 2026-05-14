@@ -25,7 +25,7 @@ export async function renderTemplate(
 
   // Draw background
   if (backgroundImageUrl) {
-    await drawBackgroundImage(ctx, backgroundImageUrl, canvas.width, canvas.height)
+    await drawBackgroundImage(ctx, backgroundImageUrl, canvas.width, canvas.height, template.backgroundPosition)
   } else if (template.backgroundColor) {
     ctx.fillStyle = template.backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -92,35 +92,47 @@ function drawField(
   })
 }
 
-// Helper: draw background image with proper scaling
+// Helper: draw background image with proper scaling and positioning
 async function drawBackgroundImage(
   ctx: CanvasRenderingContext2D,
   imageUrl: string,
   width: number,
-  height: number
+  height: number,
+  position?: { offsetX: number; offsetY: number; scale: number }
 ): Promise<void> {
   return new Promise((resolve) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      // Draw image to cover entire canvas
-      const imgRatio = img.width / img.height
-      const canvasRatio = width / height
+      // Use provided position or default centering
+      if (position) {
+        const scaleFactor = width / 1080
+        const scaledWidth = img.width * position.scale * scaleFactor
+        const scaledHeight = img.height * position.scale * scaleFactor
+        const scaledOffsetX = position.offsetX * scaleFactor
+        const scaledOffsetY = position.offsetY * scaleFactor
 
-      let drawWidth = width
-      let drawHeight = height
-      let drawX = 0
-      let drawY = 0
-
-      if (imgRatio > canvasRatio) {
-        drawWidth = height * imgRatio
-        drawX = (width - drawWidth) / 2
+        ctx.drawImage(img, scaledOffsetX, scaledOffsetY, scaledWidth, scaledHeight)
       } else {
-        drawHeight = width / imgRatio
-        drawY = (height - drawHeight) / 2
-      }
+        // Default: center and cover
+        const imgRatio = img.width / img.height
+        const canvasRatio = width / height
 
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
+        let drawWidth = width
+        let drawHeight = height
+        let drawX = 0
+        let drawY = 0
+
+        if (imgRatio > canvasRatio) {
+          drawWidth = height * imgRatio
+          drawX = (width - drawWidth) / 2
+        } else {
+          drawHeight = width / imgRatio
+          drawY = (height - drawHeight) / 2
+        }
+
+        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
+      }
       resolve()
     }
     img.onerror = () => {

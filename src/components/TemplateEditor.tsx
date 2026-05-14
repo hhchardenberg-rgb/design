@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { templates, formats } from '../templates'
-import { Format, TemplateConfig } from '../types/template'
+import { Format, TemplateConfig, BackgroundPosition } from '../types/template'
 import { FieldEditor } from './FieldEditor'
 import { PreviewCanvas } from './PreviewCanvas'
 import { ExportButtons } from './ExportButtons'
 import { PSDImporter } from './PSDImporter'
+import { ImagePositioner } from './ImagePositioner'
 
 export const TemplateEditor: React.FC = () => {
   const [customTemplates, setCustomTemplates] = useState<Record<string, TemplateConfig>>({})
@@ -13,11 +14,18 @@ export const TemplateEditor: React.FC = () => {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [backgroundImage, setBackgroundImage] = useState<string>('')
   const [backgroundOverlay, setBackgroundOverlay] = useState<number>(0)
+  const [backgroundPosition, setBackgroundPosition] = useState<BackgroundPosition>({
+    offsetX: 0,
+    offsetY: 0,
+    scale: 1,
+  })
   const [showImporter, setShowImporter] = useState(false)
+  const [showPositioner, setShowPositioner] = useState(false)
 
   const allTemplates = { ...templates, ...customTemplates }
   const template = allTemplates[templateId]
-  if (!template) return null
+  const formatConfig = formats[format]
+  if (!template || !formatConfig) return null
 
   const handleFieldChange = (fieldId: string, value: string) => {
     setFieldValues((prev) => ({
@@ -55,6 +63,18 @@ export const TemplateEditor: React.FC = () => {
         <PSDImporter
           onImportTemplate={handleImportTemplate}
           onCancel={() => setShowImporter(false)}
+        />
+      )}
+
+      {showPositioner && backgroundImage && (
+        <ImagePositioner
+          imageUrl={backgroundImage}
+          canvasWidth={formatConfig?.width || 1080}
+          canvasHeight={formatConfig?.height || 1080}
+          onPositionChange={(offsetX, offsetY, scale) => {
+            setBackgroundPosition({ offsetX, offsetY, scale })
+          }}
+          onClose={() => setShowPositioner(false)}
         />
       )}
 
@@ -157,7 +177,7 @@ export const TemplateEditor: React.FC = () => {
                 className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               {backgroundImage && (
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Zwart fade overlay: {Math.round(backgroundOverlay * 100)}%
@@ -175,14 +195,33 @@ export const TemplateEditor: React.FC = () => {
                       Voor betere leesbaarheid van tekst op foto's
                     </p>
                   </div>
+
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-blue-700 font-semibold mb-2">
+                      📍 Huidige positie:
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      X: {backgroundPosition.offsetX}px | Y: {backgroundPosition.offsetY}px |
+                      Zoom: {Math.round(backgroundPosition.scale * 100)}%
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowPositioner(true)}
+                    className="w-full px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-semibold text-sm"
+                  >
+                    ↔️ Positioneren & Croppen
+                  </button>
+
                   <button
                     onClick={() => {
                       setBackgroundImage('')
                       setBackgroundOverlay(0)
+                      setBackgroundPosition({ offsetX: 0, offsetY: 0, scale: 1 })
                     }}
                     className="text-sm text-red-600 hover:text-red-700 font-semibold"
                   >
-                    Verwijderen
+                    🗑 Verwijderen
                   </button>
                 </div>
               )}
@@ -207,7 +246,10 @@ export const TemplateEditor: React.FC = () => {
             {/* Export Buttons */}
             <div className="bg-white rounded-lg shadow p-6">
               <ExportButtons
-                template={template}
+                template={{
+                  ...template,
+                  backgroundPosition,
+                }}
                 format={format}
                 fieldValues={fieldValues}
                 backgroundImageUrl={backgroundImage}
@@ -227,7 +269,10 @@ export const TemplateEditor: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6 sticky top-4">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
               <PreviewCanvas
-                template={template}
+                template={{
+                  ...template,
+                  backgroundPosition,
+                }}
                 format={format}
                 fieldValues={fieldValues}
                 backgroundImageUrl={backgroundImage}
