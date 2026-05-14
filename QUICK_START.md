@@ -9,11 +9,26 @@ cd social-media-image-generator
 ```
 
 ### 2. Start Webserver
-Kies één optie:
 
-**🐍 Python (meest eenvoudig):**
+#### ✨ Snelste manier:
+
+**🐧 macOS / Linux:**
 ```bash
-python3 -m http.server 8000 --directory dist
+./run.sh
+# Bezoek: http://localhost:8000
+```
+
+**🪟 Windows:**
+```bash
+run.bat
+# Bezoek: http://localhost:8000
+```
+
+#### Of handmatig starten:
+
+**🐍 Python:**
+```bash
+python3 server.py
 # Bezoek: http://localhost:8000
 ```
 
