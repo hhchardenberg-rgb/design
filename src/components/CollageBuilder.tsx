@@ -95,6 +95,40 @@ export const CollageBuilder: React.FC = () => {
           <p className="text-gray-600">Maak strakke collabes met oranje scheidingslijnen</p>
         </div>
 
+        {/* Debug Panel */}
+        <div className="bg-gray-900 text-white rounded-lg p-4 mb-8 font-mono text-sm">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">🖼️ Geselecteerde Template</p>
+              <p className="font-semibold text-blue-400">{template.name}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">📐 Afmetingen</p>
+              <p className="font-semibold text-green-400">{template.canvasWidth}×{template.canvasHeight}px</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">🖼️ Geüploade Afbeeldingen</p>
+              <p className="font-semibold text-yellow-400">{Object.keys(panelImages).length} / {template.panelCount}</p>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-gray-700 pt-4">
+            <p className="text-xs text-gray-400 mb-2">📋 Panel Status</p>
+            <div className="space-y-1">
+              {template.panels.map((panel, index) => {
+                const img = panelImages[panel.id]
+                return (
+                  <div key={panel.id} className="flex justify-between text-xs">
+                    <span className="text-gray-400">Panel {index + 1}:</span>
+                    <span className={img ? 'text-green-400' : 'text-red-400'}>
+                      {img ? `✓ Afbeelding (X:${img.offsetX ?? 0}px Y:${img.offsetY ?? 0}px Zoom:${Math.round((img.scale ?? 1) * 100)}%)` : '✗ Leeg'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Controls */}
           <div className="lg:col-span-1 space-y-6">

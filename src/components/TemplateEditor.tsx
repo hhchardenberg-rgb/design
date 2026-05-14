@@ -95,6 +95,37 @@ export const TemplateEditor: React.FC = () => {
           </button>
         </div>
 
+        {/* Debug Panel */}
+        <div className="bg-gray-900 text-white rounded-lg p-4 mb-8 font-mono text-sm">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">📋 Geselecteerde Template</p>
+              <p className="font-semibold text-blue-400">{template.name}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">📐 Format</p>
+              <p className="font-semibold text-green-400">{formatConfig.name}</p>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-gray-700 pt-4">
+            <p className="text-xs text-gray-400 mb-2">📝 Ingevulde Velden</p>
+            <div className="space-y-1">
+              {template.fields.length === 0 ? (
+                <p className="text-gray-500">Geen velden in template</p>
+              ) : (
+                template.fields.map((field) => (
+                  <div key={field.id} className="flex justify-between text-xs">
+                    <span className="text-gray-400">{field.label}:</span>
+                    <span className={fieldValues[field.id] ? 'text-yellow-400' : 'text-gray-600'}>
+                      {fieldValues[field.id] ? `"${fieldValues[field.id].substring(0, 30)}${fieldValues[field.id].length > 30 ? '...' : ''}"` : '(leeg)'}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Controls */}
           <div className="lg:col-span-1 space-y-8">

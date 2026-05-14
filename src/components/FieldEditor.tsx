@@ -32,8 +32,11 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   const maxLength = field.maxLength || 500
 
   return (
-    <div className="mb-6">
-      <label className="block text-sm font-semibold text-gray-700 mb-2">
+    <div className={`mb-6 p-4 rounded-lg border-2 transition ${
+      value ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-300'
+    }`}>
+      <label className="block text-sm font-semibold text-gray-900 mb-3 flex items-center">
+        {value && <span className="text-green-500 mr-2">✓</span>}
         {field.label}
         {field.required && <span className="text-red-500 ml-1">*</span>}
       </label>
@@ -45,7 +48,9 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
           onChange={(e) => handleChange(e.target.value)}
           maxLength={field.maxLength}
           placeholder={`Voer ${field.label.toLowerCase()} in`}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`w-full px-3 py-2 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 transition ${
+            value ? 'border-green-400 bg-white' : 'border-gray-300 bg-gray-50'
+          }`}
         />
       ) : (
         <textarea
@@ -54,12 +59,14 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
           maxLength={field.maxLength}
           placeholder={`Voer ${field.label.toLowerCase()} in`}
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className={`w-full px-3 py-2 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none transition ${
+            value ? 'border-green-400 bg-white' : 'border-gray-300 bg-gray-50'
+          }`}
         />
       )}
 
-      <div className="mt-2 flex justify-between items-center">
-        <div className="text-xs text-gray-500">
+      <div className="mt-3 flex justify-between items-center">
+        <div className="text-xs font-medium text-gray-600">
           {characterCount} / {maxLength} karakters
         </div>
         {isTooLong && (
