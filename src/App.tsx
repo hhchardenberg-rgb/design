@@ -19,7 +19,7 @@ export const App: React.FC = () => {
                 : 'border-transparent text-gray-400 hover:text-gray-200'
             }`}
           >
-            📝 Text Templates
+            📝 Tekst
           </button>
           <button
             onClick={() => setMode('collage')}
@@ -29,7 +29,7 @@ export const App: React.FC = () => {
                 : 'border-transparent text-gray-400 hover:text-gray-200'
             }`}
           >
-            🖼️ Collage Builder
+            🖼️ Collage
           </button>
         </div>
       </div>
