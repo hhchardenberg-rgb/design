@@ -4,7 +4,7 @@ import { Format, TemplateConfig } from '../types/template'
 import { FieldEditor } from './FieldEditor'
 import { PreviewCanvas } from './PreviewCanvas'
 import { ExportButtons } from './ExportButtons'
-import { DesignImporter } from './DesignImporter'
+import { PSDImporter } from './PSDImporter'
 
 export const TemplateEditor: React.FC = () => {
   const [customTemplates, setCustomTemplates] = useState<Record<string, TemplateConfig>>({})
@@ -52,7 +52,7 @@ export const TemplateEditor: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
       {showImporter && (
-        <DesignImporter
+        <PSDImporter
           onImportTemplate={handleImportTemplate}
           onCancel={() => setShowImporter(false)}
         />
