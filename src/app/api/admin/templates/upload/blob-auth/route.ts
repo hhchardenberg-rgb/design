@@ -41,8 +41,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     // De @vercel/blob-clientbibliotheek toont de gebruiker altijd dezelfde
     // generieke tekst ("Failed to retrieve the client token"), ongeacht de
     // werkelijke oorzaak — log die daarom hier expliciet zodat hij in de
-    // Vercel Runtime Logs te vinden is.
-    console.error("[blob-auth] mislukt:", error);
+    // Vercel Runtime Logs te vinden is. Log ook (zonder de waarden zelf)
+    // welke auth-variabelen aanwezig zijn: als BLOB_STORE_ID wél maar
+    // BLOB_READ_WRITE_TOKEN niét aanwezig is, probeert de SDK altijd OIDC
+    // — dat werkt alleen als de store via het dashboard (Storage-tab) ook
+    // echt aan dit project gekoppeld is, niet als BLOB_STORE_ID handmatig
+    // is overgetypt.
+    console.error("[blob-auth] mislukt:", error, {
+      heeftBlobStoreId: Boolean(process.env.BLOB_STORE_ID),
+      heeftReadWriteToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+      heeftOidcToken: Boolean(process.env.VERCEL_OIDC_TOKEN),
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Uploaden mislukt." },
       { status: 400 }
