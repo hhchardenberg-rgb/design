@@ -48,8 +48,25 @@ function NewTemplateForm() {
     setError(null);
     try {
       const meta = { name, category, templateId };
-      const blobUrl = await tryUploadToBlob(file).catch(() => null);
-      const data = blobUrl ? await finishImport({ psdUrl: blobUrl }, meta) : await uploadDirectly(file, meta);
+
+      let blobUrl: string | null = null;
+      let blobFailure: string | null = null;
+      try {
+        blobUrl = await tryUploadToBlob(file);
+      } catch (err) {
+        blobFailure = err instanceof Error ? err.message : String(err);
+        console.error("Directe upload naar Vercel Blob mislukt, val terug op de gewone upload:", err);
+      }
+
+      const data = blobUrl
+        ? await finishImport({ psdUrl: blobUrl }, meta)
+        : await uploadDirectly(file, meta).catch((directErr: unknown) => {
+            const directMessage = directErr instanceof Error ? directErr.message : String(directErr);
+            throw new Error(
+              blobFailure ? `Blob-upload: ${blobFailure} — Fallback: ${directMessage}` : directMessage
+            );
+          });
+
       setWarnings((data.warnings ?? []).map((w: { message: string }) => w.message));
       router.push(`/admin/templates/${data.template.id}/builder?versionId=${data.version.id}`);
     } catch (err) {
@@ -145,15 +162,19 @@ interface UploadResult {
  * Uploadt het PSD-bestand rechtstreeks vanuit de browser naar Vercel Blob
  * (buiten onze serverless function om — die heeft een harde limiet van
  * 4,5MB op het request-body, ruim onder wat een PSD-bestand vaak weegt).
- * Geeft `null` terug (i.p.v. te gooien) als er geen Blob store gekoppeld
- * is, zodat de aanroeper dan terugvalt op uploadDirectly() — een échte
- * fout ná een geslaagde blob-upload wordt wél doorgegooid.
+ * Gooit een fout wanneer dit niet lukt (geen Blob store gekoppeld, een
+ * content-type/CORS-probleem, etc.); de aanroeper vangt dit op en valt
+ * terug op uploadDirectly(), met de oorspronkelijke foutmelding bewaard
+ * zodat die zichtbaar blijft als de fallback ook faalt.
  */
 async function tryUploadToBlob(file: File): Promise<string> {
   const blob = await upload(file.name, file, {
     access: "public",
     handleUploadUrl: "/api/admin/templates/upload/blob-auth",
     contentType: "application/octet-stream",
+    // PSD-bestanden zijn vaak groot (embedded rasterlagen); multipart
+    // splitst dit op in delen die parallel geüpload worden.
+    multipart: true,
   });
   return blob.url;
 }
