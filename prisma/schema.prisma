@@ -1,0 +1,369 @@
+// HHC Hardenberg Design Editor — datamodel
+// Zie MASTERPROMPT sectie 21 voor de functionele achtergrond van dit model.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & gebruikers
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  generatedDesigns GeneratedDesign[]
+  uploadedAssets   UploadedAsset[]
+  templatesCreated Template[]        @relation("TemplateCreatedBy")
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Template {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  description String?
+  category    String
+  thumbnailUrl String?
+  status      TemplateStatus @default(DRAFT)
+  sortOrder   Int            @default(0)
+
+  activeVersionId String?         @unique
+  activeVersion   TemplateVersion? @relation("ActiveVersion", fields: [activeVersionId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("TemplateCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions TemplateVersion[] @relation("TemplateVersions")
+
+  @@map("templates")
+}
+
+model TemplateVersion {
+  id            String         @id @default(cuid())
+  templateId    String
+  template      Template       @relation("TemplateVersions", fields: [templateId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  status        TemplateStatus @default(DRAFT)
+
+  width  Int
+  height Int
+
+  // Genormaliseerde template-definitie (lagen, velden, posities, typography).
+  // Gevalideerd met Zod, zie src/lib/validations/template.ts
+  schemaJson Json
+
+  exportFormats String[] @default(["PNG", "JPG", "WEBP"])
+
+  sourcePsdAssetId String?
+  sourcePsdAsset   TemplateAsset? @relation("SourcePsd", fields: [sourcePsdAssetId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+
+  fields          TemplateField[]
+  assets          TemplateAsset[] @relation("VersionAssets")
+  generatedDesigns GeneratedDesign[]
+  activeFor       Template?       @relation("ActiveVersion")
+
+  @@unique([templateId, versionNumber])
+  @@map("template_versions")
+}
+
+enum FieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  NUMBER
+  SCORE
+  DATE
+  TIME
+  DROPDOWN
+  CHECKBOX
+  IMAGE
+  LOGO
+  BRAND_COLOR
+}
+
+enum TextTransform {
+  NONE
+  UPPERCASE
+  LOWERCASE
+  CAPITALIZE
+}
+
+model TemplateField {
+  id                String          @id @default(cuid())
+  templateVersionId String
+  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+
+  key   String // technische naam, matcht layerId in schemaJson (bv. "opponent", "player_name")
+  label String
+
+  type          FieldType
+  required      Boolean       @default(false)
+  defaultValue  String?
+  placeholder   String?
+  maxLength     Int?
+  textTransform TextTransform @default(NONE)
+  options       Json? // voor DROPDOWN: string[] of {label,value}[]
+
+  // Afbeeldingsvelden
+  imageFit          String? // "contain" | "cover"
+  imageAspectRatio  String? // bv. "1:1", "4:5"
+  allowTransparency Boolean @default(false)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([templateVersionId, key])
+  @@map("template_fields")
+}
+
+enum TemplateAssetKind {
+  SOURCE_PSD
+  BACKGROUND
+  THUMBNAIL
+  PREVIEW
+}
+
+model TemplateAsset {
+  id     String            @id @default(cuid())
+  kind   TemplateAssetKind
+  url    String
+  width  Int?
+  height Int?
+  bytes  Int?
+
+  templateVersionId String?
+  templateVersion   TemplateVersion? @relation("VersionAssets", fields: [templateVersionId], references: [id], onDelete: Cascade)
+
+  usedAsSourceFor TemplateVersion[] @relation("SourcePsd")
+
+  createdAt DateTime @default(now())
+
+  @@map("template_assets")
+}
+
+// ---------------------------------------------------------------------------
+// Huisstijl: fonts & kleuren
+// ---------------------------------------------------------------------------
+
+model Font {
+  id       String  @id @default(cuid())
+  name     String // weergavenaam, bv. "HHC Display"
+  family   String // CSS font-family
+  weight   Int     @default(400)
+  style    String  @default("normal") // normal | italic
+  format   String // woff2 | woff | ttf | otf
+  fileUrl  String
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@map("fonts")
+}
+
+model BrandColor {
+  id        String @id @default(cuid())
+  name      String
+  hex       String
+  group     String @default("algemeen") // bv. "primair", "secundair", "team"
+  sortOrder Int    @default(0)
+
+  @@map("brand_colors")
+}
+
+// ---------------------------------------------------------------------------
+// Club, teams & spelers
+// ---------------------------------------------------------------------------
+
+model Club {
+  id         String  @id @default(cuid())
+  name       String
+  shortName  String?
+  logoUrl    String?
+  isOwnClub  Boolean @default(false)
+
+  teams Team[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("clubs")
+}
+
+model Team {
+  id          String  @id @default(cuid())
+  clubId      String
+  club        Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name        String // bv. "HHC Hardenberg 1"
+  shortName   String? // bv. "HHC 1"
+  logoUrl     String?
+  competition String?
+  ageGroup    String? // "Senioren" | "Vrouwen" | "O23" | "O19" | ...
+
+  players       Player[]
+  homeMatches   Match[]  @relation("TeamHomeMatches")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("teams")
+}
+
+model Player {
+  id        String  @id @default(cuid())
+  teamId    String
+  team      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String
+  number    Int?
+  position  String? // Keeper | Verdediger | Middenvelder | Aanvaller
+  photoUrl  String?
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("players")
+}
+
+// Tegenstanders-bibliotheek (los van eigen club/teamstructuur)
+model Opponent {
+  id           String  @id @default(cuid())
+  name         String
+  shortName    String?
+  logoUrl      String?
+  primaryColor String?
+
+  matches Match[] @relation("OpponentMatches")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("opponents")
+}
+
+// ---------------------------------------------------------------------------
+// Wedstrijden
+// ---------------------------------------------------------------------------
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  CANCELLED
+}
+
+model Match {
+  id         String   @id @default(cuid())
+  teamId     String
+  team       Team     @relation("TeamHomeMatches", fields: [teamId], references: [id], onDelete: Cascade)
+  opponentId String
+  opponent   Opponent @relation("OpponentMatches", fields: [opponentId], references: [id])
+
+  isHome      Boolean  @default(true)
+  date        DateTime
+  competition String?
+  round       String?
+  location    String?
+
+  scoreHome Int?
+  scoreAway Int?
+  status    MatchStatus @default(SCHEDULED)
+
+  generatedDesigns GeneratedDesign[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("matches")
+}
+
+// ---------------------------------------------------------------------------
+// Gegenereerde designs & uploads
+// ---------------------------------------------------------------------------
+
+enum DesignStatus {
+  DRAFT
+  COMPLETED
+}
+
+model GeneratedDesign {
+  id                String          @id @default(cuid())
+  templateVersionId String
+  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  matchId String?
+  match   Match?  @relation(fields: [matchId], references: [id])
+
+  title    String?
+  status   DesignStatus @default(DRAFT)
+  formData Json // huidige veldwaarden (tekst, afbeeldingverwijzingen, crop-info)
+
+  exportUrl    String?
+  exportFormat String?
+  width        Int?
+  height       Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("generated_designs")
+}
+
+enum UploadedAssetKind {
+  PHOTO
+  LOGO
+  SPONSOR
+}
+
+model UploadedAsset {
+  id       String            @id @default(cuid())
+  userId   String?
+  user     User?             @relation(fields: [userId], references: [id])
+  kind     UploadedAssetKind @default(PHOTO)
+  url      String
+  width    Int?
+  height   Int?
+  mimeType String?
+
+  createdAt DateTime @default(now())
+
+  @@map("uploaded_assets")
+}
