@@ -88,13 +88,30 @@ npm run start
 Zet in productie (of achter een reverse proxy) ook `AUTH_TRUST_HOST="true"`,
 en een correcte `NEXTAUTH_URL`.
 
+### Deployen op Vercel
+
+1. Koppel een PostgreSQL-database aan het project (bijv. via **Storage →
+   Create Database → Postgres** in het Vercel-dashboard). Dit zet
+   `DATABASE_URL` automatisch in de omgevingsvariabelen.
+2. Zet ook `AUTH_SECRET`, `NEXTAUTH_URL` en `AUTH_TRUST_HOST="true"` in de
+   omgevingsvariabelen (zie hierboven).
+3. Het `vercel-build`-script in `package.json` (`prisma db push && next
+   build`) zorgt dat het databaseschema bij elke deploy automatisch wordt
+   aangemaakt/bijgewerkt — je hoeft dus zelf geen migraties te draaien.
+
 ### Database seeden op een host zonder shell (bijv. Vercel)
 
 Op platforms zoals Vercel heb je geen terminal om `npm run db:seed` uit te
 voeren. Zet daarom tijdelijk een `SEED_SECRET` (bijv. `openssl rand -hex 32`)
-in de omgevingsvariabelen, deploy opnieuw, en roep dan eenmalig aan:
+in de omgevingsvariabelen, deploy opnieuw, en open dan eenmalig (in de
+browser, of via curl):
+
+```
+https://jouw-app.vercel.app/api/system/seed?secret=<SEED_SECRET>
+```
 
 ```bash
+# of via curl
 curl -X POST https://jouw-app.vercel.app/api/system/seed \
   -H "x-seed-secret: <SEED_SECRET>"
 ```
