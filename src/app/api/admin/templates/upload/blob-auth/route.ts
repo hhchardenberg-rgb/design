@@ -38,6 +38,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(jsonResponse);
   } catch (error) {
+    // De @vercel/blob-clientbibliotheek toont de gebruiker altijd dezelfde
+    // generieke tekst ("Failed to retrieve the client token"), ongeacht de
+    // werkelijke oorzaak — log die daarom hier expliciet zodat hij in de
+    // Vercel Runtime Logs te vinden is.
+    console.error("[blob-auth] mislukt:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Uploaden mislukt." },
       { status: 400 }
