@@ -40,7 +40,29 @@ export async function renderDesign(
     if (isHidden(layer, formData)) continue;
 
     try {
-      if (layer.type === "background" || layer.type === "static_image") {
+      if (layer.type === "background" && layer.field) {
+        await drawImageLayer(
+          ctx,
+          {
+            id: layer.id,
+            type: "image",
+            field: layer.field,
+            x: layer.x,
+            y: layer.y,
+            width: layer.width,
+            height: layer.height,
+            rotation: layer.rotation,
+            opacity: layer.opacity,
+            visibilityField: layer.visibilityField,
+            fit: layer.fit ?? "cover",
+            shape: "rect",
+            cornerRadius: 0,
+            placeholderSrc: layer.src || undefined,
+          },
+          formData,
+          getImage
+        );
+      } else if (layer.type === "background" || layer.type === "static_image") {
         if (!layer.src) continue;
         const img = await getImage(layer.src);
         ctx.drawImage(img, layer.x, layer.y, layer.width, layer.height);

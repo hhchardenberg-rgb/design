@@ -96,6 +96,24 @@ function LayerNode({
 
   switch (layer.type) {
     case "background":
+      return layer.field ? (
+        <CroppableImageLayer
+          x={layer.x}
+          y={layer.y}
+          width={layer.width}
+          height={layer.height}
+          fit={layer.fit ?? "cover"}
+          shape="rect"
+          cornerRadius={0}
+          field={layer.field}
+          placeholderSrc={layer.src || undefined}
+          formData={formData}
+          editable={editable}
+          onImageTransform={onImageTransform}
+        />
+      ) : (
+        <RasterLayer layer={layer} />
+      );
     case "static_image":
       return <RasterLayer layer={layer} />;
     case "text":
@@ -104,8 +122,16 @@ function LayerNode({
       return <ColorLayerNode layer={layer} formData={formData} />;
     case "image":
       return (
-        <ImageLayerNode
-          layer={layer}
+        <CroppableImageLayer
+          x={layer.x}
+          y={layer.y}
+          width={layer.width}
+          height={layer.height}
+          fit={layer.fit}
+          shape={layer.shape}
+          cornerRadius={layer.cornerRadius}
+          field={layer.field}
+          placeholderSrc={layer.placeholderSrc}
           formData={formData}
           editable={editable}
           onImageTransform={onImageTransform}
@@ -196,30 +222,54 @@ function ColorLayerNode({ layer, formData }: { layer: Extract<SchemaLayer, { typ
   );
 }
 
-function ImageLayerNode({
-  layer,
+/**
+ * Tekent een door de gebruiker vervangbare afbeelding (crop/pan/zoom) met
+ * fallback naar een placeholder. Gedeeld door IMAGE:*-velden en een
+ * achtergrondlaag die door de admin vervangbaar is gemaakt (zie
+ * BackgroundLayer.field in de template-builder) — beide gebruiken exact
+ * hetzelfde crop-/pan-gedrag zodat wat de gebruiker sleept overeenkomt met
+ * de server-side export.
+ */
+function CroppableImageLayer({
+  x,
+  y,
+  width,
+  height,
+  fit,
+  shape,
+  cornerRadius,
+  field,
+  placeholderSrc,
   formData,
   editable,
   onImageTransform,
 }: {
-  layer: Extract<SchemaLayer, { type: "image" }>;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fit: "contain" | "cover";
+  shape: "rect" | "circle";
+  cornerRadius: number;
+  field: string;
+  placeholderSrc?: string;
   formData: DesignFormData;
   editable: boolean;
   onImageTransform?: (fieldKey: string, value: ImageFieldValue) => void;
 }) {
-  const value = (formData[layer.field] ?? {}) as ImageFieldValue;
-  const src = value.assetUrl || layer.placeholderSrc;
+  const value = (formData[field] ?? {}) as ImageFieldValue;
+  const src = value.assetUrl || placeholderSrc;
   const img = useImage(src);
   const imgRef = useRef<Konva.Image>(null);
 
   if (!img) {
     return (
       <Rect
-        x={layer.x}
-        y={layer.y}
-        width={layer.width}
-        height={layer.height}
-        cornerRadius={layer.shape === "circle" ? layer.width / 2 : layer.cornerRadius}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        cornerRadius={shape === "circle" ? width / 2 : cornerRadius}
         fill="#e4e1db"
         listening={false}
       />
@@ -227,23 +277,30 @@ function ImageLayerNode({
   }
 
   const draw = computeImageDraw(
-    { width: layer.width, height: layer.height },
+    { width, height },
     { width: img.naturalWidth || img.width, height: img.naturalHeight || img.height },
-    layer.fit,
+    fit,
     value
   );
 
   const clipFunc =
-    layer.shape === "circle"
+    shape === "circle"
       ? (ctx: Konva.Context) => {
           ctx.beginPath();
-          ctx.ellipse(layer.width / 2, layer.height / 2, layer.width / 2, layer.height / 2, 0, 0, Math.PI * 2);
+          ctx.ellipse(width / 2, height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
           ctx.closePath();
         }
       : undefined;
 
+  const interactive = editable && Boolean(onImageTransform);
+
+  function setCursor(e: Konva.KonvaEventObject<Event>, cursor: string) {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = cursor;
+  }
+
   return (
-    <Group x={layer.x} y={layer.y} clipFunc={clipFunc} clipWidth={clipFunc ? undefined : layer.width} clipHeight={clipFunc ? undefined : layer.height} clipX={clipFunc ? undefined : 0} clipY={clipFunc ? undefined : 0}>
+    <Group x={x} y={y} clipFunc={clipFunc} clipWidth={clipFunc ? undefined : width} clipHeight={clipFunc ? undefined : height} clipX={clipFunc ? undefined : 0} clipY={clipFunc ? undefined : 0}>
       <KonvaImage
         ref={imgRef}
         image={img}
@@ -251,17 +308,41 @@ function ImageLayerNode({
         y={draw.drawY}
         width={draw.drawWidth}
         height={draw.drawHeight}
-        draggable={editable && Boolean(onImageTransform)}
-        onDragEnd={() => {
+        draggable={interactive}
+        onMouseEnter={(e) => interactive && setCursor(e, "grab")}
+        onMouseLeave={(e) => interactive && setCursor(e, "default")}
+        onDragStart={(e) => setCursor(e, "grabbing")}
+        onDragEnd={(e) => {
+          if (interactive) setCursor(e, "grab");
           const node = imgRef.current;
           if (!node || !onImageTransform) return;
           const newDrawX = node.x();
           const newDrawY = node.y();
-          const panX = newDrawX - (layer.width - draw.drawWidth) / 2;
-          const panY = newDrawY - (layer.height - draw.drawHeight) / 2;
-          onImageTransform(layer.field, { ...value, panX, panY });
+          const panX = newDrawX - (width - draw.drawWidth) / 2;
+          const panY = newDrawY - (height - draw.drawHeight) / 2;
+          onImageTransform(field, { ...value, panX, panY });
+        }}
+        onWheel={(e) => {
+          if (!interactive || !onImageTransform) return;
+          e.evt.preventDefault();
+          const current = value.scale ?? 1;
+          const next = Math.min(2.5, Math.max(1, current - e.evt.deltaY * 0.0015));
+          onImageTransform(field, { ...value, scale: next });
         }}
       />
+      {interactive && (
+        <Rect
+          x={0.5}
+          y={0.5}
+          width={width - 1}
+          height={height - 1}
+          cornerRadius={shape === "circle" ? width / 2 : cornerRadius}
+          stroke="rgba(255,255,255,0.85)"
+          strokeWidth={1}
+          dash={[6, 4]}
+          listening={false}
+        />
+      )}
     </Group>
   );
 }
