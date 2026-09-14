@@ -23,13 +23,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       request,
       onBeforeGenerateToken: async () => {
         await requireAdmin();
+        // Browsers rapporteren voor .psd-bestanden zeer uiteenlopende (of
+        // helemaal geen) content-types; niet beperken op contenttype om
+        // dat geen bron van onnodige upload-fouten te laten zijn.
         return {
-          allowedContentTypes: [
-            "image/vnd.adobe.photoshop",
-            "application/x-photoshop",
-            "application/photoshop",
-            "application/octet-stream",
-          ],
           addRandomSuffix: true,
         };
       },
