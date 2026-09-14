@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select } from "@/components/ui/input";
 import { FieldEditorRow } from "./field-editor-row";
-import type { TemplateSchemaJson } from "@/lib/validations/template";
+import type { Layer, TemplateSchemaJson } from "@/lib/validations/template";
 
 const DesignCanvas = dynamic(() => import("@/components/editor/design-canvas").then((m) => m.DesignCanvas), {
   ssr: false,
@@ -60,6 +60,7 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
   const version = sortedVersions.find((v) => v.id === versionId) ?? sortedVersions[0];
 
   const [fields, setFields] = useState<BuilderField[]>(version.fields);
+  const [schema, setSchema] = useState<TemplateSchemaJson>(version.schemaJson);
   const [exportFormats, setExportFormats] = useState<string[]>(version.exportFormats);
   const [name, setName] = useState(template.name);
   const [category, setCategory] = useState(template.category);
@@ -82,11 +83,56 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
     if (!v) return;
     setVersionId(id);
     setFields(v.fields);
+    setSchema(v.schemaJson);
     setExportFormats(v.exportFormats);
   }
 
   function updateField(index: number, next: BuilderField) {
     setFields((prev) => prev.map((f, i) => (i === index ? next : f)));
+  }
+
+  const backgroundLayer = schema.layers.find((l): l is Extract<Layer, { type: "background" }> => l.type === "background");
+  const backgroundReplaceable = Boolean(backgroundLayer?.field);
+
+  function toggleBackgroundReplaceable(enabled: boolean) {
+    if (!backgroundLayer) return;
+    if (enabled) {
+      let key = "background_photo";
+      let i = 2;
+      while (fields.some((f) => f.key === key)) key = `background_photo_${i++}`;
+      setFields((prev) => [
+        ...prev,
+        {
+          key,
+          label: "Achtergrondfoto",
+          type: "IMAGE",
+          required: false,
+          defaultValue: null,
+          placeholder: null,
+          maxLength: null,
+          textTransform: "NONE",
+          options: null,
+          imageFit: "cover",
+          sortOrder: prev.length,
+        },
+      ]);
+      setSchema((prev) => ({
+        ...prev,
+        layers: prev.layers.map((l) => (l.type === "background" ? { ...l, field: key, fit: "cover" } : l)),
+      }));
+    } else {
+      const key = backgroundLayer.field;
+      setFields((prev) => prev.filter((f) => f.key !== key));
+      setSchema((prev) => ({
+        ...prev,
+        layers: prev.layers.map((l) => {
+          if (l.type !== "background") return l;
+          const rest = { ...l };
+          delete rest.field;
+          return rest;
+        }),
+      }));
+    }
   }
 
   async function saveTemplateInfo() {
@@ -119,6 +165,7 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
             imageFit: f.imageFit || undefined,
             sortOrder: f.sortOrder,
           })),
+          schemaJson: schema,
           exportFormats,
           publish,
         }),
@@ -178,9 +225,28 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
         <div className="flex flex-col gap-4">
           <Card className="bg-hhc-black p-4">
             <CardContent className="flex justify-center p-0">
-              <DesignCanvas schema={version.schemaJson} formData={previewFormData} maxWidth={520} maxHeight={640} editable={false} />
+              <DesignCanvas schema={schema} formData={previewFormData} maxWidth={520} maxHeight={640} editable={false} />
             </CardContent>
           </Card>
+
+          {backgroundLayer && (
+            <label className="flex items-start gap-2 rounded-md border border-border bg-surface-muted p-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={backgroundReplaceable}
+                onChange={(e) => toggleBackgroundReplaceable(e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">Achtergrond door gebruiker laten vervangen</span>
+                <br />
+                <span className="text-xs text-muted-foreground">
+                  Voegt een foto-veld toe waarmee de gebruiker de achtergrond van dit ontwerp door een eigen foto kan
+                  vervangen (met crop/pan/zoom), in plaats van de vaste PSD-achtergrond.
+                </span>
+              </span>
+            </label>
+          )}
 
           <div>
             <Label>Exportformaten</Label>

@@ -35,6 +35,15 @@ export const layerCommonSchema = z.object({
 export const backgroundLayerSchema = layerCommonSchema.extend({
   type: z.literal("background"),
   src: z.string(),
+  /**
+   * Optioneel: TemplateField.key van een IMAGE-veld waarmee de gebruiker
+   * deze achtergrond mag vervangen door een eigen foto. Zonder `field`
+   * blijft de achtergrond vast (zoals bij PSD-import). Wordt gezet via de
+   * template-builder ("Achtergrond vervangbaar maken") — niet automatisch
+   * door de PSD-import, zodat designers dit bewust per template aanzetten.
+   */
+  field: z.string().optional(),
+  fit: z.enum(["contain", "cover"]).default("cover").optional(),
 });
 
 export const staticImageLayerSchema = layerCommonSchema.extend({
