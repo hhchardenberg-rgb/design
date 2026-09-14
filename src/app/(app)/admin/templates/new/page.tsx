@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 
+// Veilige marge onder Vercel's harde limiet van 4,5MB per functie-request-body.
+const VERCEL_FUNCTION_BODY_LIMIT = 4 * 1024 * 1024;
+
 const CATEGORIES = [
   "Wedstrijd",
   "Opstelling",
@@ -58,14 +61,30 @@ function NewTemplateForm() {
         console.error("Directe upload naar Vercel Blob mislukt, val terug op de gewone upload:", err);
       }
 
-      const data = blobUrl
-        ? await finishImport({ psdUrl: blobUrl }, meta)
-        : await uploadDirectly(file, meta).catch((directErr: unknown) => {
-            const directMessage = directErr instanceof Error ? directErr.message : String(directErr);
-            throw new Error(
-              blobFailure ? `Blob-upload: ${blobFailure} — Fallback: ${directMessage}` : directMessage
-            );
-          });
+      let data: UploadResult;
+      if (blobUrl) {
+        data = await finishImport({ psdUrl: blobUrl }, meta);
+      } else if (file.size < VERCEL_FUNCTION_BODY_LIMIT) {
+        // Alleen de gewone (multipart) upload proberen als het bestand
+        // onder Vercel's harde limiet voor een functie-request-body past —
+        // anders levert dit gegarandeerd een onbegrijpelijke
+        // "FUNCTION_PAYLOAD_TOO_LARGE"-pagina van het platform zelf op,
+        // vóórdat onze eigen code ooit draait.
+        data = await uploadDirectly(file, meta).catch((directErr: unknown) => {
+          const directMessage = directErr instanceof Error ? directErr.message : String(directErr);
+          throw new Error(
+            blobFailure ? `Blob-upload: ${blobFailure} — Fallback: ${directMessage}` : directMessage
+          );
+        });
+      } else {
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+        throw new Error(
+          `Upload rechtstreeks naar Vercel Blob is mislukt (${blobFailure ?? "onbekende fout"}). ` +
+            `Het bestand is ${sizeMb}MB, ruim boven de 4,5MB die een gewone upload op Vercel aankan, ` +
+            `dus een gewone upload is hier niet mogelijk als terugvaloptie. Controleer of de Blob store ` +
+            `correct aan dit project gekoppeld is (Storage-tab in het Vercel-dashboard, zie README) en probeer opnieuw.`
+        );
+      }
 
       setWarnings((data.warnings ?? []).map((w: { message: string }) => w.message));
       router.push(`/admin/templates/${data.template.id}/builder?versionId=${data.version.id}`);
