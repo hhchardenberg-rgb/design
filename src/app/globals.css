@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/*
+ * HHC Hardenberg design tokens.
+ * Alle huisstijlkleuren staan hier als CSS-variabelen zodat de branding
+ * later centraal kan worden aangepast zonder de rest van de applicatie
+ * te hoeven wijzigen. Componenten mogen NOOIT een hexcode hardcoden.
+ */
+:root {
+  --hhc-orange: #ea6a12;
+  --hhc-orange-dark: #c2530a;
+  --hhc-orange-light: #ff9548;
+  --hhc-black: #14120f;
+  --hhc-white: #ffffff;
+
+  --background: #f7f6f4;
+  --foreground: var(--hhc-black);
+  --surface: #ffffff;
+  --surface-muted: #f1efec;
+  --border: #e4e1db;
+  --muted-foreground: #6b6659;
+
+  --primary: var(--hhc-orange);
+  --primary-foreground: var(--hhc-white);
+  --secondary: var(--hhc-black);
+  --secondary-foreground: var(--hhc-white);
+  --destructive: #d63a3a;
+  --destructive-foreground: #ffffff;
+  --success: #1e8a4c;
+  --ring: var(--hhc-orange);
+
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-ring: var(--ring);
+
+  --color-hhc-orange: var(--hhc-orange);
+  --color-hhc-orange-dark: var(--hhc-orange-dark);
+  --color-hhc-orange-light: var(--hhc-orange-light);
+  --color-hhc-black: var(--hhc-black);
+  --color-hhc-white: var(--hhc-white);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-sm: calc(var(--radius) - 0.4rem);
+
+  --font-sans: var(--font-inter);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--hhc-orange);
+  color: var(--hhc-white);
+}
