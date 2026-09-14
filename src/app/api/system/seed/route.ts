@@ -16,8 +16,20 @@ export const maxDuration = 30;
  * waarde) doet dit endpoint niets. Idempotent: bestaande gebruikers worden
  * nooit overschreven (zie src/lib/seed.ts), dus veilig om meerdere keren
  * aan te roepen.
+ *
+ * GET wordt bewust ook ondersteund (naast POST): zo kan dit endpoint ook
+ * als gewone link in de browser geopend worden (?secret=...) door iemand
+ * zonder terminal/curl bij de hand.
  */
+export async function GET(req: Request) {
+  return handleSeed(req);
+}
+
 export async function POST(req: Request) {
+  return handleSeed(req);
+}
+
+async function handleSeed(req: Request) {
   const configuredSecret = process.env.SEED_SECRET;
   if (!configuredSecret) {
     return NextResponse.json(
