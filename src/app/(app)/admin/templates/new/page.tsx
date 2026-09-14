@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import { Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -46,14 +47,9 @@ function NewTemplateForm() {
     setLoading(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      if (templateId) form.append("templateId", templateId);
-      form.append("name", name);
-      form.append("category", category);
-      const res = await fetch("/api/admin/templates/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Upload mislukt");
+      const meta = { name, category, templateId };
+      const blobUrl = await tryUploadToBlob(file).catch(() => null);
+      const data = blobUrl ? await finishImport({ psdUrl: blobUrl }, meta) : await uploadDirectly(file, meta);
       setWarnings((data.warnings ?? []).map((w: { message: string }) => w.message));
       router.push(`/admin/templates/${data.template.id}/builder?versionId=${data.version.id}`);
     } catch (err) {
@@ -131,4 +127,58 @@ function NewTemplateForm() {
       )}
     </div>
   );
+}
+
+interface UploadMeta {
+  name: string;
+  category: string;
+  templateId: string | null;
+}
+
+interface UploadResult {
+  template: { id: string };
+  version: { id: string };
+  warnings?: { message: string }[];
+}
+
+/**
+ * Uploadt het PSD-bestand rechtstreeks vanuit de browser naar Vercel Blob
+ * (buiten onze serverless function om — die heeft een harde limiet van
+ * 4,5MB op het request-body, ruim onder wat een PSD-bestand vaak weegt).
+ * Geeft `null` terug (i.p.v. te gooien) als er geen Blob store gekoppeld
+ * is, zodat de aanroeper dan terugvalt op uploadDirectly() — een échte
+ * fout ná een geslaagde blob-upload wordt wél doorgegooid.
+ */
+async function tryUploadToBlob(file: File): Promise<string> {
+  const blob = await upload(file.name, file, {
+    access: "public",
+    handleUploadUrl: "/api/admin/templates/upload/blob-auth",
+    contentType: "application/octet-stream",
+  });
+  return blob.url;
+}
+
+/** Rondt de import af op basis van een al-geüploade PSD-URL (Vercel Blob). */
+async function finishImport(source: { psdUrl: string }, meta: UploadMeta): Promise<UploadResult> {
+  const res = await fetch("/api/admin/templates/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...source, ...meta }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Upload mislukt");
+  return data;
+}
+
+/** Fallback: stuurt het bestand als multipart/form-data direct naar onze eigen route. */
+async function uploadDirectly(file: File, meta: UploadMeta): Promise<UploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  if (meta.templateId) form.append("templateId", meta.templateId);
+  form.append("name", meta.name);
+  form.append("category", meta.category);
+  const res = await fetch("/api/admin/templates/upload", { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Upload mislukt");
+  return data;
 }

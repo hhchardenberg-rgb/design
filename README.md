@@ -93,9 +93,20 @@ en een correcte `NEXTAUTH_URL`.
 1. Koppel een PostgreSQL-database aan het project (bijv. via **Storage →
    Create Database → Postgres** in het Vercel-dashboard). Dit zet
    `DATABASE_URL` automatisch in de omgevingsvariabelen.
-2. Zet ook `AUTH_SECRET`, `NEXTAUTH_URL` en `AUTH_TRUST_HOST="true"` in de
+2. Koppel op dezelfde manier een **Blob store** (**Storage → Create
+   Database → Blob**) en zet `STORAGE_DRIVER="vercel-blob"` in de
+   omgevingsvariabelen. Dit is nodig omdat:
+   - lokale schijfopslag (de standaard `STORAGE_DRIVER=local`) op Vercel's
+     serverless functions niet persistent is — geüploade bestanden zouden
+     weer verdwijnen;
+   - PSD-uploads via de gewone request-body de harde 4,5MB-limiet van een
+     Vercel-functie kunnen overschrijden. De template-upload gaat daarom
+     (wanneer een Blob store gekoppeld is) rechtstreeks vanuit de browser
+     naar Blob-opslag; zonder Blob store valt dit automatisch terug op de
+     gewone upload, die dan wel aan de 4,5MB-limiet gebonden blijft.
+3. Zet ook `AUTH_SECRET`, `NEXTAUTH_URL` en `AUTH_TRUST_HOST="true"` in de
    omgevingsvariabelen (zie hierboven).
-3. Het `vercel-build`-script in `package.json` (`prisma db push && next
+4. Het `vercel-build`-script in `package.json` (`prisma db push && next
    build`) zorgt dat het databaseschema bij elke deploy automatisch wordt
    aangemaakt/bijgewerkt — je hoeft dus zelf geen migraties te draaien.
 
