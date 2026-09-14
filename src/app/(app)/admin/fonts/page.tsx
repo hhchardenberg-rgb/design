@@ -21,6 +21,8 @@ interface Font {
 export default function AdminFontsPage() {
   const [fonts, setFonts] = useState<Font[]>([]);
   const [name, setName] = useState("");
+  const [family, setFamily] = useState("");
+  const [familyTouched, setFamilyTouched] = useState(false);
   const [weight, setWeight] = useState("400");
   const [style, setStyle] = useState("normal");
   const [file, setFile] = useState<File | null>(null);
@@ -44,7 +46,7 @@ export default function AdminFontsPage() {
       const form = new FormData();
       form.append("file", file);
       form.append("name", name);
-      form.append("family", name);
+      form.append("family", family || name);
       form.append("weight", weight);
       form.append("style", style);
       const res = await fetch("/api/admin/fonts", { method: "POST", body: form });
@@ -68,16 +70,39 @@ export default function AdminFontsPage() {
       <div>
         <h1 className="text-2xl font-bold">Lettertypen</h1>
         <p className="mt-1 text-muted-foreground">
-          Upload de huisstijl-fonts (WOFF2, WOFF, TTF of OTF) die templates mogen gebruiken.
+          Upload de huisstijl-fonts (WOFF2, WOFF, TTF of OTF) die templates mogen gebruiken. Heeft een lettertype
+          meerdere gewichten (Regular, Bold, Black, ...)? Upload elk gewicht apart, maar gebruik steeds dezelfde{" "}
+          <strong>CSS-familienaam</strong> — dan kan een template met één <code>fontFamily</code> automatisch het
+          juiste gewicht/stijl kiezen.
         </p>
       </div>
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={upload} className="grid gap-3 sm:grid-cols-[1fr_120px_120px_auto] sm:items-end">
+          <form onSubmit={upload} className="grid gap-3 sm:grid-cols-[1fr_1fr_120px_120px_auto] sm:items-end">
             <div>
-              <Label htmlFor="fontname">Naam</Label>
-              <Input id="fontname" value={name} onChange={(e) => setName(e.target.value)} placeholder="HHC Display" />
+              <Label htmlFor="fontname">Weergavenaam</Label>
+              <Input
+                id="fontname"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (!familyTouched) setFamily(e.target.value);
+                }}
+                placeholder="FF DIN Black"
+              />
+            </div>
+            <div>
+              <Label htmlFor="fontfamily">CSS-familienaam</Label>
+              <Input
+                id="fontfamily"
+                value={family}
+                onChange={(e) => {
+                  setFamily(e.target.value);
+                  setFamilyTouched(true);
+                }}
+                placeholder="FF DIN"
+              />
             </div>
             <div>
               <Label>Gewicht</Label>
@@ -101,7 +126,7 @@ export default function AdminFontsPage() {
               {file ? file.name : "Bestand kiezen"}
               <input type="file" accept=".woff2,.woff,.ttf,.otf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </label>
-            <Button type="submit" disabled={loading} className="sm:col-span-4 sm:w-fit">
+            <Button type="submit" disabled={loading} className="sm:col-span-5 sm:w-fit">
               {loading ? "Bezig..." : "Uploaden"}
             </Button>
           </form>
