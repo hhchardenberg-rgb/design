@@ -18,6 +18,7 @@ const adminNav = [
   { href: "/admin/clubs", label: "Club & teams" },
   { href: "/admin/fonts", label: "Fonts" },
   { href: "/admin/colors", label: "Huisstijlkleuren" },
+  { href: "/admin/users", label: "Gebruikers" },
   { href: "/docs/psd-conventions", label: "Documentatie" },
 ];
 
