@@ -2,13 +2,16 @@
  * Storage-abstractie.
  *
  * De rest van de applicatie praat nooit rechtstreeks met de filesystem of
- * een S3-SDK; alles gaat via deze interface. Zo kan de storageprovider
- * later gewijzigd worden (lokale schijf tijdens development, S3 /
- * Cloudflare R2 / Supabase Storage in productie) door alleen de
- * `STORAGE_DRIVER` env var aan te passen.
+ * een storage-SDK; alles gaat via deze interface. Zo kan de storageprovider
+ * later gewijzigd worden — lokale schijf tijdens development, "vercel-blob"
+ * op Vercel (aanbevolen: enige met echte persistentie op serverless
+ * functions + client-direct-upload zonder bodygrootte-limiet), of S3 /
+ * Cloudflare R2 / Supabase Storage — door alleen de `STORAGE_DRIVER` env
+ * var aan te passen.
  */
 import { localStorage } from "./local";
 import { s3Storage } from "./s3";
+import { vercelBlobStorage } from "./vercel-blob";
 
 export interface PutFileInput {
   /** Pad/sleutel binnen de bucket, bv. "templates/abc123/background.png" */
@@ -32,6 +35,9 @@ function loadDriver(): StorageDriver {
   const driver = process.env.STORAGE_DRIVER ?? "local";
   if (driver === "s3") {
     return s3Storage();
+  }
+  if (driver === "vercel-blob") {
+    return vercelBlobStorage();
   }
   return localStorage();
 }

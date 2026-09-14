@@ -4,42 +4,40 @@ import { prisma } from "@/lib/prisma";
 import { getStorage, buildKey } from "@/lib/storage";
 import { importPsd } from "@/lib/psd/parse";
 import { slugify } from "@/lib/psd/naming";
+import { loadAssetBuffer } from "@/lib/render/loadAsset";
 import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import type { TemplateSchemaJson } from "@/lib/validations/template";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+interface UploadInput {
+  buffer: Buffer;
+  name: string;
+  category: string;
+  templateId: string | null;
+}
+
 /**
  * Admin-flow stap 1: PSD uploaden -> automatisch parsen -> Template +
  * (concept) TemplateVersion aanmaken met gedetecteerde velden.
  * De admin komt hierna in de template-builder terecht om de gedetecteerde
  * velden te controleren en te verfijnen (zie /admin/templates/[id]/builder).
+ *
+ * Twee manieren om het bestand aan te leveren:
+ *  - multipart/form-data met een "file" (kleine bestanden / lokale dev)
+ *  - JSON met een "psdUrl" die al rechtstreeks (client-side) naar Vercel
+ *    Blob is geüpload — nodig omdat PSD's vaak groter zijn dan de 4,5MB
+ *    request-bodylimiet van een Vercel serverless function (zie
+ *    /api/admin/templates/upload/blob-auth).
  */
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdmin();
+    const input = await parseInput(req);
 
-    const form = await req.formData();
-    const file = form.get("file");
-    const name = String(form.get("name") ?? "").trim();
-    const category = String(form.get("category") ?? "Overig").trim();
-    const templateId = form.get("templateId") ? String(form.get("templateId")) : null;
-
-    if (!(file instanceof File)) {
-      throw new ApiError(400, "Geen PSD-bestand ontvangen.");
-    }
-    if (!file.name.toLowerCase().endsWith(".psd")) {
-      throw new ApiError(400, "Upload een .psd-bestand.");
-    }
-    if (!name && !templateId) {
-      throw new ApiError(400, "Geef een naam voor de template op.");
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const result = await importPsd(buffer);
+    const result = await importPsd(input.buffer);
+    const { buffer, name, category, templateId } = input;
 
     const storage = getStorage();
     const importId = nanoid(10);
@@ -158,4 +156,41 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return apiErrorResponse(error);
   }
+}
+
+async function parseInput(req: NextRequest): Promise<UploadInput> {
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const body = await req.json();
+    const psdUrl = String(body.psdUrl ?? "");
+    const name = String(body.name ?? "").trim();
+    const category = String(body.category ?? "Overig").trim();
+    const templateId = body.templateId ? String(body.templateId) : null;
+
+    if (!psdUrl) throw new ApiError(400, "Geen PSD-URL ontvangen.");
+    if (!name && !templateId) throw new ApiError(400, "Geef een naam voor de template op.");
+
+    const buffer = await loadAssetBuffer(psdUrl);
+    return { buffer, name, category, templateId };
+  }
+
+  const form = await req.formData();
+  const file = form.get("file");
+  const name = String(form.get("name") ?? "").trim();
+  const category = String(form.get("category") ?? "Overig").trim();
+  const templateId = form.get("templateId") ? String(form.get("templateId")) : null;
+
+  if (!(file instanceof File)) {
+    throw new ApiError(400, "Geen PSD-bestand ontvangen.");
+  }
+  if (!file.name.toLowerCase().endsWith(".psd")) {
+    throw new ApiError(400, "Upload een .psd-bestand.");
+  }
+  if (!name && !templateId) {
+    throw new ApiError(400, "Geef een naam voor de template op.");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return { buffer, name, category, templateId };
 }
