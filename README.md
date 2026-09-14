@@ -104,6 +104,20 @@ en een correcte `NEXTAUTH_URL`.
      (wanneer een Blob store gekoppeld is) rechtstreeks vanuit de browser
      naar Blob-opslag; zonder Blob store valt dit automatisch terug op de
      gewone upload, die dan wel aan de 4,5MB-limiet gebonden blijft.
+
+   > **Let op — "This store does not exist" / "No read-write token found":**
+   > gebruik altijd de knop **Storage → Create Database → Blob** (of, als er
+   > al een store bestaat, de "Connect"-knop) **vanuit het project zelf**.
+   > Zo verbindt Vercel de store écht aan dit project en zet hij de juiste
+   > omgevingsvariabelen automatisch. Kopieer **niet** zelf een `BLOB_STORE_ID`
+   > over vanaf het ".env.local"-tabblad van de store — zodra `BLOB_STORE_ID`
+   > in de omgeving staat, probeert de Vercel Blob SDK altijd het nieuwere
+   > OIDC-verificatiemodel (via het automatisch meegegeven
+   > `VERCEL_OIDC_TOKEN`) en **negeert hij een eventuele
+   > `BLOB_READ_WRITE_TOKEN` volledig** — dat werkt alleen als de store ook
+   > echt op deze manier gekoppeld is, anders krijg je precies deze fout. Is
+   > de env var per ongeluk toch handmatig toegevoegd? Verwijder hem dan weer
+   > en koppel de store opnieuw via de knop in de Storage-tab.
 3. Zet ook `AUTH_SECRET`, `NEXTAUTH_URL` en `AUTH_TRUST_HOST="true"` in de
    omgevingsvariabelen (zie hierboven).
 4. Het `vercel-build`-script in `package.json` (`prisma db push && next
