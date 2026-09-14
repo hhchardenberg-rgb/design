@@ -2,17 +2,20 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "@/lib/auth.config";
 
+// Volledige configuratie — alleen gebruikt in de Node.js-runtime (API-route
+// api/auth/[...nextauth], server components/actions). Bevat de
+// Credentials-provider met Prisma- en bcrypt-afhankelijkheden, die te zwaar
+// zijn voor de Edge Runtime (zie auth.config.ts voor de middleware-variant).
 export const {
   handlers: { GET, POST },
   auth,
   signIn,
   signOut,
 } = NextAuth({
+  ...authConfig,
   session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
   providers: [
     Credentials({
       name: "credentials",
@@ -40,19 +43,4 @@ export const {
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.role = (user as { role: "USER" | "ADMIN" }).role;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub as string;
-        session.user.role = token.role as "USER" | "ADMIN";
-      }
-      return session;
-    },
-  },
 });
