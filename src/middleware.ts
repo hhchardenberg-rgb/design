@@ -1,5 +1,12 @@
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { authConfig } from "@/lib/auth.config";
+
+// Gebruikt bewust de lichte, edge-safe config (geen Prisma/bcrypt) zodat
+// de Edge Function-bundel binnen Vercel's grootte-limiet blijft. De
+// volledige config met de Credentials-provider zit in src/lib/auth.ts en
+// draait alleen server-side (API-route, server components).
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
