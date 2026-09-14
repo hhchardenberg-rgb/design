@@ -88,6 +88,24 @@ npm run start
 Zet in productie (of achter een reverse proxy) ook `AUTH_TRUST_HOST="true"`,
 en een correcte `NEXTAUTH_URL`.
 
+### Database seeden op een host zonder shell (bijv. Vercel)
+
+Op platforms zoals Vercel heb je geen terminal om `npm run db:seed` uit te
+voeren. Zet daarom tijdelijk een `SEED_SECRET` (bijv. `openssl rand -hex 32`)
+in de omgevingsvariabelen, deploy opnieuw, en roep dan eenmalig aan:
+
+```bash
+curl -X POST https://jouw-app.vercel.app/api/system/seed \
+  -H "x-seed-secret: <SEED_SECRET>"
+```
+
+Dit draait exact dezelfde seed-logica (`src/lib/seed.ts`) als `npm run
+db:seed`, maar dan binnen de Vercel-omgeving zelf, tegen de daar
+geconfigureerde `DATABASE_URL` — je hoeft dus geen databasewachtwoord te
+delen. Idempotent (veilig om vaker aan te roepen; bestaande accounts worden
+nooit overschreven). Verwijder `SEED_SECRET` daarna weer uit de
+omgevingsvariabelen om het endpoint weer dicht te zetten.
+
 ## Scripts
 
 | Commando            | Omschrijving                                   |
