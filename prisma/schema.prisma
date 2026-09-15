@@ -206,6 +206,37 @@ model BrandColor {
 }
 
 // ---------------------------------------------------------------------------
+// Agenda
+// ---------------------------------------------------------------------------
+
+enum AgendaEventSource {
+  MANUAL // rechtstreeks toegevoegd door een beheerder
+  ICS // uitgelicht vanuit de live Google Agenda-koppeling (zie src/lib/calendar.ts)
+}
+
+model AgendaEvent {
+  id     String            @id @default(cuid())
+  source AgendaEventSource @default(MANUAL)
+  // Koppelt een ICS-agendapunt (uid + starttijd, zie CalendarEvent.id) aan dit
+  // record, zodat uitlichten/toelichten niet dubbel kan en overleeft als de
+  // beheerder het item nogmaals opent. Alleen gezet bij source = ICS.
+  icsUid String? @unique
+
+  title       String
+  description String? // de "meer uitleg" die achter het event getoond wordt
+  location    String?
+  start       DateTime
+  end         DateTime?
+  isFullDay   Boolean   @default(false)
+  highlighted Boolean   @default(false) // toont het event op de hub-homepage
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("agenda_events")
+}
+
+// ---------------------------------------------------------------------------
 // Club, teams & spelers
 // ---------------------------------------------------------------------------
 

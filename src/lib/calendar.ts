@@ -1,14 +1,11 @@
 import ical, { type VEvent } from "node-ical";
 
+export { CLUB_TIME_ZONE } from "@/lib/timezone";
+
 // Openbare Google Agenda van HHC Hardenberg (activiteiten-/planningsagenda),
 // via de "basic.ics"-feed — geen authenticatie nodig, alleen leesrechten.
 export const CLUB_CALENDAR_ICS_URL =
   "https://calendar.google.com/calendar/ical/46bkk9efhjo01glmcso26rnl8g%40group.calendar.google.com/public/basic.ics";
-
-// Alle events worden weergegeven in de Nederlandse tijdzone, ongeacht de
-// tijdzone van de server (op Vercel/serverless is dat altijd UTC) — anders
-// staan tijden er met een uur (winter) of twee uur (zomertijd) naast.
-export const CLUB_TIME_ZONE = "Europe/Amsterdam";
 
 export interface CalendarEvent {
   id: string;
