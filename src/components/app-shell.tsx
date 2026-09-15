@@ -6,31 +6,30 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { HubAppsMenu } from "@/components/hub-apps-menu";
+import { GroupedNavMenu, type NavMenuGroup } from "@/components/grouped-nav-menu";
+import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
+import { adminModuleGroups } from "@/lib/admin-modules";
 
-// Alle hub-onderdelen (Designtool, Agenda, Huisstijl, ...) zitten al in het
-// apps-menu (HubAppsMenu) — hier staat alleen de sub-navigatie bínnen het
-// designtool-onderdeel, zodat die niet dubbelop in de hoofdbalk staat.
+// Sub-navigatie bínnen het designtool-onderdeel — apart van het apps-menu,
+// zodat je niet elke keer een dropdown hoeft te openen om van "Nieuwe
+// afbeelding" naar "Mijn ontwerpen" te wisselen.
 const designtoolNav = [
   { href: "/dashboard", label: "Overzicht" },
   { href: "/templates", label: "Nieuwe afbeelding" },
   { href: "/designs", label: "Mijn ontwerpen" },
 ];
 
-const adminNav = [
-  { href: "/admin/templates", label: "Templates" },
-  { href: "/admin/agenda", label: "Agenda" },
-  { href: "/admin/fotobank", label: "Fotobank" },
-  { href: "/admin/nieuws", label: "Nieuws" },
-  { href: "/admin/kennisbank", label: "Kennisbank" },
-  { href: "/admin/crisis", label: "Crisiscommunicatie" },
-  { href: "/admin/matches", label: "Wedstrijden" },
-  { href: "/admin/clubs", label: "Club & teams" },
-  { href: "/admin/fonts", label: "Fonts" },
-  { href: "/admin/colors", label: "Huisstijlkleuren" },
-  { href: "/admin/users", label: "Gebruikers" },
-  { href: "/docs", label: "Documentatie" },
-];
+const hubMenuGroups: NavMenuGroup[] = hubModuleGroups.map((g) => ({
+  id: g.id,
+  label: g.label,
+  items: g.modules.map((m) => ({ title: m.title, href: m.href, status: m.status })),
+}));
+
+const adminMenuGroups: NavMenuGroup[] = adminModuleGroups.map((g) => ({
+  id: g.id,
+  label: g.label,
+  items: g.modules.map((m) => ({ title: m.title, href: m.href })),
+}));
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -38,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAdminSection = pathname?.startsWith("/admin");
   const isDesigntoolSection =
     pathname?.startsWith("/dashboard") || pathname?.startsWith("/templates") || pathname?.startsWith("/designs");
-  const nav = isAdminSection ? adminNav : isDesigntoolSection ? designtoolNav : [];
+  const nav = isAdminSection ? [] : isDesigntoolSection ? designtoolNav : [];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -65,10 +64,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           )}
           <div className={cn("flex items-center gap-2", nav.length === 0 && "flex-1 justify-end")}>
-            <HubAppsMenu />
+            {isAdminSection ? (
+              <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
+            ) : (
+              <GroupedNavMenu
+                groups={hubMenuGroups}
+                featured={{ title: featuredModule.title, href: featuredModule.href }}
+                label="Onderdelen"
+              />
+            )}
             {session?.user?.role === "ADMIN" && (
               <Link
-                href={isAdminSection ? "/hub" : "/admin/templates"}
+                href={isAdminSection ? "/hub" : "/admin"}
                 className="hidden text-xs font-medium text-hhc-orange-dark hover:underline sm:inline"
               >
                 {isAdminSection ? "Naar hub" : "Beheer"}
