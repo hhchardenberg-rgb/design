@@ -26,6 +26,8 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [editEmailId, setEditEmailId] = useState<string | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState("");
 
   async function load() {
     const res = await fetch("/api/admin/users");
@@ -96,6 +98,27 @@ export default function AdminUsersPage() {
     setResetPassword("");
   }
 
+  async function submitEmail(id: string) {
+    if (!editEmailValue.trim()) {
+      setError("Geef een e-mailadres op.");
+      return;
+    }
+    setError(null);
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: editEmailValue.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "E-mailadres wijzigen mislukt.");
+      return;
+    }
+    setEditEmailId(null);
+    setEditEmailValue("");
+    await load();
+  }
+
   async function remove(id: string) {
     if (!confirm("Deze gebruiker verwijderen?")) return;
     setError(null);
@@ -162,7 +185,44 @@ export default function AdminUsersPage() {
                   {u.name}
                   {u.id === session?.user?.id && <span className="ml-2 text-xs text-muted-foreground">(jij)</span>}
                 </p>
-                <p className="text-xs text-muted-foreground">{u.email}</p>
+                {editEmailId === u.id ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <Input
+                      type="email"
+                      className="h-8 w-56"
+                      value={editEmailValue}
+                      onChange={(e) => setEditEmailValue(e.target.value)}
+                      autoFocus
+                    />
+                    <Button size="sm" onClick={() => submitEmail(u.id)}>
+                      Opslaan
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditEmailId(null);
+                        setEditEmailValue("");
+                      }}
+                    >
+                      Annuleren
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {u.email}
+                    <button
+                      type="button"
+                      className="text-hhc-orange-dark hover:underline"
+                      onClick={() => {
+                        setEditEmailId(u.id);
+                        setEditEmailValue(u.email);
+                      }}
+                    >
+                      wijzigen
+                    </button>
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={u.role === "ADMIN" ? "primary" : "outline"}>
