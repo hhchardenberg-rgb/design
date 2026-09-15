@@ -2,10 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+
+/** Genereert een sterk, willekeurig wachtwoord (leesbare tekens, geen 0/O/1/l/I). */
+function generatePassword(length = 12): string {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*";
+  const bytes = new Uint32Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
 
 interface UserRow {
   id: string;
@@ -24,10 +33,14 @@ export default function AdminUsersPage() {
   const [role, setRole] = useState<"USER" | "ADMIN">("USER");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [editEmailId, setEditEmailId] = useState<string | null>(null);
   const [editEmailValue, setEditEmailValue] = useState("");
+  const [editNameId, setEditNameId] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
 
   async function load() {
     const res = await fetch("/api/admin/users");
@@ -119,6 +132,27 @@ export default function AdminUsersPage() {
     await load();
   }
 
+  async function submitName(id: string) {
+    if (!editNameValue.trim()) {
+      setError("Geef een naam op.");
+      return;
+    }
+    setError(null);
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editNameValue.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "Naam wijzigen mislukt.");
+      return;
+    }
+    setEditNameId(null);
+    setEditNameValue("");
+    await load();
+  }
+
   async function remove(id: string) {
     if (!confirm("Deze gebruiker verwijderen?")) return;
     setError(null);
@@ -153,13 +187,36 @@ export default function AdminUsersPage() {
             </div>
             <div>
               <Label>Wachtwoord</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={8}
-                required
-              />
+              <div className="flex items-center gap-1">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={8}
+                  required
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  title="Wachtwoord genereren"
+                  onClick={() => {
+                    setPassword(generatePassword());
+                    setShowPassword(true);
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  title={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div>
               <Label>Rol</Label>
@@ -181,10 +238,44 @@ export default function AdminUsersPage() {
           <Card key={u.id}>
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-medium">
-                  {u.name}
-                  {u.id === session?.user?.id && <span className="ml-2 text-xs text-muted-foreground">(jij)</span>}
-                </p>
+                {editNameId === u.id ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="h-8 w-48"
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      autoFocus
+                    />
+                    <Button size="sm" onClick={() => submitName(u.id)}>
+                      Opslaan
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditNameId(null);
+                        setEditNameValue("");
+                      }}
+                    >
+                      Annuleren
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="flex items-center gap-2 font-medium">
+                    {u.name}
+                    {u.id === session?.user?.id && <span className="text-xs font-normal text-muted-foreground">(jij)</span>}
+                    <button
+                      type="button"
+                      className="text-xs font-normal text-hhc-orange-dark hover:underline"
+                      onClick={() => {
+                        setEditNameId(u.id);
+                        setEditNameValue(u.name);
+                      }}
+                    >
+                      wijzigen
+                    </button>
+                  </p>
+                )}
                 {editEmailId === u.id ? (
                   <div className="mt-1 flex items-center gap-2">
                     <Input
@@ -238,14 +329,35 @@ export default function AdminUsersPage() {
                 </Select>
 
                 {resetId === u.id ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Input
-                      type="password"
+                      type={showResetPassword ? "text" : "password"}
                       placeholder="Nieuw wachtwoord"
-                      className="h-8 w-40"
+                      className="h-8 w-36"
                       value={resetPassword}
                       onChange={(e) => setResetPassword(e.target.value)}
                     />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      title="Wachtwoord genereren"
+                      onClick={() => {
+                        setResetPassword(generatePassword());
+                        setShowResetPassword(true);
+                      }}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      title={showResetPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
+                      onClick={() => setShowResetPassword((v) => !v)}
+                    >
+                      {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
                     <Button size="sm" onClick={() => submitResetPassword(u.id)}>
                       Opslaan
                     </Button>
@@ -255,6 +367,7 @@ export default function AdminUsersPage() {
                       onClick={() => {
                         setResetId(null);
                         setResetPassword("");
+                        setShowResetPassword(false);
                       }}
                     >
                       Annuleren
