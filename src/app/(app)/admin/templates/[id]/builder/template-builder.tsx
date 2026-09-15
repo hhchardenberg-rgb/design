@@ -48,6 +48,7 @@ export interface BuilderTemplate {
   category: string;
   description: string | null;
   status: string;
+  activeVersionId: string | null;
   versions: BuilderVersion[];
 }
 
@@ -58,6 +59,12 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
   const sortedVersions = [...template.versions].sort((a, b) => b.versionNumber - a.versionNumber);
   const [versionId, setVersionId] = useState(initialVersionId ?? sortedVersions[0]?.id);
   const version = sortedVersions.find((v) => v.id === versionId) ?? sortedVersions[0];
+
+  // Of een versie "live" is, wordt afgeleid van Template.status +
+  // activeVersionId — niet van TemplateVersion.status zelf. Dat laatste kan
+  // uit de pas lopen (bv. na archiveren/herstellen van de template), en gaf
+  // dan een misleidend badge dat niet overeenkwam met het overzicht.
+  const isLive = (v: { id: string }) => template.status === "PUBLISHED" && template.activeVersionId === v.id;
 
   const [fields, setFields] = useState<BuilderField[]>(version.fields);
   const [schema, setSchema] = useState<TemplateSchemaJson>(version.schemaJson);
@@ -135,6 +142,75 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
     }
   }
 
+  /** Leesbaar label voor een laag in de "Lagen"-lijst hieronder. */
+  function layerLabel(layer: Layer): string {
+    if (layer.name) return layer.name;
+    if ("field" in layer) {
+      const f = fields.find((x) => x.key === layer.field);
+      if (f) return f.label;
+    }
+    const TYPE_LABELS: Record<Layer["type"], string> = {
+      background: "Achtergrond",
+      static_image: "Vaste afbeelding",
+      text: "Tekst",
+      image: "Afbeelding",
+      color: "Kleurvlak",
+    };
+    return `${TYPE_LABELS[layer.type]} (${layer.id})`;
+  }
+
+  /**
+   * Maakt één specifieke laag individueel aan/uit-zetbaar voor de gebruiker
+   * — een generalisatie van de VISIBILITY:-naamgevingsconventie uit de PSD
+   * (die alleen door de designer vooraf gegroepeerde lagen dekt) naar élke
+   * laag, rechtstreeks vanuit de builder.
+   */
+  function toggleLayerVisibility(layerId: string, enabled: boolean) {
+    const layer = schema.layers.find((l) => l.id === layerId);
+    if (!layer) return;
+
+    if (enabled) {
+      let key = `toon_${layerId}`.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+      let i = 2;
+      while (fields.some((f) => f.key === key)) key = `toon_${layerId}_${i++}`;
+      setFields((prev) => [
+        ...prev,
+        {
+          key,
+          label: `Toon: ${layerLabel(layer)}`,
+          type: "CHECKBOX",
+          required: false,
+          defaultValue: "true",
+          placeholder: null,
+          maxLength: null,
+          textTransform: "NONE",
+          options: null,
+          imageFit: null,
+          sortOrder: fields.length,
+        },
+      ]);
+      setSchema((prev) => ({
+        ...prev,
+        layers: prev.layers.map((l) => (l.id === layerId ? { ...l, visibilityField: key } : l)),
+      }));
+    } else {
+      const key = layer.visibilityField;
+      const stillUsed = key ? schema.layers.some((l) => l.id !== layerId && l.visibilityField === key) : false;
+      setSchema((prev) => ({
+        ...prev,
+        layers: prev.layers.map((l) => {
+          if (l.id !== layerId) return l;
+          const rest = { ...l };
+          delete rest.visibilityField;
+          return rest;
+        }),
+      }));
+      if (key && !stillUsed) {
+        setFields((prev) => prev.filter((f) => f.key !== key));
+      }
+    }
+  }
+
   async function saveTemplateInfo() {
     await fetch("/api/admin/templates", {
       method: "PATCH",
@@ -194,8 +270,8 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
           </Link>
           <div className="mt-1 flex items-center gap-3">
             <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9 w-64 text-lg font-bold" />
-            <Badge variant={version.status === "PUBLISHED" ? "success" : "outline"}>
-              v{version.versionNumber} · {version.status === "PUBLISHED" ? "gepubliceerd" : "concept"}
+            <Badge variant={isLive(version) ? "success" : "outline"}>
+              v{version.versionNumber} · {isLive(version) ? "gepubliceerd" : "concept"}
             </Badge>
           </div>
         </div>
@@ -249,6 +325,35 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
           )}
 
           <div>
+            <Label>Lagen (aan/uit zetten door gebruiker)</Label>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Zet een laag aan om er een schakelaar voor toe te voegen waarmee de gebruiker hem in de wizard zelf kan
+              tonen of verbergen (bv. een sponsorlogo of een optionele tekstregel).
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {schema.layers
+                .filter((l) => l.type !== "background")
+                .map((l) => (
+                  <label
+                    key={l.id}
+                    className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(l.visibilityField)}
+                      onChange={(e) => toggleLayerVisibility(l.id, e.target.checked)}
+                    />
+                    <span className="flex-1">{layerLabel(l)}</span>
+                    <span className="text-xs uppercase text-muted-foreground">{l.type}</span>
+                  </label>
+                ))}
+              {schema.layers.filter((l) => l.type !== "background").length === 0 && (
+                <p className="text-sm text-muted-foreground">Geen lagen gevonden.</p>
+              )}
+            </div>
+          </div>
+
+          <div>
             <Label>Exportformaten</Label>
             <div className="flex gap-3">
               {EXPORT_FORMATS.map((fmt) => (
@@ -276,8 +381,8 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
                       v{v.versionNumber} {v.id === version.id && "(huidig getoond)"}
                     </button>
                     <div className="flex items-center gap-2">
-                      <Badge variant={v.status === "PUBLISHED" ? "success" : "outline"}>{v.status}</Badge>
-                      {v.status !== "PUBLISHED" && (
+                      <Badge variant={isLive(v) ? "success" : "outline"}>{isLive(v) ? "PUBLISHED" : "DRAFT"}</Badge>
+                      {!isLive(v) && (
                         <Button size="sm" variant="outline" onClick={() => activateVersion(v.id)}>
                           Activeren
                         </Button>

@@ -25,7 +25,11 @@ export function TemplateRowActions({ templateId, archived }: { templateId: strin
       const res = await fetch(`/api/admin/templates`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: templateId, status: archived ? "DRAFT" : "ARCHIVED" }),
+        body: JSON.stringify({
+          id: templateId,
+          status: archived ? "DRAFT" : "ARCHIVED",
+          restoreFromArchive: archived,
+        }),
       });
       if (res.ok) startTransition(() => router.refresh());
     } finally {
