@@ -11,6 +11,10 @@ import { parseFontFilename } from "@/lib/fonts/parseFontFilename";
 
 const FONT_EXTENSIONS = /\.(woff2?|ttf|otf)$/i;
 
+function previewFamily(fontId: string) {
+  return `font-preview-${fontId}`;
+}
+
 interface Font {
   id: string;
   name: string;
@@ -44,6 +48,41 @@ export default function AdminFontsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  // Laadt elk font onder een unieke alias per rij (font-preview-<id>) zodat
+  // de kaart hieronder écht in dat specifieke bestand rendert — dus ook het
+  // juiste gewicht/stijl van déze rij, niet zomaar "de dichtstbijzijnde
+  // match" binnen de gedeelde CSS-familienaam. Werkt ook voor nog-niet-
+  // actieve fonts (handig om te bekijken vóór activeren), en is onafhankelijk
+  // van de globale @font-face-injectie in de rootlayout (die alleen bij een
+  // volledige paginalaad ververst, niet meteen na een upload).
+  useEffect(() => {
+    if (fonts.length === 0) return;
+    let cancelled = false;
+    const loaded: FontFace[] = [];
+
+    Promise.all(
+      fonts.map(async (f) => {
+        try {
+          const face = new FontFace(previewFamily(f.id), `url(${f.fileUrl})`);
+          const ready = await face.load();
+          if (cancelled) return;
+          document.fonts.add(ready);
+          loaded.push(ready);
+        } catch {
+          // Best-effort preview: als een bestand niet laadt, blijft de kaart
+          // gewoon in het systeemfont staan.
+        }
+      })
+    );
+
+    return () => {
+      cancelled = true;
+      for (const face of loaded) {
+        document.fonts.delete(face);
+      }
+    };
+  }, [fonts]);
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
@@ -236,9 +275,10 @@ export default function AdminFontsPage() {
           <Card key={f.id}>
             <CardContent className="flex items-center justify-between p-4">
               <div>
-                <p className="font-semibold" style={{ fontFamily: f.family }}>
-                  {f.name}
+                <p className="text-2xl leading-tight" style={{ fontFamily: previewFamily(f.id) }}>
+                  Aa Bb Cc
                 </p>
+                <p className="mt-1 text-sm font-medium">{f.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {f.weight} · {f.style} · {f.format.toUpperCase()}
                 </p>
