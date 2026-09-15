@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
           <Link href="/dashboard" className="flex items-center gap-2 font-bold">
-            <Image src="/branding/hhc-mark.png" alt="HHC Hardenberg" width={32} height={32} className="h-8 w-8" priority />
+            <Image src="/branding/hhc-logo.png" alt="HHC Hardenberg" width={32} height={40} className="h-10 w-8" priority />
             <span className="hidden sm:inline">Design Editor</span>
           </Link>
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto text-sm">

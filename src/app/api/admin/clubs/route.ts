@@ -7,7 +7,7 @@ export async function GET() {
     await requireAdmin();
     const clubs = await prisma.club.findMany({
       orderBy: { createdAt: "asc" },
-      include: { teams: { include: { _count: { select: { players: true } } } } },
+      include: { teams: { include: { players: { orderBy: { lastName: "asc" } } } } },
     });
     return NextResponse.json({ clubs });
   } catch (error) {

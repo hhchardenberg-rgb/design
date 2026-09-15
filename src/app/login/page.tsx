@@ -8,11 +8,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-xl bg-surface p-8 shadow-lg">
         <div className="mb-6 text-center">
           <Image
-            src="/branding/hhc-mark.png"
+            src="/branding/hhc-logo.png"
             alt="HHC Hardenberg"
-            width={72}
-            height={72}
-            className="mx-auto mb-3 h-[72px] w-[72px]"
+            width={76}
+            height={96}
+            className="mx-auto mb-3 h-24 w-auto"
             priority
           />
           <h1 className="text-xl font-bold">Design Editor</h1>
