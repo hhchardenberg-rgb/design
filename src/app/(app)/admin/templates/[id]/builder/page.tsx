@@ -31,6 +31,7 @@ export default async function TemplateBuilderPage({
     category: template.category,
     description: template.description,
     status: template.status,
+    activeVersionId: template.activeVersionId,
     versions: template.versions.map((v) => ({
       id: v.id,
       versionNumber: v.versionNumber,

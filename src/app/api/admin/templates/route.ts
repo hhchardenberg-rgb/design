@@ -23,13 +23,26 @@ export async function PATCH(req: Request) {
     await requireAdmin();
     const body = await req.json();
     const { id, ...data } = body;
+
+    // Bij herstellen uit het archief (restoreFromArchive) niet blind naar
+    // "DRAFT" zetten: als deze template al een actieve, gepubliceerde versie
+    // had, moet hij weer "PUBLISHED" worden — anders raakt Template.status
+    // uit sync met TemplateVersion.status van de actieve versie, en toont
+    // het overzicht "concept" terwijl de template-builder voor diezelfde
+    // versie nog "gepubliceerd" laat zien.
+    let status = data.status;
+    if (data.restoreFromArchive) {
+      const existing = await prisma.template.findUnique({ where: { id }, select: { activeVersionId: true } });
+      status = existing?.activeVersionId ? "PUBLISHED" : "DRAFT";
+    }
+
     const template = await prisma.template.update({
       where: { id },
       data: {
         name: data.name,
         description: data.description,
         category: data.category,
-        status: data.status,
+        status,
         sortOrder: data.sortOrder,
         thumbnailUrl: data.thumbnailUrl,
       },
