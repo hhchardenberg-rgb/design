@@ -69,19 +69,24 @@ export default async function HubPage() {
           <div className="flex flex-col gap-2">
             {newsPosts.map((post) => (
               <Card key={post.id} className={post.pinned ? "border-hhc-orange" : undefined}>
-                <CardContent className="flex flex-col gap-1 p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {post.pinned && (
-                      <Badge variant="primary" className="flex items-center gap-1">
-                        <Pin className="h-3 w-3" />
-                        Vastgezet
-                      </Badge>
-                    )}
-                    {post.category && <Badge variant="outline">{post.category}</Badge>}
-                    <p className="font-medium">{post.title}</p>
-                    <span className="text-xs text-muted-foreground">{format(post.createdAt, "d MMM", { locale: nl })}</span>
+                <CardContent className="flex gap-3 p-4">
+                  {post.imageUrl && (
+                    <div className="h-16 w-16 shrink-0 rounded bg-surface-muted bg-cover bg-center" style={{ backgroundImage: `url(${post.imageUrl})` }} />
+                  )}
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {post.pinned && (
+                        <Badge variant="primary" className="flex items-center gap-1">
+                          <Pin className="h-3 w-3" />
+                          Vastgezet
+                        </Badge>
+                      )}
+                      {post.category && <Badge variant="outline">{post.category}</Badge>}
+                      <p className="font-medium">{post.title}</p>
+                      <span className="text-xs text-muted-foreground">{format(post.createdAt, "d MMM", { locale: nl })}</span>
+                    </div>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
                   </div>
-                  <p className="line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
                 </CardContent>
               </Card>
             ))}
