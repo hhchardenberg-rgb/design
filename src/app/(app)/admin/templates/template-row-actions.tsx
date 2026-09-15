@@ -33,6 +33,27 @@ export function TemplateRowActions({ templateId, archived }: { templateId: strin
     }
   }
 
+  async function remove() {
+    if (
+      !confirm(
+        "Deze template en al zijn versies definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/templates/${templateId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        startTransition(() => router.refresh());
+      } else {
+        alert(data.error ?? "Verwijderen mislukt.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <Button size="sm" variant="outline" onClick={duplicate} disabled={busy || isPending}>
@@ -40,6 +61,9 @@ export function TemplateRowActions({ templateId, archived }: { templateId: strin
       </Button>
       <Button size="sm" variant="ghost" onClick={toggleArchive} disabled={busy || isPending}>
         {archived ? "Herstellen" : "Archiveren"}
+      </Button>
+      <Button size="sm" variant="ghost" onClick={remove} disabled={busy || isPending} className="text-destructive">
+        Verwijderen
       </Button>
     </>
   );

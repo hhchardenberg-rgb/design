@@ -42,6 +42,7 @@ export default function AdminMatchesPage() {
     competition: "",
     location: "",
   });
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     const [matchesRes, teamsRes, opponentsRes] = await Promise.all([
@@ -74,7 +75,14 @@ export default function AdminMatchesPage() {
   }
 
   async function remove(id: string) {
-    await fetch(`/api/admin/matches/${id}`, { method: "DELETE" });
+    if (!confirm("Deze wedstrijd verwijderen?")) return;
+    setError(null);
+    const res = await fetch(`/api/admin/matches/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
     await load();
   }
 
@@ -163,6 +171,7 @@ export default function AdminMatchesPage() {
         ))}
         {matches.length === 0 && <p className="text-sm text-muted-foreground">Nog geen wedstrijden toegevoegd.</p>}
       </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }
