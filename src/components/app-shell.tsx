@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { HubAppsMenu } from "@/components/hub-apps-menu";
 
 const userNav = [
   { href: "/hub", label: "Hub" },
@@ -19,6 +20,7 @@ const userNav = [
 
 const adminNav = [
   { href: "/admin/templates", label: "Templates" },
+  { href: "/admin/agenda", label: "Agenda" },
   { href: "/admin/matches", label: "Wedstrijden" },
   { href: "/admin/clubs", label: "Club & teams" },
   { href: "/admin/fonts", label: "Fonts" },
@@ -56,6 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <HubAppsMenu />
             {session?.user?.role === "ADMIN" && (
               <Link
                 href={isAdminSection ? "/hub" : "/admin/templates"}
