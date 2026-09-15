@@ -59,7 +59,7 @@ model Template {
   activeVersion   TemplateVersion? @relation("ActiveVersion", fields: [activeVersionId], references: [id])
 
   createdById String?
-  createdBy   User?   @relation("TemplateCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?   @relation("TemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -327,7 +327,7 @@ model GeneratedDesign {
   templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id])
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   matchId String?
   match   Match?  @relation(fields: [matchId], references: [id])
@@ -356,7 +356,7 @@ enum UploadedAssetKind {
 model UploadedAsset {
   id       String            @id @default(cuid())
   userId   String?
-  user     User?             @relation(fields: [userId], references: [id])
+  user     User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   kind     UploadedAssetKind @default(PHOTO)
   url      String
   width    Int?

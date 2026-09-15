@@ -6,6 +6,7 @@ import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
+  email: z.email("Ongeldig e-mailadres.").optional(),
   role: z.enum(["USER", "ADMIN"]).optional(),
   password: z.string().min(8).optional(),
 });
@@ -29,10 +30,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       await assertNotLastAdmin(id, "degraderen naar gebruiker");
     }
 
+    if (body.email) {
+      const existing = await prisma.user.findUnique({ where: { email: body.email } });
+      if (existing && existing.id !== id) {
+        throw new ApiError(409, "Er bestaat al een account met dit e-mailadres.");
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id },
       data: {
         name: body.name,
+        email: body.email,
         role: body.role,
         passwordHash: body.password ? await bcrypt.hash(body.password, 10) : undefined,
       },
