@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { normalizeEmail } from "@/lib/utils";
 
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
@@ -30,8 +31,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       await assertNotLastAdmin(id, "degraderen naar gebruiker");
     }
 
-    if (body.email) {
-      const existing = await prisma.user.findUnique({ where: { email: body.email } });
+    const email = body.email ? normalizeEmail(body.email) : undefined;
+    if (email) {
+      const existing = await prisma.user.findUnique({ where: { email } });
       if (existing && existing.id !== id) {
         throw new ApiError(409, "Er bestaat al een account met dit e-mailadres.");
       }
@@ -41,7 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       where: { id },
       data: {
         name: body.name,
-        email: body.email,
+        email,
         role: body.role,
         passwordHash: body.password ? await bcrypt.hash(body.password, 10) : undefined,
       },

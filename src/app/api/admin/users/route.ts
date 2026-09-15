@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { normalizeEmail } from "@/lib/utils";
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Naam is verplicht."),
@@ -28,14 +29,15 @@ export async function POST(req: Request) {
   try {
     await requireAdmin();
     const body = createUserSchema.parse(await req.json());
+    const email = normalizeEmail(body.email);
 
-    const existing = await prisma.user.findUnique({ where: { email: body.email } });
+    const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) throw new ApiError(409, "Er bestaat al een account met dit e-mailadres.");
 
     const user = await prisma.user.create({
       data: {
         name: body.name,
-        email: body.email,
+        email,
         passwordHash: await bcrypt.hash(body.password, 10),
         role: body.role,
       },

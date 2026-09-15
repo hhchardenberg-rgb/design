@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/lib/auth.config";
+import { normalizeEmail } from "@/lib/utils";
 
 // Volledige configuratie — alleen gebruikt in de Node.js-runtime (API-route
 // api/auth/[...nextauth], server components/actions). Bevat de
@@ -28,7 +29,7 @@ export const {
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({ where: { email: normalizeEmail(email) } });
         if (!user) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);

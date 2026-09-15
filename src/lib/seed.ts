@@ -22,6 +22,18 @@ export interface SeedResult {
 export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promise<SeedResult> {
   const { adminEmail, adminPassword } = options;
 
+  // Inloggen met e-mailadres is niet meer hoofdlettergevoelig (zie
+  // normalizeEmail in src/lib/utils.ts, toegepast bij elke nieuwe/gewijzigde
+  // gebruiker) — dit normaliseert bestaande, mogelijk nog gemengde-hoofdletter
+  // e-mailadressen eenmalig mee. Best-effort: bij een (zeer onwaarschijnlijke)
+  // botsing tussen twee bestaande adressen die alleen in hoofdletters
+  // verschillen, slaat dit de rest van de seed niet plat.
+  try {
+    await prisma.$executeRaw`UPDATE users SET email = LOWER(email) WHERE email <> LOWER(email)`;
+  } catch (error) {
+    console.error("Kon bestaande e-mailadressen niet normaliseren naar kleine letters:", error);
+  }
+
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},
@@ -364,6 +376,52 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     where: { id: template.id },
     data: { activeVersionId: version.id },
   });
+
+  // Kennisbank: alleen de titels die HHC zelf aandroeg, als startpunt — geen
+  // verzonnen inhoud. Elk artikel wordt maar één keer aangemaakt (op titel);
+  // eenmaal door een beheerder geschreven/bewerkt, laat een her-seed het met
+  // rust.
+  const knowledgeArticleTitles = [
+    "Hoe plaats ik een artikel?",
+    "Hoe maak ik een Instagram Story?",
+    "Hoe werk ik tijdens een wedstrijddag?",
+    "Hoe interview ik een speler?",
+    "Hoe schrijf ik een wedstrijdverslag?",
+    "Wat doe ik bij een rode kaart/incident?",
+    "Hoe gaan we om met negatieve reacties?",
+    "Wanneer publiceren we transfernieuws?",
+    "Hoe communiceren we bij overlijden?",
+    "Hoe communiceren we bij afgelasting?",
+  ];
+  for (let i = 0; i < knowledgeArticleTitles.length; i++) {
+    const title = knowledgeArticleTitles[i];
+    const existing = await prisma.knowledgeArticle.findFirst({ where: { title } });
+    if (!existing) {
+      await prisma.knowledgeArticle.create({ data: { title, sortOrder: i } });
+    }
+  }
+
+  // Crisiscommunicatie: idem — alleen de incidenttypes die HHC aandroeg.
+  // "Wie bellen"/"wie mag communiceren" blijft bewust leeg: dat is
+  // veiligheidskritische, club-specifieke info die alleen een beheerder kan
+  // invullen, nooit iets om te verzinnen.
+  const crisisProtocolTitles = [
+    "Incident op tribune",
+    "Ernstige blessure",
+    "Overlijden",
+    "Politie-incident",
+    "Wedstrijd gestaakt",
+    "Discriminatie",
+    "Privacy-incident",
+    "Foutieve publicatie",
+  ];
+  for (let i = 0; i < crisisProtocolTitles.length; i++) {
+    const title = crisisProtocolTitles[i];
+    const existing = await prisma.crisisProtocol.findFirst({ where: { title } });
+    if (!existing) {
+      await prisma.crisisProtocol.create({ data: { title, sortOrder: i } });
+    }
+  }
 
   return { adminEmail, matchDate: match.date.toISOString() };
 }
