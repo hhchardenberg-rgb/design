@@ -15,7 +15,7 @@ interface BrandColor {
 export default function AdminColorsPage() {
   const [colors, setColors] = useState<BrandColor[]>([]);
   const [name, setName] = useState("");
-  const [hex, setHex] = useState("#EA6A12");
+  const [hex, setHex] = useState("#FF6F00");
   const [group, setGroup] = useState("algemeen");
 
   async function load() {

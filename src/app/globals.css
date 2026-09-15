@@ -5,12 +5,21 @@
  * Alle huisstijlkleuren staan hier als CSS-variabelen zodat de branding
  * later centraal kan worden aangepast zonder de rest van de applicatie
  * te hoeven wijzigen. Componenten mogen NOOIT een hexcode hardcoden.
+ *
+ * --hhc-orange en --hhc-black zijn de officiële huisstijlkleuren uit het
+ * HHC Hardenberg huisstijlhandboek (PMS Orange 021 = #FF6F00, PMS Black =
+ * #000000 op beeldscherm/RGB) — niet wijzigen zonder het handboek erbij te
+ * pakken. -dark/-light zijn GEEN officiële huisstijlkleuren (het handboek
+ * stelt expliciet dat oranje altijd vol/ongemengd wordt toegepast, nooit in
+ * een tint) maar puur functionele afgeleide tinten voor UI-interactiestaten
+ * (hover/pressed/subtiele achtergronden) — voor logo's, drukwerk en
+ * exports altijd de volle --hhc-orange gebruiken.
  */
 :root {
-  --hhc-orange: #ea6a12;
-  --hhc-orange-dark: #c2530a;
-  --hhc-orange-light: #ff9548;
-  --hhc-black: #14120f;
+  --hhc-orange: #ff6f00;
+  --hhc-orange-dark: #cc5900;
+  --hhc-orange-light: #ffb266;
+  --hhc-black: #000000;
   --hhc-white: #ffffff;
 
   --background: #f7f6f4;
@@ -60,6 +69,16 @@
   --radius-sm: calc(var(--radius) - 0.4rem);
 
   --font-sans: var(--font-inter);
+  /*
+   * Het huisstijlhandboek schrijft de DIN-letterfamilie voor. Die is
+   * commercieel gelicenseerd, dus wordt nooit in de git-repo meegeleverd —
+   * in plaats daarvan wordt hij (indien een admin "FF DIN" of "DIN Next"
+   * heeft geüpload via /admin/fonts) dynamisch als @font-face geladen, zie
+   * <BrandFontFaces> in layout.tsx. Zonder upload valt dit netjes terug op
+   * --font-sans, zodat een verse installatie nooit een lege/onzichtbare
+   * kop toont.
+   */
+  --font-heading: "FF DIN", "DIN Next", var(--font-sans);
 }
 
 * {
@@ -70,6 +89,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Kopteksten in de huisstijlletter (DIN), zie --font-heading hierboven. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
 }
 
 ::selection {

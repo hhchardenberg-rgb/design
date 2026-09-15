@@ -61,7 +61,7 @@ export const textLayerSchema = layerCommonSchema.extend({
   fontStyle: z.enum(["normal", "italic"]).default("normal"),
   fontSize: z.number(),
   minFontSize: z.number().default(12),
-  color: z.string().default("#14120f"),
+  color: z.string().default("#000000"),
   align: alignSchema.default("left"),
   uppercase: z.boolean().default(false),
   letterSpacing: z.number().default(0),
@@ -86,7 +86,7 @@ export const colorLayerSchema = layerCommonSchema.extend({
   field: z.string(),
   shape: z.enum(["rect", "circle"]).default("rect"),
   cornerRadius: z.number().default(0),
-  defaultColor: z.string().default("#ea6a12"),
+  defaultColor: z.string().default("#ff6f00"),
 });
 
 export const layerSchema = z.discriminatedUnion("type", [

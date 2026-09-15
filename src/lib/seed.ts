@@ -44,16 +44,46 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     },
   });
 
-  await prisma.brandColor.createMany({
-    data: [
-      { name: "HHC Oranje", hex: "#EA6A12", group: "primair", sortOrder: 0 },
-      { name: "HHC Zwart", hex: "#14120F", group: "primair", sortOrder: 1 },
-      { name: "HHC Wit", hex: "#FFFFFF", group: "primair", sortOrder: 2 },
-      { name: "Oranje donker", hex: "#C2530A", group: "secundair", sortOrder: 3 },
-      { name: "Oranje licht", hex: "#FF9548", group: "secundair", sortOrder: 4 },
-    ],
-    skipDuplicates: true,
-  });
+  // Officiële huisstijlkleuren uit het HHC Hardenberg huisstijlhandboek
+  // (PMS Orange 021 / PMS Black, RGB/hex-kolom). Het handboek stelt
+  // expliciet dat oranje altijd vol/ongemengd wordt toegepast — geen
+  // "secundaire" tinten dus. Bijgewerkt via een handmatige upsert (i.p.v.
+  // createMany+skipDuplicates, dat op het niet-unieke "name"-veld bij elke
+  // her-seed stilzwijgend een nieuwe dubbele rij aanmaakte in plaats van
+  // niets te doen) zodat een eerder met verkeerde hexwaarden geseede — en
+  // door die bug inmiddels gedupliceerde — omgeving bij het opnieuw draaien
+  // van deze seed alsnog wordt opgeschoond, zonder andere, door een admin
+  // zelf toegevoegde kleuren te raken.
+  const officialBrandColors = [
+    { name: "HHC Oranje", hex: "#FF6F00", group: "primair", sortOrder: 0 },
+    { name: "HHC Zwart", hex: "#000000", group: "primair", sortOrder: 1 },
+    { name: "HHC Wit", hex: "#FFFFFF", group: "primair", sortOrder: 2 },
+  ];
+  for (const color of officialBrandColors) {
+    const duplicates = await prisma.brandColor.findMany({
+      where: { name: color.name },
+      orderBy: { id: "asc" },
+    });
+    const [keep, ...extras] = duplicates;
+    if (extras.length > 0) {
+      await prisma.brandColor.deleteMany({ where: { id: { in: extras.map((e) => e.id) } } });
+    }
+    if (keep) {
+      await prisma.brandColor.update({
+        where: { id: keep.id },
+        data: { hex: color.hex, group: color.group, sortOrder: color.sortOrder },
+      });
+    } else {
+      await prisma.brandColor.create({ data: color });
+    }
+  }
+
+  // Deze twee tinten werden voorheen automatisch meegeseed, maar het
+  // huisstijlhandboek staat oranje alleen vol/ongemengd toe — nooit als
+  // tint. Ze stonden hier niet op verzoek van HHC, dus verwijderen we ze
+  // weer (alleen exact deze twee namen; door een admin zelf toegevoegde
+  // kleuren blijven onaangeroerd).
+  await prisma.brandColor.deleteMany({ where: { name: { in: ["Oranje donker", "Oranje licht"] } } });
 
   const club = await prisma.club.upsert({
     where: { id: "own-club-hhc" },
@@ -151,7 +181,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
   const matchdaySchema: TemplateSchemaJson = {
     width: 1080,
     height: 1350,
-    backgroundColor: "#14120F",
+    backgroundColor: "#000000",
     layers: [
       { id: "bg", type: "background", x: 0, y: 0, width: 1080, height: 1350, src: "/templates/matchday/background.png" },
       {
@@ -167,7 +197,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
         fontStyle: "normal",
         fontSize: 32,
         minFontSize: 20,
-        color: "#EA6A12",
+        color: "#FF6F00",
         align: "center",
         uppercase: true,
         letterSpacing: 4,
@@ -281,7 +311,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
         height: 50,
         shape: "rect",
         cornerRadius: 0,
-        defaultColor: "#EA6A12",
+        defaultColor: "#FF6F00",
       },
     ],
   };
@@ -324,7 +354,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
             { key: "date", label: "Datum", type: "DATE", required: true, sortOrder: 3 },
             { key: "time", label: "Aanvangstijd", type: "TIME", required: true, defaultValue: "15:30", sortOrder: 4 },
             { key: "location", label: "Locatie", type: "SHORT_TEXT", required: false, defaultValue: "Sportpark de Boshoek", maxLength: 60, sortOrder: 5 },
-            { key: "accent_color", label: "Accentkleur", type: "BRAND_COLOR", required: false, defaultValue: "#EA6A12", sortOrder: 6 },
+            { key: "accent_color", label: "Accentkleur", type: "BRAND_COLOR", required: false, defaultValue: "#FF6F00", sortOrder: 6 },
           ],
         },
       },
