@@ -316,6 +316,28 @@ model CrisisProtocol {
 }
 
 // ---------------------------------------------------------------------------
+// Contactpersonen
+// ---------------------------------------------------------------------------
+
+model Contact {
+  id    String @id @default(cuid())
+  name  String
+  role  String // functie/rol binnen Team Communicatie
+
+  email    String?
+  phone    String?
+  notes    String? // bv. bereikbaarheid of aandachtsgebied
+  photoUrl String?
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contacts")
+}
+
+// ---------------------------------------------------------------------------
 // Club, teams & spelers
 // ---------------------------------------------------------------------------
 

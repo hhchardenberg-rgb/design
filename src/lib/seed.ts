@@ -401,25 +401,87 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     }
   }
 
-  // Crisiscommunicatie: idem — alleen de incidenttypes die HHC aandroeg.
-  // "Wie bellen"/"wie mag communiceren" blijft bewust leeg: dat is
-  // veiligheidskritische, club-specifieke info die alleen een beheerder kan
-  // invullen, nooit iets om te verzinnen.
-  const crisisProtocolTitles = [
-    "Incident op tribune",
-    "Ernstige blessure",
-    "Overlijden",
-    "Politie-incident",
-    "Wedstrijd gestaakt",
-    "Discriminatie",
-    "Privacy-incident",
-    "Foutieve publicatie",
+  // Crisiscommunicatie: startvoorstellen op expliciet verzoek van HHC ("doe
+  // voorstellen, we passen de inhoud later aan"). Dit zijn generieke,
+  // rolgebaseerde richtlijnen (geen verzonnen namen/telefoonnummers) die een
+  // beheerder nog moet controleren en aanvullen met de echte, actuele
+  // contactgegevens van de club. Een her-seed overschrijft nooit een
+  // protocol waarvan een beheerder al "wie bellen" of "wie mag
+  // communiceren" heeft ingevuld/gewijzigd.
+  const crisisProtocolDrafts = [
+    {
+      title: "Incident op tribune",
+      description: "Een incident met toeschouwers op de tribune, zoals een opstootje, vechtpartij of iemand die onwel wordt.",
+      whoToCall: "Bij gevaar voor leven: 112. Waarschuw daarna direct de wedstrijdsecretaris en de voorzitter.",
+      whoMayCommunicate:
+        "Alleen de voorzitter of de door het bestuur aangewezen woordvoerder. Geen uitspraken op social media vanuit Team Communicatie voordat het bestuur akkoord heeft gegeven.",
+      steps:
+        "1) Zorg voor veiligheid, bel 112 indien nodig. 2) Meld het incident bij de voorzitter/wedstrijdsecretaris. 3) Verzamel geen beeldmateriaal van het incident zelf voor publicatie. 4) Wacht op groen licht van het bestuur voordat er iets naar buiten gaat.",
+    },
+    {
+      title: "Ernstige blessure",
+      description: "Een speler of official raakt ernstig geblesseerd tijdens een training of wedstrijd.",
+      whoToCall: "112 bij levensgevaar. Daarna de teammanager/trainer en de voorzitter informeren.",
+      whoMayCommunicate:
+        "Alleen met toestemming van de betrokkene (of familie) en in overleg met het bestuur. Nooit medische details delen.",
+      steps:
+        "1) Eerste hulp/112. 2) Familie van de speler informeren (via trainer/teammanager, niet via social media). 3) Wacht met publiceren tot de betrokkene/familie akkoord is. 4) Bij publicatie: alleen feitelijk en met toestemming.",
+    },
+    {
+      title: "Overlijden",
+      description: "Het overlijden van een lid, vrijwilliger, speler of iemand nauw verbonden aan de club.",
+      whoToCall: "Voorzitter en secretaris direct informeren. Zij nemen contact op met de familie.",
+      whoMayCommunicate: "Uitsluitend de voorzitter, en pas nadat de familie toestemming heeft gegeven voor publicatie.",
+      steps:
+        "1) Wacht tot de familie is geïnformeerd en akkoord is met communicatie. 2) Stem de tekst af met voorzitter en familie. 3) Plaats een sobere, respectvolle boodschap. 4) Geen speculatie over de doodsoorzaak.",
+    },
+    {
+      title: "Politie-incident",
+      description: "Politie is betrokken bij een gebeurtenis op of rond het complex (bv. aanhouding, onderzoek, aangifte).",
+      whoToCall: "Voorzitter direct informeren; laat de politie het woord doen over het incident zelf.",
+      whoMayCommunicate: "Alleen de voorzitter, na afstemming met de politie over wat wel/niet gedeeld mag worden.",
+      steps: "1) Werk mee met de politie. 2) Geen eigen berichtgeving over het incident zonder afstemming. 3) Bij persvragen: doorverwijzen naar de voorzitter.",
+    },
+    {
+      title: "Wedstrijd gestaakt",
+      description: "Een wedstrijd wordt vroegtijdig gestaakt (bv. door wangedrag, weer, blessure, incident).",
+      whoToCall: "Wedstrijdsecretaris en voorzitter informeren; zij nemen zo nodig contact op met de KNVB.",
+      whoMayCommunicate: "Team Communicatie mag de feitelijke uitslag/status melden; duiding of oorzaak alleen na overleg met de voorzitter.",
+      steps: "1) Feiten vaststellen bij de scheidsrechter/wedstrijdleiding. 2) Kort en feitelijk communiceren dat de wedstrijd is gestaakt. 3) Wacht met duiding tot er meer bekend is.",
+    },
+    {
+      title: "Discriminatie",
+      description: "Discriminerende uitingen (bv. spreekkoren, uitingen op social media) rond de club.",
+      whoToCall: "Meld het direct bij de voorzitter en de vertrouwenscontactpersoon.",
+      whoMayCommunicate:
+        "Alleen de voorzitter, samen met de vertrouwenscontactpersoon. HHC Hardenberg hanteert een nultolerantiebeleid tegen discriminatie.",
+      steps: "1) Leg het incident vast (wat, wanneer, door wie indien bekend). 2) Meld dit bij het bestuur en eventueel de KNVB. 3) Communiceer pas een vooraf afgestemde verklaring.",
+    },
+    {
+      title: "Privacy-incident",
+      description: "Persoonsgegevens zijn per ongeluk gedeeld of gelekt (bv. een verkeerde foto, ledenlijst of medische info).",
+      whoToCall: "Meld dit direct bij de voorzitter/secretaris (verantwoordelijk voor AVG binnen de club).",
+      whoMayCommunicate: "Alleen na overleg met het bestuur; betrokkenen moeten waar nodig persoonlijk geïnformeerd worden.",
+      steps:
+        "1) Verwijder de gepubliceerde gegevens zo snel mogelijk. 2) Informeer de betrokkene(n). 3) Meld dit intern bij het bestuur en beoordeel of een meldplicht datalekken van toepassing is.",
+    },
+    {
+      title: "Foutieve publicatie",
+      description: "Er is een bericht, foto of grafiek gepubliceerd met een fout (bv. verkeerde naam, uitslag of gevoelige informatie).",
+      whoToCall: "Meld dit direct bij de coördinator communicatie.",
+      whoMayCommunicate: "Team Communicatie mag zelf corrigeren of verwijderen; bij gevoelige fouten eerst afstemmen met het bestuur.",
+      steps: "1) Pas het bericht direct aan of verwijder het. 2) Plaats bij verspreiding een correctie. 3) Bied excuses aan indien nodig.",
+    },
   ];
-  for (let i = 0; i < crisisProtocolTitles.length; i++) {
-    const title = crisisProtocolTitles[i];
+  for (let i = 0; i < crisisProtocolDrafts.length; i++) {
+    const { title, ...draft } = crisisProtocolDrafts[i];
     const existing = await prisma.crisisProtocol.findFirst({ where: { title } });
     if (!existing) {
-      await prisma.crisisProtocol.create({ data: { title, sortOrder: i } });
+      await prisma.crisisProtocol.create({ data: { title, sortOrder: i, ...draft } });
+    } else if (!existing.whoToCall && !existing.whoMayCommunicate && !existing.description && !existing.steps) {
+      // Nog volledig leeg (zoals bij het aanmaken) — vul het voorstel aan
+      // zonder eerdere aanpassingen door een beheerder te overschrijven.
+      await prisma.crisisProtocol.update({ where: { id: existing.id }, data: draft });
     }
   }
 
