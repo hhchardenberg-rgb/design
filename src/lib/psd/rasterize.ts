@@ -101,7 +101,7 @@ export async function averageColorHex(png: Buffer): Promise<string> {
     b += data[i + 2];
     count++;
   }
-  if (count === 0) return "#EA6A12";
+  if (count === 0) return "#FF6F00";
   return rgbToHex(Math.round(r / count), Math.round(g / count), Math.round(b / count));
 }
 

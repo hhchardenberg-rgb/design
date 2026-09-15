@@ -226,7 +226,7 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
     const paragraph = textData?.paragraphStyleRuns?.[0]?.style ?? textData?.paragraphStyle;
     const fontSize = style?.fontSize ?? 32;
     const fontFamily = style?.font?.name ?? "Inter";
-    const color = style?.fillColor ? rgbToHex(style.fillColor) : "#14120F";
+    const color = style?.fillColor ? rgbToHex(style.fillColor) : "#000000";
     const align = justificationToAlign(paragraph?.justification);
     const letterSpacing = style?.tracking ? Math.round((style.tracking / 1000) * fontSize) : 0;
     const maxLines = info.height > fontSize * 1.8 ? 2 : 1;
@@ -294,7 +294,7 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
   }
 
   for (const info of dynamicColor) {
-    let defaultColor = "#EA6A12";
+    let defaultColor = "#FF6F00";
     if (info.layer.imageData) {
       const png = await pixelDataToPng(info.layer.imageData, 1);
       defaultColor = await averageColorHex(png);
@@ -384,7 +384,7 @@ function rgbToHex(c: unknown): string {
       .map((v) => v.toString(16).padStart(2, "0"))
       .join("")}`.toUpperCase();
   }
-  return "#14120F";
+  return "#000000";
 }
 
 function justificationToAlign(j: string | undefined): "left" | "center" | "right" {
