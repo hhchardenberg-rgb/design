@@ -40,7 +40,10 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-10">
       <section className="flex flex-col items-start gap-4 rounded-xl bg-hhc-black p-8 text-hhc-white sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Welkom terug{session?.user?.name ? `, ${session.user.name}` : ""}</h1>
+          <Link href="/hub" className="text-xs font-medium text-white/60 hover:text-white hover:underline">
+            ← Hub
+          </Link>
+          <h1 className="mt-1 text-2xl font-bold">Designtool</h1>
           <p className="mt-1 text-white/70">Maak in een paar klikken een professionele clubafbeelding.</p>
         </div>
         <Link href="/templates">

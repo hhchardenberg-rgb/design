@@ -8,9 +8,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const userNav = [
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/hub", label: "Hub" },
+  { href: "/dashboard", label: "Designtool" },
   { href: "/templates", label: "Nieuwe afbeelding" },
   { href: "/designs", label: "Mijn ontwerpen" },
+  { href: "/kalender", label: "Agenda" },
+  { href: "/huisstijl", label: "Huisstijl" },
+  { href: "/docs", label: "Documentatie" },
 ];
 
 const adminNav = [
@@ -20,7 +24,7 @@ const adminNav = [
   { href: "/admin/fonts", label: "Fonts" },
   { href: "/admin/colors", label: "Huisstijlkleuren" },
   { href: "/admin/users", label: "Gebruikers" },
-  { href: "/docs/psd-conventions", label: "Documentatie" },
+  { href: "/docs", label: "Documentatie" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -33,9 +37,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold">
+          <Link href="/hub" className="flex items-center gap-2 font-bold">
             <Image src="/branding/hhc-logo.png" alt="HHC Hardenberg" width={32} height={40} className="h-10 w-8" priority />
-            <span className="hidden sm:inline">Design Editor</span>
+            <span className="hidden sm:inline">HHC Hardenberg Hub</span>
           </Link>
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto text-sm">
             {nav.map((item) => (
@@ -54,10 +58,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             {session?.user?.role === "ADMIN" && (
               <Link
-                href={isAdminSection ? "/dashboard" : "/admin/templates"}
+                href={isAdminSection ? "/hub" : "/admin/templates"}
                 className="hidden text-xs font-medium text-hhc-orange-dark hover:underline sm:inline"
               >
-                {isAdminSection ? "Naar app" : "Beheer"}
+                {isAdminSection ? "Naar hub" : "Beheer"}
               </Link>
             )}
             <span className="hidden text-sm text-muted-foreground md:inline">{session?.user?.name}</span>

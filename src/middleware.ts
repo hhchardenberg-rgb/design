@@ -11,8 +11,9 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAdminRoute = pathname.startsWith("/admin");
-  const isProtectedRoute = isAdminRoute || pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/templates") || pathname.startsWith("/designs");
+  const isProtectedRoute = isAdminRoute || pathname.startsWith("/hub") || pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/templates") || pathname.startsWith("/designs") ||
+    pathname.startsWith("/huisstijl") || pathname.startsWith("/docs") || pathname.startsWith("/kalender");
 
   if (!isProtectedRoute) return NextResponse.next();
 
@@ -31,5 +32,14 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/templates/:path*", "/designs/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/hub/:path*",
+    "/dashboard/:path*",
+    "/templates/:path*",
+    "/designs/:path*",
+    "/huisstijl/:path*",
+    "/docs/:path*",
+    "/kalender/:path*",
+  ],
 };
