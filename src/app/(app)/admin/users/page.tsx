@@ -170,7 +170,7 @@ export default function AdminUsersPage() {
       <div>
         <h1 className="text-2xl font-bold">Gebruikers</h1>
         <p className="mt-1 text-muted-foreground">
-          Beheer wie kan inloggen op de Design Editor en wie beheerderstoegang heeft.
+          Beheer wie kan inloggen op de HHC Hardenberg Hub en wie beheerderstoegang heeft.
         </p>
       </div>
 

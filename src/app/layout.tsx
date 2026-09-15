@@ -10,9 +10,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HHC Hardenberg Design Editor",
+  title: "HHC Hardenberg Hub",
   description:
-    "Maak in enkele klikken professionele clubafbeeldingen voor HHC Hardenberg, zonder Photoshop-kennis.",
+    "Dé plek voor vrijwilligers van Team Communicatie van HHC Hardenberg: clubafbeeldingen maken, huisstijl opzoeken en meer.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

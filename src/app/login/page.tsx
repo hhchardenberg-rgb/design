@@ -15,9 +15,9 @@ export default function LoginPage() {
             className="mx-auto mb-3 h-24 w-auto"
             priority
           />
-          <h1 className="text-xl font-bold">Design Editor</h1>
+          <h1 className="text-xl font-bold">HHC Hardenberg Hub</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Log in om clubafbeeldingen te maken.
+            Log in om bij de informatie en tools van Team Communicatie te komen.
           </p>
         </div>
         <Suspense>

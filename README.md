@@ -1,8 +1,11 @@
-# HHC Hardenberg — Design Editor
+# HHC Hardenberg Hub
 
-Webapplicatie waarmee medewerkers en vrijwilligers van HHC Hardenberg, zonder
-Photoshop- of designkennis, professionele clubafbeeldingen maken op basis van
-vooraf door een designer ontworpen PSD-templates.
+Webapplicatie voor vrijwilligers van Team Communicatie van HHC Hardenberg: de
+centrale plek waar ze de informatie en tools vinden die ze nodig hebben. De
+**designtool** is daarbinnen één onderdeel (zie `src/lib/hub-modules.ts` voor
+de volledige lijst met onderdelen): zonder Photoshop- of designkennis
+professionele clubafbeeldingen maken op basis van vooraf door een designer
+ontworpen PSD-templates.
 
 Het systeem is **template-driven**, geen vrije Canva-achtige editor: de
 designer bepaalt het ontwerp (in Photoshop), de eindgebruiker vult alleen de

@@ -1,4 +1,4 @@
-// HHC Hardenberg Design Editor — datamodel
+// HHC Hardenberg Hub — datamodel
 // Zie MASTERPROMPT sectie 21 voor de functionele achtergrond van dit model.
 
 generator client {
