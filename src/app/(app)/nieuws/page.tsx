@@ -22,7 +22,10 @@ export default async function NieuwsPage() {
 
       <div className="flex flex-col gap-3">
         {posts.map((post) => (
-          <Card key={post.id} className={post.pinned ? "border-hhc-orange" : undefined}>
+          <Card key={post.id} className={post.pinned ? "overflow-hidden border-hhc-orange" : "overflow-hidden"}>
+            {post.imageUrl && (
+              <div className="aspect-[3/1] bg-surface-muted bg-cover bg-center" style={{ backgroundImage: `url(${post.imageUrl})` }} />
+            )}
             <CardContent className="flex flex-col gap-2 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 {post.pinned && (

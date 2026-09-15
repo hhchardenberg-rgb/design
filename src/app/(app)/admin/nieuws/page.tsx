@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { Pin } from "lucide-react";
+import { Pin, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea, Checkbox } from "@/components/ui/input";
@@ -25,6 +25,7 @@ interface NewsPost {
   body: string;
   category: string | null;
   pinned: boolean;
+  imageUrl: string | null;
   createdAt: string;
   author: { name: string } | null;
 }
@@ -35,12 +36,15 @@ export default function AdminNieuwsPage() {
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [image, setImage] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editImage, setEditImage] = useState<File | null>(null);
+  const [editRemoveImage, setEditRemoveImage] = useState(false);
 
   async function load() {
     const res = await fetch("/api/admin/news");
@@ -56,11 +60,14 @@ export default function AdminNieuwsPage() {
     e.preventDefault();
     setError(null);
     if (!title || !body) return;
-    const res = await fetch("/api/admin/news", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body, category: category || null, pinned }),
-    });
+    const form = new FormData();
+    form.set("title", title);
+    form.set("body", body);
+    form.set("category", category);
+    form.set("pinned", String(pinned));
+    if (image) form.set("image", image);
+
+    const res = await fetch("/api/admin/news", { method: "POST", body: form });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Plaatsen mislukt.");
@@ -70,15 +77,14 @@ export default function AdminNieuwsPage() {
     setBody("");
     setCategory("");
     setPinned(false);
+    setImage(null);
     await load();
   }
 
   async function togglePinned(post: NewsPost) {
-    await fetch(`/api/admin/news/${post.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pinned: !post.pinned }),
-    });
+    const form = new FormData();
+    form.set("pinned", String(!post.pinned));
+    await fetch(`/api/admin/news/${post.id}`, { method: "PATCH", body: form });
     await load();
   }
 
@@ -87,14 +93,19 @@ export default function AdminNieuwsPage() {
     setEditTitle(post.title);
     setEditBody(post.body);
     setEditCategory(post.category ?? "");
+    setEditImage(null);
+    setEditRemoveImage(false);
   }
 
   async function saveEdit(id: string) {
-    await fetch(`/api/admin/news/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: editTitle, body: editBody, category: editCategory || null }),
-    });
+    const form = new FormData();
+    form.set("title", editTitle);
+    form.set("body", editBody);
+    form.set("category", editCategory);
+    if (editImage) form.set("image", editImage);
+    if (editRemoveImage) form.set("removeImage", "true");
+
+    await fetch(`/api/admin/news/${id}`, { method: "PATCH", body: form });
     setEditId(null);
     await load();
   }
@@ -135,6 +146,14 @@ export default function AdminNieuwsPage() {
               <Label>Tekst</Label>
               <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
             </div>
+            <div className="sm:col-span-2">
+              <Label>Afbeelding (optioneel)</Label>
+              <label className="flex h-10 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-border px-3 text-sm text-muted-foreground">
+                <Upload className="h-4 w-4" />
+                {image ? image.name : "Bestand kiezen"}
+                <input type="file" accept=".png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
+              </label>
+            </div>
             <div className="flex items-center gap-2">
               <Checkbox checked={pinned} onChange={(e) => setPinned(e.target.checked)} id="new-pinned" />
               <Label htmlFor="new-pinned" className="mb-0">
@@ -158,6 +177,30 @@ export default function AdminNieuwsPage() {
                   <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
                   <Input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} list="news-categories" />
                   <Textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={4} />
+                  <div>
+                    <Label>Afbeelding</Label>
+                    {post.imageUrl && !editRemoveImage && (
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="h-16 w-16 rounded bg-cover bg-center" style={{ backgroundImage: `url(${post.imageUrl})` }} />
+                        <button type="button" className="text-xs text-destructive hover:underline" onClick={() => setEditRemoveImage(true)}>
+                          afbeelding verwijderen
+                        </button>
+                      </div>
+                    )}
+                    <label className="flex h-10 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-border px-3 text-sm text-muted-foreground">
+                      <Upload className="h-4 w-4" />
+                      {editImage ? editImage.name : "Nieuwe afbeelding kiezen"}
+                      <input
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          setEditImage(e.target.files?.[0] ?? null);
+                          setEditRemoveImage(false);
+                        }}
+                      />
+                    </label>
+                  </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => saveEdit(post.id)}>
                       Opslaan
@@ -168,34 +211,39 @@ export default function AdminNieuwsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {post.pinned && <Badge variant="primary">Vastgezet</Badge>}
-                      {post.category && <Badge variant="outline">{post.category}</Badge>}
-                      <p className="font-medium">{post.title}</p>
+                <div className="flex gap-3">
+                  {post.imageUrl && (
+                    <div className="h-20 w-20 shrink-0 rounded bg-cover bg-center" style={{ backgroundImage: `url(${post.imageUrl})` }} />
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {post.pinned && <Badge variant="primary">Vastgezet</Badge>}
+                        {post.category && <Badge variant="outline">{post.category}</Badge>}
+                        <p className="font-medium">{post.title}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <button
+                          className={`flex items-center gap-1 text-xs hover:underline ${post.pinned ? "text-hhc-orange-dark" : "text-muted-foreground"}`}
+                          onClick={() => togglePinned(post)}
+                        >
+                          <Pin className="h-3.5 w-3.5" />
+                          {post.pinned ? "losmaken" : "vastzetten"}
+                        </button>
+                        <button className="text-xs text-hhc-orange-dark hover:underline" onClick={() => startEdit(post)}>
+                          bewerken
+                        </button>
+                        <button className="text-xs text-destructive hover:underline" onClick={() => remove(post.id)}>
+                          verwijderen
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <button
-                        className={`flex items-center gap-1 text-xs hover:underline ${post.pinned ? "text-hhc-orange-dark" : "text-muted-foreground"}`}
-                        onClick={() => togglePinned(post)}
-                      >
-                        <Pin className="h-3.5 w-3.5" />
-                        {post.pinned ? "losmaken" : "vastzetten"}
-                      </button>
-                      <button className="text-xs text-hhc-orange-dark hover:underline" onClick={() => startEdit(post)}>
-                        bewerken
-                      </button>
-                      <button className="text-xs text-destructive hover:underline" onClick={() => remove(post.id)}>
-                        verwijderen
-                      </button>
-                    </div>
+                    <p className="whitespace-pre-wrap text-sm">{post.body}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(post.createdAt), "d MMMM yyyy", { locale: nl })}
+                      {post.author?.name ? ` · ${post.author.name}` : ""}
+                    </p>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm">{post.body}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(post.createdAt), "d MMMM yyyy", { locale: nl })}
-                    {post.author?.name ? ` · ${post.author.name}` : ""}
-                  </p>
                 </div>
               )}
             </CardContent>

@@ -266,6 +266,7 @@ model NewsPost {
   body     String
   category String? // bv. "Design", "Sponsoring", "Vrijwilligers", "Communicatie", "Social media", "Magazine", "Wedstrijden"
   pinned   Boolean @default(false) // vastgezet bovenaan de nieuwsfeed en hub-homepage
+  imageUrl String?
 
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
