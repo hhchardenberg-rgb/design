@@ -1,19 +1,31 @@
 import { format, isSameDay } from "date-fns";
 import { nl } from "date-fns/locale";
+import { toZonedTime } from "date-fns-tz";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { fetchUpcomingCalendarEvents, type CalendarEvent } from "@/lib/calendar";
+import { fetchUpcomingCalendarEvents, CLUB_TIME_ZONE, type CalendarEvent } from "@/lib/calendar";
 
 export const revalidate = 900; // 15 min — live agenda, maar niet bij elke paginaweergave opnieuw ophalen
+
+// De Date-waarden uit de ICS-koppeling zijn absolute momenten in UTC; op de
+// server (altijd UTC, ook op Vercel) geven date-fns' gewone format/isSameDay
+// dus de UTC-kloktijd terug in plaats van de Nederlandse. Door hier eerst om
+// te zetten naar een "gezoneerde" Date (welke UTC-kloktijd dezelfde cijfers
+// toont als de Nederlandse tijd) kloppen zowel de dag-groepering als de
+// weergegeven tijd weer, ook rond de overgang zomer-/wintertijd.
+function toClubTime(date: Date) {
+  return toZonedTime(date, CLUB_TIME_ZONE);
+}
 
 function groupByDay(events: CalendarEvent[]) {
   const groups: { day: Date; events: CalendarEvent[] }[] = [];
   for (const event of events) {
+    const zonedStart = toClubTime(event.start);
     const last = groups[groups.length - 1];
-    if (last && isSameDay(last.day, event.start)) {
+    if (last && isSameDay(last.day, zonedStart)) {
       last.events.push(event);
     } else {
-      groups.push({ day: event.start, events: [event] });
+      groups.push({ day: zonedStart, events: [event] });
     }
   }
   return groups;
@@ -66,7 +78,7 @@ export default async function KalenderPage() {
                         {event.location && <p className="text-sm text-muted-foreground">{event.location}</p>}
                       </div>
                       <Badge variant="outline" className="w-fit">
-                        {event.isFullDay ? "Hele dag" : format(event.start, "HH:mm", { locale: nl })}
+                        {event.isFullDay ? "Hele dag" : format(toClubTime(event.start), "HH:mm", { locale: nl })}
                       </Badge>
                     </CardContent>
                   </Card>
