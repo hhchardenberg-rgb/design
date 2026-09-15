@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DesignDeleteButton } from "@/components/design-delete-button";
 
 const QUICK_ACTION_SLUGS = ["matchday", "opstelling", "eindstand", "social-media-story"];
 
@@ -120,20 +121,23 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {recentDesigns.map((d) => (
-              <Link key={d.id} href={`/templates/${d.templateVersion.template.slug}/create?designId=${d.id}`}>
-                <Card className="overflow-hidden transition-shadow hover:shadow-md">
-                  <div
-                    className="aspect-[4/5] bg-surface-muted bg-cover bg-center"
-                    style={d.exportUrl ? { backgroundImage: `url(${d.exportUrl})` } : undefined}
-                  />
-                  <CardContent className="p-3">
-                    <p className="truncate text-sm font-medium">{d.title ?? d.templateVersion.template.name}</p>
-                    <Badge variant={d.status === "COMPLETED" ? "success" : "outline"} className="mt-1">
-                      {d.status === "COMPLETED" ? "Voltooid" : "Concept"}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              </Link>
+              <div key={d.id} className="relative">
+                <DesignDeleteButton designId={d.id} />
+                <Link href={`/templates/${d.templateVersion.template.slug}/create?designId=${d.id}`}>
+                  <Card className="overflow-hidden transition-shadow hover:shadow-md">
+                    <div
+                      className="aspect-[4/5] bg-surface-muted bg-cover bg-center"
+                      style={d.exportUrl ? { backgroundImage: `url(${d.exportUrl})` } : undefined}
+                    />
+                    <CardContent className="p-3">
+                      <p className="truncate text-sm font-medium">{d.title ?? d.templateVersion.template.name}</p>
+                      <Badge variant={d.status === "COMPLETED" ? "success" : "outline"} className="mt-1">
+                        {d.status === "COMPLETED" ? "Voltooid" : "Concept"}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
             ))}
           </div>
         )}

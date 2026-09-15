@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -39,6 +40,7 @@ export default function AdminClubsPage() {
   const [newTeam, setNewTeam] = useState<Record<string, string>>({});
   const [newPlayer, setNewPlayer] = useState<Record<string, { firstName: string; lastName: string; number: string }>>({});
   const [newOpponent, setNewOpponent] = useState({ name: "", logoUrl: "" });
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     const [clubsRes, opponentsRes] = await Promise.all([
@@ -90,7 +92,38 @@ export default function AdminClubsPage() {
   }
 
   async function removeOpponent(id: string) {
-    await fetch(`/api/admin/opponents/${id}`, { method: "DELETE" });
+    if (!confirm("Deze tegenstander verwijderen?")) return;
+    setError(null);
+    const res = await fetch(`/api/admin/opponents/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    await load();
+  }
+
+  async function removeTeam(id: string) {
+    if (!confirm("Dit team en alle bijbehorende spelers en wedstrijden verwijderen?")) return;
+    setError(null);
+    const res = await fetch(`/api/admin/teams/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    await load();
+  }
+
+  async function removePlayer(id: string) {
+    if (!confirm("Deze speler verwijderen?")) return;
+    setError(null);
+    const res = await fetch(`/api/admin/players/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
     await load();
   }
 
@@ -100,6 +133,7 @@ export default function AdminClubsPage() {
         <h1 className="text-2xl font-bold">Club, teams &amp; spelers</h1>
         <p className="mt-1 text-muted-foreground">Centrale clubgegevens zodat je ze niet telkens opnieuw hoeft in te typen.</p>
       </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {clubs.map((club) => (
         <section key={club.id}>
@@ -107,8 +141,16 @@ export default function AdminClubsPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             {club.teams.map((team) => (
               <Card key={team.id}>
-                <CardHeader>
+                <CardHeader className="flex-row items-center justify-between">
                   <CardTitle>{team.name}</CardTitle>
+                  <button
+                    type="button"
+                    title="Team verwijderen"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => removeTeam(team.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2">
                   {team.players.map((p) => (
@@ -117,7 +159,17 @@ export default function AdminClubsPage() {
                         {p.number ? `#${p.number} ` : ""}
                         {p.firstName} {p.lastName}
                       </span>
-                      <span className="text-xs text-muted-foreground">{p.position}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{p.position}</span>
+                        <button
+                          type="button"
+                          title="Speler verwijderen"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => removePlayer(p.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
                     </div>
                   ))}
                   <div className="mt-2 flex gap-2">

@@ -25,7 +25,15 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   try {
     await requireAdmin();
     const { id } = await params;
-    await prisma.template.update({ where: { id }, data: { status: "ARCHIVED" } });
+    // Een template met een actieve versie moet die koppeling eerst verliezen,
+    // anders blokkeert de Template.activeVersionId-koppeling zelf (los van de
+    // generieke FK-check in apiErrorResponse voor bv. ontwerpen die nog naar
+    // een versie van dit template verwijzen). Eén transactie zodat het loskoppelen
+    // niet blijft hangen wanneer de delete zelf alsnog faalt.
+    await prisma.$transaction([
+      prisma.template.update({ where: { id }, data: { activeVersionId: null } }),
+      prisma.template.delete({ where: { id } }),
+    ]);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);
