@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Upload } from "lucide-react";
+import JSZip from "jszip";
+import { Upload, FileArchive, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { parseFontFilename } from "@/lib/fonts/parseFontFilename";
+
+const FONT_EXTENSIONS = /\.(woff2?|ttf|otf)$/i;
 
 interface Font {
   id: string;
@@ -27,6 +31,9 @@ export default function AdminFontsPage() {
   const [style, setStyle] = useState("normal");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipStatus, setZipStatus] = useState<string | null>(null);
+  const [zipErrors, setZipErrors] = useState<string[]>([]);
 
   async function load() {
     const res = await fetch("/api/admin/fonts");
@@ -43,18 +50,12 @@ export default function AdminFontsPage() {
     if (!file || !name) return;
     setLoading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("name", name);
-      form.append("family", family || name);
-      form.append("weight", weight);
-      form.append("style", style);
-      const res = await fetch("/api/admin/fonts", { method: "POST", body: form });
-      if (res.ok) {
-        setName("");
-        setFile(null);
-        await load();
-      }
+      await uploadOne(file, { name, family: family || name, weight: Number(weight), style });
+      setName("");
+      setFile(null);
+      await load();
+    } catch {
+      // stil falen is hier acceptabel: het los-per-veld formulier had al geen foutmelding
     } finally {
       setLoading(false);
     }
@@ -63,6 +64,67 @@ export default function AdminFontsPage() {
   async function remove(id: string) {
     await fetch(`/api/admin/fonts/${id}`, { method: "DELETE" });
     await load();
+  }
+
+  async function uploadOne(fontFile: File, meta: { name: string; family: string; weight: number; style: string }) {
+    const form = new FormData();
+    form.append("file", fontFile);
+    form.append("name", meta.name);
+    form.append("family", meta.family);
+    form.append("weight", String(meta.weight));
+    form.append("style", meta.style);
+    const res = await fetch("/api/admin/fonts", { method: "POST", body: form });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "Uploaden mislukt.");
+    }
+  }
+
+  /**
+   * Bulkupload: een .zip met meerdere lettertypebestanden (zoals
+   * doorgaans aangeleverd door een designer/leverancier — bv. alle
+   * gewichten van één familie in één archief) wordt in de browser
+   * uitgepakt met JSZip; per bestand wordt naam/familie/gewicht/stijl
+   * automatisch afgeleid uit de bestandsnaam (zie parseFontFilename),
+   * zodat je niet voor elk gewicht apart een formulier hoeft in te vullen.
+   */
+  async function uploadZip(zipFile: File) {
+    setZipBusy(true);
+    setZipStatus(null);
+    setZipErrors([]);
+    try {
+      const zip = await JSZip.loadAsync(zipFile);
+      const entries = Object.values(zip.files).filter((f) => !f.dir && FONT_EXTENSIONS.test(f.name));
+      if (entries.length === 0) {
+        setZipErrors(["Geen lettertypebestanden (WOFF2/WOFF/TTF/OTF) gevonden in dit zip-bestand."]);
+        return;
+      }
+
+      let done = 0;
+      const errors: string[] = [];
+      for (const entry of entries) {
+        const filename = entry.name.split("/").pop() ?? entry.name;
+        setZipStatus(`Bezig met ${filename}... (${done + 1}/${entries.length})`);
+        try {
+          const blob = await entry.async("blob");
+          const ext = filename.split(".").pop()!.toLowerCase();
+          const fontFile = new File([blob], filename, { type: `font/${ext}` });
+          const meta = parseFontFilename(filename);
+          await uploadOne(fontFile, meta);
+          done++;
+        } catch (err) {
+          errors.push(`${filename}: ${err instanceof Error ? err.message : "onbekende fout"}`);
+        }
+      }
+
+      setZipStatus(`${done} van ${entries.length} lettertypen toegevoegd.`);
+      setZipErrors(errors);
+      await load();
+    } catch {
+      setZipErrors(["Kon het zip-bestand niet lezen. Is het een geldig .zip-bestand?"]);
+    } finally {
+      setZipBusy(false);
+    }
   }
 
   return (
@@ -130,6 +192,42 @@ export default function AdminFontsPage() {
               {loading ? "Bezig..." : "Uploaden"}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-6">
+          <div>
+            <p className="font-medium">Meerdere gewichten in één keer (.zip)</p>
+            <p className="text-sm text-muted-foreground">
+              Heb je een zip-bestand met meerdere lettertypebestanden van dezelfde familie (bv. Regular, Bold en
+              Black)? Naam, CSS-familienaam, gewicht en stijl worden automatisch uit elke bestandsnaam afgeleid — dus
+              geen los formulier per gewicht nodig.
+            </p>
+          </div>
+          <label className="flex h-10 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-border px-3 text-sm text-muted-foreground">
+            {zipBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
+            Zip-bestand kiezen
+            <input
+              type="file"
+              accept=".zip"
+              className="hidden"
+              disabled={zipBusy}
+              onChange={(e) => {
+                const zipFile = e.target.files?.[0];
+                e.target.value = "";
+                if (zipFile) uploadZip(zipFile);
+              }}
+            />
+          </label>
+          {zipStatus && <p className="text-sm text-muted-foreground">{zipStatus}</p>}
+          {zipErrors.length > 0 && (
+            <ul className="text-sm text-destructive">
+              {zipErrors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
 

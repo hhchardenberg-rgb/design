@@ -24,6 +24,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "jszip": "^3.10.2",
     "konva": "^10.5.0",
     "lucide-react": "^1.46.0",
     "nanoid": "^6.0.1",
