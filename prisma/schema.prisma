@@ -31,6 +31,7 @@ model User {
   generatedDesigns GeneratedDesign[]
   uploadedAssets   UploadedAsset[]
   templatesCreated Template[]        @relation("TemplateCreatedBy")
+  newsPosts        NewsPost[]
 
   @@map("users")
 }
@@ -234,6 +235,83 @@ model AgendaEvent {
   updatedAt DateTime @updatedAt
 
   @@map("agenda_events")
+}
+
+// ---------------------------------------------------------------------------
+// Fotobank
+// ---------------------------------------------------------------------------
+
+model StockPhoto {
+  id        String  @id @default(cuid())
+  title     String
+  category  String  @default("algemeen")
+  url       String
+  width     Int?
+  height    Int?
+  mimeType  String?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@map("stock_photos")
+}
+
+// ---------------------------------------------------------------------------
+// Interne nieuwsfeed
+// ---------------------------------------------------------------------------
+
+model NewsPost {
+  id       String  @id @default(cuid())
+  title    String
+  body     String
+  category String? // bv. "Design", "Sponsoring", "Vrijwilligers", "Communicatie", "Social media", "Magazine", "Wedstrijden"
+  pinned   Boolean @default(false) // vastgezet bovenaan de nieuwsfeed en hub-homepage
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("news_posts")
+}
+
+// ---------------------------------------------------------------------------
+// Kennisbank / handleidingen
+// ---------------------------------------------------------------------------
+
+model KnowledgeArticle {
+  id        String  @id @default(cuid())
+  title     String
+  body      String? // leeg = nog te schrijven, getoond als "nog niet ingevuld"
+  category  String?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("knowledge_articles")
+}
+
+// ---------------------------------------------------------------------------
+// Crisiscommunicatie
+// ---------------------------------------------------------------------------
+
+model CrisisProtocol {
+  id    String @id @default(cuid())
+  title String // type incident, bv. "Ernstige blessure"
+
+  description       String? // korte omschrijving van de situatie
+  whoToCall         String? // wie bellen
+  whoMayCommunicate String? // wie mag hierover communiceren
+  steps             String? // eventuele extra stappen/uitleg
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("crisis_protocols")
 }
 
 // ---------------------------------------------------------------------------

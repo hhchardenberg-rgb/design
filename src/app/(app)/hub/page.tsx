@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { format } from "date-fns";
+import { nl } from "date-fns/locale";
+import { Pin } from "lucide-react";
 import { auth } from "@/lib/auth";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { prisma } from "@/lib/prisma";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { hubModules } from "@/lib/hub-modules";
 import { AgendaEventCard } from "@/components/agenda-event-card";
@@ -9,9 +13,10 @@ import { getMergedAgendaEvents } from "@/lib/agenda";
 export const revalidate = 900;
 
 export default async function HubPage() {
-  const [session, { events: highlightedEvents }] = await Promise.all([
+  const [session, { events: highlightedEvents }, newsPosts] = await Promise.all([
     auth(),
     getMergedAgendaEvents({ onlyHighlighted: true, limit: 4 }),
+    prisma.newsPost.findMany({ orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 3 }),
   ]);
 
   return (
@@ -48,6 +53,37 @@ export default async function HubPage() {
                   highlighted: event.highlighted,
                 }}
               />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {newsPosts.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Nieuws</h2>
+            <Link href="/nieuws" className="text-sm font-medium text-hhc-orange-dark hover:underline">
+              Alle berichten
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            {newsPosts.map((post) => (
+              <Card key={post.id} className={post.pinned ? "border-hhc-orange" : undefined}>
+                <CardContent className="flex flex-col gap-1 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {post.pinned && (
+                      <Badge variant="primary" className="flex items-center gap-1">
+                        <Pin className="h-3 w-3" />
+                        Vastgezet
+                      </Badge>
+                    )}
+                    {post.category && <Badge variant="outline">{post.category}</Badge>}
+                    <p className="font-medium">{post.title}</p>
+                    <span className="text-xs text-muted-foreground">{format(post.createdAt, "d MMM", { locale: nl })}</span>
+                  </div>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </section>

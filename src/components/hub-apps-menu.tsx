@@ -38,11 +38,12 @@ export function HubAppsMenu() {
         aria-label="Onderdelen van de hub"
         aria-expanded={open}
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground",
+          "flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground sm:px-3",
           open && "bg-surface-muted text-foreground"
         )}
       >
         <LayoutGrid className="h-5 w-5" />
+        <span className="hidden sm:inline">Onderdelen</span>
       </button>
 
       {open && (
