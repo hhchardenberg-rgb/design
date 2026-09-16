@@ -16,9 +16,12 @@ export default function AdminOverviewPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {group.modules.map((mod) => (
               <Link key={mod.href} href={mod.href}>
-                <Card className="h-full transition-shadow hover:shadow-md">
+                <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
                   <CardHeader>
-                    <CardTitle>{mod.title}</CardTitle>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
+                      <mod.icon className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="mt-1">{mod.title}</CardTitle>
                     <CardDescription>{mod.description}</CardDescription>
                   </CardHeader>
                 </Card>

@@ -5,12 +5,28 @@
 // veranderen. Gegroepeerd (in plaats van één platte lijst) zodat het
 // apps-menu overzichtelijk blijft naarmate er meer onderdelen bij komen.
 
+import {
+  Palette,
+  CalendarDays,
+  Newspaper,
+  Users,
+  Images,
+  SwatchBook,
+  BookOpen,
+  FileText,
+  Timer,
+  AlertTriangle,
+  Megaphone,
+  type LucideIcon,
+} from "lucide-react";
+
 export interface HubModule {
   id: string;
   title: string;
   description: string;
   href: string;
   status: "available" | "soon";
+  icon: LucideIcon;
 }
 
 export interface HubModuleGroup {
@@ -28,6 +44,7 @@ export const featuredModule: HubModule = {
   description: "Maak in een paar klikken clubafbeeldingen op basis van templates: wedstrijdgrafieken, opstellingen, uitslagen en meer.",
   href: "/dashboard",
   status: "available",
+  icon: Palette,
 };
 
 export const hubModuleGroups: HubModuleGroup[] = [
@@ -41,6 +58,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "Activiteiten en planning, live verbonden met de Google Agenda van HHC Hardenberg.",
         href: "/kalender",
         status: "available",
+        icon: CalendarDays,
       },
       {
         id: "nieuws",
@@ -48,6 +66,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "Het laatste nieuws voor Team Communicatie: nieuwe designs, sponsoren, vrijwilligers en meer.",
         href: "/nieuws",
         status: "available",
+        icon: Newspaper,
       },
       {
         id: "contacten",
@@ -55,6 +74,15 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "Wie doet wat binnen Team Communicatie en hoe bereik je elkaar.",
         href: "/contactpersonen",
         status: "available",
+        icon: Users,
+      },
+      {
+        id: "persberichten",
+        title: "Persberichten",
+        description: "Stel een persbericht op in de vaste HHC-huisstijl en exporteer het als Word of PDF.",
+        href: "/persberichten",
+        status: "available",
+        icon: Megaphone,
       },
     ],
   },
@@ -68,6 +96,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "Standaardfoto's om te gebruiken in je content.",
         href: "/fotobank",
         status: "available",
+        icon: Images,
       },
       {
         id: "huisstijl",
@@ -75,6 +104,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "De officiële HHC Hardenberg-huisstijlkleuren en lettertypen, om te gebruiken buiten de designtool.",
         href: "/huisstijl",
         status: "available",
+        icon: SwatchBook,
       },
       {
         id: "kennisbank",
@@ -82,6 +112,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "De HHC Communicatie-wiki: handleidingen en werkwijzen, met zoekfunctie.",
         href: "/kennisbank",
         status: "available",
+        icon: BookOpen,
       },
       {
         id: "docs",
@@ -89,6 +120,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "Uitleg en handleidingen voor vrijwilligers van Team Communicatie, zoals de PSD-conventies voor nieuwe templates.",
         href: "/docs",
         status: "available",
+        icon: FileText,
       },
       {
         id: "stopwatch",
@@ -96,6 +128,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "Wedstrijdklok met helften, verlengingen en automatische blessuretijd.",
         href: "/stopwatch",
         status: "available",
+        icon: Timer,
       },
     ],
   },
@@ -109,6 +142,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
         description: "Protocollen per incidenttype: wie bellen, en wie mag hierover communiceren.",
         href: "/crisis",
         status: "available",
+        icon: AlertTriangle,
       },
     ],
   },

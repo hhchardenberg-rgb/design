@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea, Checkbox } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/toast";
 
 const CATEGORY_SUGGESTIONS = [
   "Design",
@@ -31,6 +32,7 @@ interface NewsPost {
 }
 
 export default function AdminNieuwsPage() {
+  const toast = useToast();
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -112,7 +114,13 @@ export default function AdminNieuwsPage() {
 
   async function remove(id: string) {
     if (!confirm("Dit nieuwsbericht verwijderen?")) return;
-    await fetch(`/api/admin/news/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/news/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    toast.success("Nieuwsbericht verwijderd.");
     await load();
   }
 

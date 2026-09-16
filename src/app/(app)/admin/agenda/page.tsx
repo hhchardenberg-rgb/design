@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea, Checkbox } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CLUB_TIME_ZONE } from "@/lib/timezone";
+import { useToast } from "@/components/toast";
 
 interface AgendaRow {
   id: string;
@@ -39,6 +40,7 @@ function toUtcIso(value: string, isFullDay: boolean): string {
 }
 
 export default function AdminAgendaPage() {
+  const toast = useToast();
   const [rows, setRows] = useState<AgendaRow[]>([]);
   const [icsError, setIcsError] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +190,13 @@ export default function AdminAgendaPage() {
         ? "Dit agendapunt verwijderen?"
         : "Uitlichten en toelichting van dit agendapunt ongedaan maken? Het event zelf blijft gewoon in de live agenda staan.";
     if (!confirm(label)) return;
-    await fetch(`/api/admin/agenda/${row.agendaEventId}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/agenda/${row.agendaEventId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    toast.success(row.source === "MANUAL" ? "Agendapunt verwijderd." : "Uitlichten ongedaan gemaakt.");
     await load();
   }
 

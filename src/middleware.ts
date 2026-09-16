@@ -23,6 +23,8 @@ const PROTECTED_PREFIXES = [
   "/kennisbank",
   "/crisis",
   "/stopwatch",
+  "/contactpersonen",
+  "/persberichten",
 ];
 
 export default auth((req) => {
@@ -64,5 +66,7 @@ export const config = {
     "/kennisbank/:path*",
     "/crisis/:path*",
     "/stopwatch/:path*",
+    "/contactpersonen/:path*",
+    "/persberichten/:path*",
   ],
 };

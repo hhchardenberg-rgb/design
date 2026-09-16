@@ -22,13 +22,13 @@ const designtoolNav = [
 const hubMenuGroups: NavMenuGroup[] = hubModuleGroups.map((g) => ({
   id: g.id,
   label: g.label,
-  items: g.modules.map((m) => ({ title: m.title, href: m.href, status: m.status })),
+  items: g.modules.map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
 }));
 
 const adminMenuGroups: NavMenuGroup[] = adminModuleGroups.map((g) => ({
   id: g.id,
   label: g.label,
-  items: g.modules.map((m) => ({ title: m.title, href: m.href })),
+  items: g.modules.map((m) => ({ title: m.title, href: m.href, icon: m.icon })),
 }));
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : (
               <GroupedNavMenu
                 groups={hubMenuGroups}
-                featured={{ title: featuredModule.title, href: featuredModule.href }}
+                featured={{ title: featuredModule.title, href: featuredModule.href, icon: featuredModule.icon }}
                 label="Onderdelen"
               />
             )}

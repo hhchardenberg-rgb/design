@@ -5,6 +5,7 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
+import { useToast } from "@/components/toast";
 
 interface Contact {
   id: string;
@@ -19,6 +20,7 @@ interface Contact {
 const emptyForm = { name: "", role: "", email: "", phone: "", notes: "" };
 
 export default function AdminContactpersonenPage() {
+  const toast = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -55,6 +57,7 @@ export default function AdminContactpersonenPage() {
     }
     setForm(emptyForm);
     setPhoto(null);
+    toast.success("Contactpersoon toegevoegd.");
     await load();
   }
 
@@ -71,14 +74,26 @@ export default function AdminContactpersonenPage() {
     if (editPhoto) body.set("photo", editPhoto);
     if (editRemovePhoto) body.set("removePhoto", "true");
 
-    await fetch(`/api/admin/contacts/${id}`, { method: "PATCH", body });
+    const res = await fetch(`/api/admin/contacts/${id}`, { method: "PATCH", body });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Opslaan mislukt.");
+      return;
+    }
     setEditId(null);
+    toast.success("Wijzigingen opgeslagen.");
     await load();
   }
 
   async function remove(id: string) {
     if (!confirm("Deze contactpersoon verwijderen?")) return;
-    await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    toast.success("Contactpersoon verwijderd.");
     await load();
   }
 
