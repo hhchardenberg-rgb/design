@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -11,6 +11,7 @@ export interface NavMenuItem {
   description?: string;
   href: string;
   status?: "available" | "soon";
+  icon?: LucideIcon;
 }
 
 export interface NavMenuGroup {
@@ -56,15 +57,17 @@ export function GroupedNavMenu({
 
   function renderItem(item: NavMenuItem, emphasized = false) {
     const disabled = item.status === "soon";
+    const Icon = item.icon;
     const row = (
       <div
         className={cn(
-          "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+          "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
           disabled ? "opacity-50" : "hover:bg-surface-muted",
           emphasized && "font-semibold"
         )}
       >
-        <span>{item.title}</span>
+        {Icon && <Icon className={cn("h-4 w-4 shrink-0", emphasized ? "text-hhc-orange-dark" : "text-muted-foreground")} />}
+        <span className="flex-1">{item.title}</span>
         {disabled && (
           <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
             Binnenkort

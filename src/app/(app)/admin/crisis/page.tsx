@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/toast";
 
 interface CrisisProtocol {
   id: string;
@@ -18,6 +19,7 @@ interface CrisisProtocol {
 const emptyForm = { title: "", description: "", whoToCall: "", whoMayCommunicate: "", steps: "" };
 
 export default function AdminCrisisPage() {
+  const toast = useToast();
   const [protocols, setProtocols] = useState<CrisisProtocol[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +78,13 @@ export default function AdminCrisisPage() {
 
   async function remove(id: string) {
     if (!confirm("Dit protocol verwijderen?")) return;
-    await fetch(`/api/admin/crisis/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/crisis/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    toast.success("Protocol verwijderd.");
     await load();
   }
 

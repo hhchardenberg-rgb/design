@@ -5,6 +5,7 @@ import { Upload, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { useToast } from "@/components/toast";
 
 interface StockPhoto {
   id: string;
@@ -16,6 +17,7 @@ interface StockPhoto {
 }
 
 export default function AdminFotobankPage() {
+  const toast = useToast();
   const [photos, setPhotos] = useState<StockPhoto[]>([]);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("algemeen");
@@ -79,7 +81,13 @@ export default function AdminFotobankPage() {
 
   async function remove(id: string) {
     if (!confirm("Deze foto verwijderen?")) return;
-    await fetch(`/api/admin/stock-photos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/stock-photos/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    toast.success("Foto verwijderd.");
     await load();
   }
 

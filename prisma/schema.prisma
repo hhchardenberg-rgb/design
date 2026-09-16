@@ -32,6 +32,7 @@ model User {
   uploadedAssets   UploadedAsset[]
   templatesCreated Template[]        @relation("TemplateCreatedBy")
   newsPosts        NewsPost[]
+  pressReleases    PressRelease[]
 
   @@map("users")
 }
@@ -275,6 +276,27 @@ model NewsPost {
   updatedAt DateTime @updatedAt
 
   @@map("news_posts")
+}
+
+// ---------------------------------------------------------------------------
+// Persberichten
+// ---------------------------------------------------------------------------
+
+model PressRelease {
+  id    String   @id @default(cuid())
+  title String
+  date  DateTime
+
+  lead String // vetgedrukte inleidende alinea
+  body String // overige alinea's, gescheiden door een lege regel
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("press_releases")
 }
 
 // ---------------------------------------------------------------------------

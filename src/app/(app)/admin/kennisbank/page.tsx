@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/toast";
 
 interface KnowledgeArticle {
   id: string;
@@ -14,6 +15,7 @@ interface KnowledgeArticle {
 }
 
 export default function AdminKennisbankPage() {
+  const toast = useToast();
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -74,7 +76,13 @@ export default function AdminKennisbankPage() {
 
   async function remove(id: string) {
     if (!confirm("Deze handleiding verwijderen?")) return;
-    await fetch(`/api/admin/knowledge/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/knowledge/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Verwijderen mislukt.");
+      return;
+    }
+    toast.success("Handleiding verwijderd.");
     await load();
   }
 
