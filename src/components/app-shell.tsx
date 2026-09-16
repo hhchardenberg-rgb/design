@@ -74,14 +74,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               />
             )}
             {session?.user?.role === "ADMIN" && (
-              <Link
-                href={isAdminSection ? "/hub" : "/admin"}
-                className="hidden text-xs font-medium text-hhc-orange-dark hover:underline sm:inline"
-              >
-                {isAdminSection ? "Naar hub" : "Beheer"}
+              <Link href={isAdminSection ? "/hub" : "/admin"}>
+                <Button variant="outline" size="sm">
+                  {isAdminSection ? "Naar hub" : "Beheer"}
+                </Button>
               </Link>
             )}
-            <span className="hidden text-sm text-muted-foreground md:inline">{session?.user?.name}</span>
             <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
               Uitloggen
             </Button>
