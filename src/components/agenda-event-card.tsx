@@ -39,7 +39,6 @@ export function AgendaEventCard({ event, showDate = false }: { event: AgendaEven
         aria-expanded={open}
       >
         <div className="flex flex-wrap items-center gap-2">
-          {event.highlighted && <Badge variant="primary">Uitgelicht</Badge>}
           <p className="font-medium">{event.title}</p>
           {showDate && (
             <span className="text-sm text-muted-foreground">
