@@ -1,21 +1,58 @@
 // Gedeelde lay-outwaarden voor de persbericht-generator, zodat de Word- en
 // PDF-export (src/app/api/press-releases/[id]/docx en /pdf) dezelfde opmaak
-// gebruiken. De marges/afmetingen zijn gebaseerd op het door HHC aangeleverde
-// voorbeelddocument, maar MARGIN_TOP_PT is bijgesteld ten opzichte van de
-// letterlijke OOXML-marge uit dat bestand: die waarde alleen gaf te weinig
-// witruimte boven "PERSBERICHT" (de tekst overlapte zelfs het clublogo).
-// Gekalibreerd door de output te vergelijken met een echt HHC-persbericht
-// (Ben Scholte-voorbeeld) — wijzig deze waarde dus alleen na een vergelijking
-// met een echt voorbeeld, niet als "verbetering" op gevoel.
+// gebruiken.
+//
+// De waarden hieronder zijn NIET overgenomen uit de OOXML van het eerder
+// aangeleverde voorbeelddocument (dat bleek onbetrouwbaar: de marge die daar
+// letterlijk in stond gaf te weinig witruimte en liet "PERSBERICHT" zelfs
+// over het clublogo heen lopen). In plaats daarvan zijn ze rechtstreeks
+// gemeten uit de content stream van een echt HHC-persbericht in PDF-vorm
+// (het Ben Scholte-voorbeeld): de PDF is geen "plaatje" maar bevat exacte
+// tekstcoördinaten (Tm-operators) en lijnposities, dus dit is de meest
+// betrouwbare bron die we hebben. Wijzig deze waarden alleen na eenzelfde
+// soort meting op een nieuw echt voorbeeld — niet op gevoel.
+//
+// Opvallend: de tekst in dat PDF-voorbeeld is zelf ingebed als Verdana/
+// Verdana-Bold, niet als FF DIN. Vermoedelijk mag het FF DIN-lettertype van
+// het Word-sjabloon niet worden ingebed (veel commerciële lettertypen staan
+// dat niet toe) en valt de PDF-export van Word terug op een systeemfont.
+// Omdat de licentie van FF DIN embedding hier sowieso niet toestaat, gebruikt
+// de PDF-export Barlow (SIL Open Font License, zie public/fonts/barlow) als
+// vrij te distribueren alternatief met een vergelijkbaar strak/functioneel
+// karakter. De Word-export verwijst gewoon naar "FF DIN" bij naam: Word
+// gebruikt het echte lettertype zodra dat op de computer van de gebruiker
+// geïnstalleerd staat.
 
 // A4 in punten (1 punt = 1/72 inch; Word gebruikt twips = 1/20 punt).
 export const PAGE_WIDTH_PT = 595;
 export const PAGE_HEIGHT_PT = 842;
 
-export const MARGIN_TOP_PT = 240;
-export const MARGIN_RIGHT_PT = 53.85;
+// Marge tot de linker/rechter tekstrand, gemeten aan de x-positie van de
+// getoonde tekst resp. de liniaal in het voorbeeld-PDF.
+export const MARGIN_LEFT_PT = 78;
+export const MARGIN_RIGHT_PT = 52.36;
 export const MARGIN_BOTTOM_PT = 12.2;
-export const MARGIN_LEFT_PT = 77.95;
+
+// Afstand vanaf de bovenkant van de pagina tot de basislijn van "PERSBERICHT"
+// op de eerste pagina (gemeten: 842 - 649.44 = 192.56).
+export const MARGIN_TOP_PT = 192.56;
+// Afstand tot de liniaal onder "PERSBERICHT", de titel en de aanhef van de
+// vetgedrukte inleiding — elk gemeten op dezelfde manier. Deze zijn vaste
+// afstanden (onafhankelijk van de hoeveelheid tekst erna) omdat ze altijd
+// op dezelfde plek staan zolang titel en inleiding op één regel passen.
+export const RULE_AFTER_MASTHEAD_TOP_PT = 212.84;
+export const TITLE_TOP_PT = 242.72;
+export const LEAD_TOP_PT = 271.52;
+// Vaste marge boven de tekst op vervolgpagina's (onder het kleinere
+// briefhoofd met alleen het logo) — hiervoor was geen vervolgpagina in het
+// voorbeeld beschikbaar om te meten, dus dit is een inschatting die
+// visueel in verhouding is met de rest van de opmaak.
+export const CONTINUATION_MARGIN_TOP_PT = 165;
+
+// Regelhoogte als veelvoud van de lettergrootte, gemeten aan het verschil
+// tussen opeenvolgende regel-basislijnen in de vetgedrukte inleiding
+// (14.4–14.64pt bij 12pt tekst ≈ 1.22).
+export const LINE_HEIGHT_RATIO = 1.22;
 
 // De briefhoofdafbeelding beslaat de volle paginabreedte (bleed, geen
 // marge) en is even hoog op elke pagina — op de eerste pagina de volledige
@@ -27,7 +64,16 @@ export const HEADER_IMAGE_ASPECT = 2481 / 532; // breedte/hoogte van de bronafbe
 export const HEADER_FIRST_PAGE_PATH = "public/branding/persbericht-header.png";
 export const HEADER_CONTINUATION_PATH = "public/branding/persbericht-header-vervolg.png";
 
-export const FONT_FAMILY = "Verdana";
+// Wordt bij naam doorgegeven aan de Word-export (geen embedding — Word
+// gebruikt het echte FF DIN als dat lokaal geïnstalleerd is). Zie de
+// bestandskop hierboven voor waarom de PDF-export een ander lettertype
+// gebruikt.
+export const FONT_FAMILY = "FF DIN";
+
+// Regular/bold TrueType-bestanden die de PDF-export embed (moet, want een
+// PDF-viewer doet geen fontsubstitutie zoals Word dat doet).
+export const PDF_FONT_REGULAR_PATH = "public/fonts/barlow/Barlow-Regular.ttf";
+export const PDF_FONT_BOLD_PATH = "public/fonts/barlow/Barlow-Bold.ttf";
 
 export const MASTHEAD_SIZE_PT = 20; // "PERSBERICHT" + datum
 export const TITLE_SIZE_PT = 15;

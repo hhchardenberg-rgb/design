@@ -9,10 +9,17 @@ import {
   MARGIN_RIGHT_PT,
   MARGIN_BOTTOM_PT,
   MARGIN_LEFT_PT,
+  RULE_AFTER_MASTHEAD_TOP_PT,
+  TITLE_TOP_PT,
+  LEAD_TOP_PT,
+  CONTINUATION_MARGIN_TOP_PT,
+  LINE_HEIGHT_RATIO,
   HEADER_IMAGE_WIDTH_PT,
   HEADER_IMAGE_HEIGHT_PT,
   HEADER_FIRST_PAGE_PATH,
   HEADER_CONTINUATION_PATH,
+  PDF_FONT_REGULAR_PATH,
+  PDF_FONT_BOLD_PATH,
   MASTHEAD_SIZE_PT,
   TITLE_SIZE_PT,
   BODY_SIZE_PT,
@@ -60,13 +67,19 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
  * uitvullen, paginawissels) staat hieronder handmatig — bewust eenvoudig
  * gehouden en consistent met de docx-lay-out, niet met een losstaande
  * headless-browser-afhankelijkheid (past niet goed bij serverless).
+ *
+ * De positie van "PERSBERICHT", de liniaal eronder, de titel en de
+ * inleiding staan op vaste, uit een echt voorbeeld gemeten hoogtes (zie
+ * layout.ts) in plaats van opgeteld uit generieke regelafstanden — dat
+ * bleek de enige manier om ze exact op dezelfde plek te krijgen als in het
+ * origineel.
  */
 export async function buildPersberichtPdf(data: PersberichtData): Promise<Buffer> {
   const [firstHeaderBytes, contHeaderBytes, regularFontBytes, boldFontBytes] = await Promise.all([
     loadFile(HEADER_FIRST_PAGE_PATH),
     loadFile(HEADER_CONTINUATION_PATH),
-    loadFile("public/fonts/dejavu/DejaVuSans.ttf"),
-    loadFile("public/fonts/dejavu/DejaVuSans-Bold.ttf"),
+    loadFile(PDF_FONT_REGULAR_PATH),
+    loadFile(PDF_FONT_BOLD_PATH),
   ]);
 
   const pdfDoc = await PDFDocument.create();
@@ -98,21 +111,19 @@ export async function buildPersberichtPdf(data: PersberichtData): Promise<Buffer
   function newPage() {
     page = pdfDoc.addPage([PAGE_WIDTH_PT, PAGE_HEIGHT_PT]);
     drawHeader(page, false);
-    y = PAGE_HEIGHT_PT - MARGIN_TOP_PT;
+    y = PAGE_HEIGHT_PT - CONTINUATION_MARGIN_TOP_PT;
   }
 
   function ensureSpace(lineHeight: number) {
     if (y - lineHeight < MARGIN_BOTTOM_PT) newPage();
   }
 
-  function drawRule() {
-    ensureSpace(4);
-    page.drawLine({ start: { x: contentLeft, y }, end: { x: contentRight, y }, thickness: 0.75, color: black });
-    y -= 10;
+  function drawRuleAt(ruleY: number) {
+    page.drawLine({ start: { x: contentLeft, y: ruleY }, end: { x: contentRight, y: ruleY }, thickness: 0.75, color: black });
   }
 
   function blankLine(size = BODY_SIZE_PT) {
-    y -= size * 1.25;
+    y -= size * LINE_HEIGHT_RATIO;
   }
 
   function drawJustifiedLine(line: string, font: PDFFont, size: number) {
@@ -133,7 +144,7 @@ export async function buildPersberichtPdf(data: PersberichtData): Promise<Buffer
 
   function drawParagraph(text: string, font: PDFFont, size: number, justify: boolean) {
     const lines = wrapText(text, font, size, contentWidth);
-    const lineHeight = size * 1.25;
+    const lineHeight = size * LINE_HEIGHT_RATIO;
     lines.forEach((line, i) => {
       ensureSpace(lineHeight);
       const isLast = i === lines.length - 1;
@@ -147,18 +158,24 @@ export async function buildPersberichtPdf(data: PersberichtData): Promise<Buffer
   }
 
   // Masthead: "PERSBERICHT" links, datum rechts uitgelijnd op dezelfde regel.
-  ensureSpace(MASTHEAD_SIZE_PT * 1.25);
   page.drawText("PERSBERICHT", { x: contentLeft, y, size: MASTHEAD_SIZE_PT, font: boldFont, color: black });
   const dateStr = formatDate(data.date);
   const dateWidth = boldFont.widthOfTextAtSize(dateStr, MASTHEAD_SIZE_PT);
   page.drawText(dateStr, { x: contentRight - dateWidth, y, size: MASTHEAD_SIZE_PT, font: boldFont, color: black });
-  y -= MASTHEAD_SIZE_PT * 1.25;
 
-  drawRule();
-  blankLine();
+  // Liniaal, titel en inleiding staan op vaste, uit het voorbeeld gemeten
+  // posities (masthead/liniaal/titel/inleiding passen altijd ruim op de
+  // eerste pagina, dus een paginawissel speelt hier nooit mee).
+  y = PAGE_HEIGHT_PT - RULE_AFTER_MASTHEAD_TOP_PT;
+  drawRuleAt(y);
 
+  y = PAGE_HEIGHT_PT - TITLE_TOP_PT;
   drawParagraph(data.title, boldFont, TITLE_SIZE_PT, true);
-  blankLine();
+
+  // Bij een titel die over meerdere regels loopt, voorkomt dit dat de
+  // inleiding erover/erdoorheen zou vallen — anders staat die exact op de
+  // gemeten positie, zoals in het origineel.
+  y = Math.min(y, PAGE_HEIGHT_PT - LEAD_TOP_PT);
 
   drawParagraph(data.lead, boldFont, BODY_SIZE_PT, true);
   blankLine();
@@ -172,7 +189,8 @@ export async function buildPersberichtPdf(data: PersberichtData): Promise<Buffer
     blankLine();
   }
 
-  drawRule();
+  ensureSpace(4);
+  drawRuleAt(y);
 
   const bytes = await pdfDoc.save();
   return Buffer.from(bytes);
