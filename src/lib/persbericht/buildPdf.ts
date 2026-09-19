@@ -75,17 +75,18 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
  * origineel.
  */
 export async function buildPersberichtPdf(data: PersberichtData): Promise<Buffer> {
+  const sameFontForBold = PDF_FONT_BOLD_PATH === PDF_FONT_REGULAR_PATH;
   const [firstHeaderBytes, contHeaderBytes, regularFontBytes, boldFontBytes] = await Promise.all([
     loadFile(HEADER_FIRST_PAGE_PATH),
     loadFile(HEADER_CONTINUATION_PATH),
     loadFile(PDF_FONT_REGULAR_PATH),
-    loadFile(PDF_FONT_BOLD_PATH),
+    sameFontForBold ? Promise.resolve(null) : loadFile(PDF_FONT_BOLD_PATH),
   ]);
 
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   const regularFont = await pdfDoc.embedFont(regularFontBytes, { subset: true });
-  const boldFont = await pdfDoc.embedFont(boldFontBytes, { subset: true });
+  const boldFont = sameFontForBold ? regularFont : await pdfDoc.embedFont(boldFontBytes!, { subset: true });
   const firstHeaderImage = await pdfDoc.embedPng(firstHeaderBytes);
   const contHeaderImage = await pdfDoc.embedPng(contHeaderBytes);
 

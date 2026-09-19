@@ -73,12 +73,21 @@ export const HEADER_CONTINUATION_PATH = "public/branding/persbericht-header-verv
 // hierboven voor waarom dit "DIN" is en niet "FF DIN".
 export const FONT_FAMILY = "DIN";
 
-// Regular/bold lettertypebestanden die de PDF-export embed (moet, want een
-// PDF-viewer doet geen fontsubstitutie zoals Word dat doet). FF DIN kent
-// geen aparte "Regular"-snit; "Medium" is het basisgewicht dat als normale
-// tekst dient.
+// Lettertypebestand dat de PDF-export embed (moet, want een PDF-viewer
+// doet geen fontsubstitutie zoals Word dat doet). FF DIN kent geen aparte
+// "Regular"-snit; "Medium" is het basisgewicht dat als normale tekst dient.
+//
+// PDF_FONT_BOLD_PATH wijst bewust ook naar Medium: de aangeleverde
+// FF_DIN_Bold.otf en FF_DIN_Black.otf zijn intern wel als zwaardere snit
+// gelabeld (andere bestandsgrootte, andere OS/2-gewichtsklasse), maar de
+// letteromtrekken zelf zijn niet zwaarder — geverifieerd door ze naast
+// elkaar te renderen op grote puntgrootte, met én zonder font-subsetting:
+// identieke lijndikte. Tot er een Bold-bestand is dat er ook echt vetter
+// uitziet, gebruikt de PDF dus overal Medium (de Word-export heeft dit
+// probleem niet, want die verwijst alleen naar het lokaal geïnstalleerde
+// lettertype en laat Word zelf de juiste snit kiezen).
 export const PDF_FONT_REGULAR_PATH = "public/fonts/ff-din/FF_DIN_Medium.otf";
-export const PDF_FONT_BOLD_PATH = "public/fonts/ff-din/FF_DIN_Bold.otf";
+export const PDF_FONT_BOLD_PATH = "public/fonts/ff-din/FF_DIN_Medium.otf";
 
 export const MASTHEAD_SIZE_PT = 20; // "PERSBERICHT" + datum
 export const TITLE_SIZE_PT = 15;
