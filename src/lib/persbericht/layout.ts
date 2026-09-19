@@ -12,25 +12,29 @@
 // betrouwbare bron die we hebben. Wijzig deze waarden alleen na eenzelfde
 // soort meting op een nieuw echt voorbeeld — niet op gevoel.
 //
-// Opvallend: de tekst in dat PDF-voorbeeld is zelf ingebed als Verdana/
-// Verdana-Bold, niet als FF DIN. Vermoedelijk mag het FF DIN-lettertype van
-// het Word-sjabloon niet worden ingebed (veel commerciële lettertypen staan
-// dat niet toe) en valt de PDF-export van Word terug op een systeemfont.
-// Omdat de licentie van FF DIN embedding hier sowieso niet toestaat, gebruikt
-// de PDF-export Barlow (SIL Open Font License, zie public/fonts/barlow) als
-// vrij te distribueren alternatief met een vergelijkbaar strak/functioneel
-// karakter. De Word-export verwijst gewoon naar "FF DIN" bij naam: Word
-// gebruikt het echte lettertype zodra dat op de computer van de gebruiker
-// geïnstalleerd staat.
+// HHC heeft de echte FF DIN-bestanden aangeleverd (public/fonts/ff-din),
+// dus zowel de Word- als de PDF-export gebruiken nu het officiële
+// lettertype. Let op: in het lettertypebestand zelf heet de familie "DIN"
+// (niet "FF DIN") — "FF" is het foundry-voorvoegsel (FontFont) dat in de
+// productnaam zit maar niet in de ingebedde family-naam. Windows/Word
+// registreert het font dus als "DIN" zodra het geïnstalleerd is; met
+// FONT_FAMILY="FF DIN" in de Word-export zou Word het lettertype niet
+// terugvinden en alsnog terugvallen op een systeemfont.
+//
+// De linker/rechter marge is bewust gelijk gemaakt (gemiddelde van de twee
+// gemeten waarden in het voorbeeld-PDF, die daar onterecht ongelijk waren)
+// zodat de tekst gecentreerd staat, met dezelfde totale kolombreedte als
+// gemeten.
 
 // A4 in punten (1 punt = 1/72 inch; Word gebruikt twips = 1/20 punt).
 export const PAGE_WIDTH_PT = 595;
 export const PAGE_HEIGHT_PT = 842;
 
-// Marge tot de linker/rechter tekstrand, gemeten aan de x-positie van de
-// getoonde tekst resp. de liniaal in het voorbeeld-PDF.
-export const MARGIN_LEFT_PT = 78;
-export const MARGIN_RIGHT_PT = 52.36;
+// Marge tot de linker/rechter tekstrand. Gelijk aan elkaar (zie hierboven),
+// op het gemiddelde van de twee in het voorbeeld-PDF gemeten waarden
+// (78 en 52.36) — zo blijft de kolom precies even breed als gemeten.
+export const MARGIN_LEFT_PT = 65.18;
+export const MARGIN_RIGHT_PT = 65.18;
 export const MARGIN_BOTTOM_PT = 12.2;
 
 // Afstand vanaf de bovenkant van de pagina tot de basislijn van "PERSBERICHT"
@@ -64,16 +68,17 @@ export const HEADER_IMAGE_ASPECT = 2481 / 532; // breedte/hoogte van de bronafbe
 export const HEADER_FIRST_PAGE_PATH = "public/branding/persbericht-header.png";
 export const HEADER_CONTINUATION_PATH = "public/branding/persbericht-header-vervolg.png";
 
-// Wordt bij naam doorgegeven aan de Word-export (geen embedding — Word
-// gebruikt het echte FF DIN als dat lokaal geïnstalleerd is). Zie de
-// bestandskop hierboven voor waarom de PDF-export een ander lettertype
-// gebruikt.
-export const FONT_FAMILY = "FF DIN";
+// Wordt bij naam doorgegeven aan de Word-export (geen embedding nodig —
+// Word gebruikt het lokaal geïnstalleerde lettertype). Zie de bestandskop
+// hierboven voor waarom dit "DIN" is en niet "FF DIN".
+export const FONT_FAMILY = "DIN";
 
-// Regular/bold TrueType-bestanden die de PDF-export embed (moet, want een
-// PDF-viewer doet geen fontsubstitutie zoals Word dat doet).
-export const PDF_FONT_REGULAR_PATH = "public/fonts/barlow/Barlow-Regular.ttf";
-export const PDF_FONT_BOLD_PATH = "public/fonts/barlow/Barlow-Bold.ttf";
+// Regular/bold lettertypebestanden die de PDF-export embed (moet, want een
+// PDF-viewer doet geen fontsubstitutie zoals Word dat doet). FF DIN kent
+// geen aparte "Regular"-snit; "Medium" is het basisgewicht dat als normale
+// tekst dient.
+export const PDF_FONT_REGULAR_PATH = "public/fonts/ff-din/FF_DIN_Medium.otf";
+export const PDF_FONT_BOLD_PATH = "public/fonts/ff-din/FF_DIN_Bold.otf";
 
 export const MASTHEAD_SIZE_PT = 20; // "PERSBERICHT" + datum
 export const TITLE_SIZE_PT = 15;
