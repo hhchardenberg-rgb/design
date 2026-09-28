@@ -26,6 +26,28 @@ function toText(value: unknown): string | null {
   return String(value);
 }
 
+// De KNVB-competitiekoppeling zet bij elke wedstrijd automatisch dezelfde
+// standaardzinnen in de omschrijving (bv. "Tweede Divisie 2026/27.
+// Aftraptijd volgens het bijgewerkte programma van HHC Hardenberg. Eindtijd
+// technisch ingesteld op twee uur na de aftrap."). Die voegen niks toe voor
+// vrijwilligers en worden er hier uitgefilterd; eventuele eigen toelichting
+// van een beheerder blijft gewoon staan.
+const BOILERPLATE_PATTERNS = [
+  /^\S.*?\d{4}\/\d{2}\.\s*/, // "<Competitie> <seizoen>." aan het begin, bv. "Tweede Divisie 2026/27."
+  /Aftraptijd volgens het bijgewerkte programma van [^.]+\.\s*/gi,
+  /Eindtijd technisch ingesteld op twee uur na de aftrap\.\s*/gi,
+];
+
+function stripCompetitionBoilerplate(description: string | null): string | null {
+  if (!description) return description;
+  let result = description;
+  for (const pattern of BOILERPLATE_PATTERNS) {
+    result = result.replace(pattern, "");
+  }
+  result = result.trim();
+  return result.length > 0 ? result : null;
+}
+
 export async function fetchUpcomingCalendarEvents(
   options: { from?: Date; to?: Date; limit?: number } = {}
 ): Promise<CalendarEvent[]> {
@@ -48,7 +70,7 @@ export async function fetchUpcomingCalendarEvents(
         end: instance.end ?? null,
         isFullDay: instance.isFullDay,
         location: toText(vevent.location),
-        description: toText(vevent.description),
+        description: stripCompetitionBoilerplate(toText(vevent.description)),
       });
     }
   }
