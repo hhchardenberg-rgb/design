@@ -53,7 +53,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
       { title: "Contactpersonen", description: "Wie doet wat binnen Team Communicatie.", href: "/admin/contactpersonen", icon: Users },
       {
         title: "Ticketing",
-        description: "Handleidingen en procedures voor het ticketingsysteem beheren.",
+        description: "Handleidingen en standaard e-mails voor het ticketingsysteem beheren.",
         href: "/admin/ticketing",
         icon: Ticket,
         requiredRole: "TICKETING",

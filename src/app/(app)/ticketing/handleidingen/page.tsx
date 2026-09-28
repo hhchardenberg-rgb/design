@@ -15,7 +15,7 @@ export default async function TicketingHandleidingenPage() {
         <h1 className="text-2xl font-bold">Handleidingen</h1>
         <p className="mt-1 text-muted-foreground">Stap-voor-stap-instructies voor het ticketingsysteem.</p>
       </div>
-      <KnowledgeBrowser articles={articles} />
+      <KnowledgeBrowser articles={articles} showSearch={false} />
     </div>
   );
 }

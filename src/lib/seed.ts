@@ -409,108 +409,149 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     }
   }
 
-  // Ticketing: de eerste twee handleidingen, aangeleverd door HHC. Elke
-  // handleiding wordt maar één keer aangemaakt (op titel); eenmaal door een
-  // beheerder bewerkt, laat een her-seed het met rust.
+  // Ticketing: de eerste twee handleidingen, aangeleverd door HHC, opgemaakt
+  // met Markdown (## per stap, **vet**, lijstjes, > voor een "let op"-kader
+  // — zie src/components/markdown-content.tsx). Elke handleiding wordt maar
+  // één keer aangemaakt (op titel). Bestaat 'm al mét Markdown-opmaak, dan is
+  // die vermoedelijk door een beheerder geschreven/bewerkt en laat een
+  // her-seed 'm met rust; bevat de bestaande tekst nog geen "##" (dus nog de
+  // eerste, platte-tekstversie van vóór de rich-text-update), dan wordt de
+  // opgemaakte versie hieronder eenmalig overgenomen.
   const ticketingArticles = [
     {
       title: "Donateur zegt geen pas te hebben of is de pas kwijt",
       category: "Fullhouse",
-      body: `Stap 1 – Inloggen in Fullhouse
-Ga naar Fullhouse en log in met je gegevens:
-https://dashboard.fullhouse.tech/login
+      body: `## Stap 1 – Inloggen in Fullhouse
+Ga naar [Fullhouse](https://dashboard.fullhouse.tech/login) en log in met je gegevens.
 
-Stap 2 – Zoek de persoon op naam
-Ga in Fullhouse naar 'Tickets'.
-Klik bij 'Name' en vul daar de achternaam van de persoon in.
+## Stap 2 – Zoek de persoon op naam
+Ga in Fullhouse naar **Tickets**. Klik bij **Name** en vul daar de achternaam van de persoon in.
 
-Stap 3 – Controleer of er een seizoenspas is
-Kijk in de kolom 'Event' of er een seizoenspas van het huidige seizoen tussen staat.
+## Stap 3 – Controleer of er een seizoenspas is
+Kijk in de kolom **Event** of er een seizoenspas van het huidige seizoen tussen staat.
 
-Er staat wél een seizoenspas
-Ga verder met stap 4.
+- **Wel een seizoenspas?** Ga verder met stap 4.
+- **Geen seizoenspas gevonden?** Zoek bij **Tickets** opnieuw, maar nu op het e-mailadres van de persoon.
+  - Wel een ticket gevonden? Ga verder vanaf stap 5.
+  - Nog steeds niets gevonden? Zoek verder of je het ticket op een andere manier kunt vinden. Is er uiteindelijk geen ticket te vinden, controleer dan of de persoon daadwerkelijk donateur is (zie de aparte handleiding hierover).
 
-Stap 4 – Open het ticket
+## Stap 4 – Open het ticket
 Klik op het betreffende ticket om het te openen.
 
-Stap 5 – Controleer en verstuur het ticket per e-mail
-Klik onderaan op 'Send E-mail'.
-Controleer vervolgens of het e-mailadres in Fullhouse hetzelfde is als het e-mailadres van de persoon die contact heeft opgenomen.
-- E-mailadres klopt: klik op 'Confirm'.
-- E-mailadres klopt niet: wijzig het e-mailadres en klik daarna op 'Confirm'.
+## Stap 5 – Controleer en verstuur het ticket per e-mail
+Klik onderaan op **Send E-mail**. Controleer of het e-mailadres in Fullhouse hetzelfde is als het e-mailadres van de persoon die contact heeft opgenomen.
 
-Let op bij een gewijzigd e-mailadres
-Als het e-mailadres is gewijzigd en het nieuwe adres nog niet in Sportlink staat, geef de wijziging dan door aan de ledenadministratie.
-Gaat het om een donateur? Zet dan ook Dirk Nijeboer in de cc via administratie-HHC@kpnmail.nl.
+- **E-mailadres klopt:** klik op **Confirm**.
+- **E-mailadres klopt niet:** wijzig het e-mailadres en klik daarna op **Confirm**.
 
-Stap 6 – Download het ticket
-Klik op 'Download'.
-Reageer vervolgens op de e-mail van de persoon en voeg het gedownloade ticket als bijlage toe.
+> **Let op bij een gewijzigd e-mailadres**
+>
+> Als het e-mailadres is gewijzigd en het nieuwe adres nog niet in Sportlink staat, geef de wijziging dan door aan de ledenadministratie. Gaat het om een donateur? Zet dan ook Dirk Nijeboer in de cc via administratie-HHC@kpnmail.nl.
 
-Stap 7 – Klaar
-De persoon heeft de seizoenspas opnieuw ontvangen.
+## Stap 6 – Download het ticket
+Klik op **Download**. Reageer vervolgens op de e-mail van de persoon en voeg het gedownloade ticket als bijlage toe.
 
-Geen seizoenspas gevonden?
-Staat er bij het zoeken op achternaam geen seizoenspas van het huidige seizoen?
-Zoek dan bij 'Tickets' opnieuw, maar nu op het e-mailadres van de persoon.
-
-Wel een ticket gevonden?
-Ga verder vanaf stap 5 en rond het proces af.
-
-Nog steeds geen ticket gevonden?
-Zoek verder of je het ticket op een andere manier kunt vinden.
-Is er uiteindelijk helemaal geen ticket te vinden? Controleer dan of de persoon daadwerkelijk donateur is.
-Voor het controleren of iemand donateur is, is een aparte handleiding beschikbaar.`,
+## Stap 7 – Klaar
+De persoon heeft de seizoenspas opnieuw ontvangen.`,
     },
     {
       title: "Een lid kan niet inloggen op de Ledenpas App",
       category: "Ledenpas App",
-      body: `Stap 1 – Log in op iApp
-Ga naar iApp en log in:
-https://iapp.cloud/
-Ga vervolgens naar 'Leden'.
+      body: `## Stap 1 – Log in op iApp
+Ga naar [iApp](https://iapp.cloud/) en log in. Ga vervolgens naar **Leden**.
 
-Stap 2 – Controleer of de persoon een ledenpas heeft
+## Stap 2 – Controleer of de persoon een ledenpas heeft
 Zoek de betreffende persoon op en controleer of er een ledenpas aanwezig is.
 
-Er is wél een ledenpas
-Stap 3 – Stel een nieuw wachtwoord in
+- **Wel een ledenpas?** Ga verder met stap 3.
+- **Geen ledenpas?** Zie "Geen ledenpas gevonden" onderaan deze handleiding.
+
+## Stap 3 – Stel een nieuw wachtwoord in
 Verzin zelf een wachtwoord of gebruik de wachtwoord-generator.
 
-Stap 4 – Controleer het e-mailadres
+## Stap 4 – Controleer het e-mailadres
 Controleer of het e-mailadres bij het account juist is.
-- E-mailadres klopt: ga verder naar stap 5.
-- E-mailadres klopt niet: wijzig het e-mailadres naar het juiste adres.
 
-Let op bij een gewijzigd e-mailadres
-Als het e-mailadres is gewijzigd en het nieuwe adres nog niet in Sportlink staat, geef de wijziging dan door aan de ledenadministratie.
-Gaat het om een donateur? Zet dan ook Dirk Nijeboer in de cc via administratie-HHC@kpnmail.nl.
+- **E-mailadres klopt:** ga verder naar stap 5.
+- **E-mailadres klopt niet:** wijzig het e-mailadres naar het juiste adres.
 
-Stap 5 – Stuur de inloggegevens
-Stuur de persoon een e-mail met de inloggegevens voor de Ledenpas App.
-De inloggegevens zijn:
-- Gebruikersnaam: het volledige e-mailadres
-- Wachtwoord: het wachtwoord dat je bij stap 3 hebt ingesteld
+> **Let op bij een gewijzigd e-mailadres**
+>
+> Als het e-mailadres is gewijzigd en het nieuwe adres nog niet in Sportlink staat, geef de wijziging dan door aan de ledenadministratie. Gaat het om een donateur? Zet dan ook Dirk Nijeboer in de cc via administratie-HHC@kpnmail.nl.
 
-Let op
-Vraagt iemand om toegang voor meerdere personen op één account? Het systeem koppelt leden met hetzelfde e-mailadres automatisch aan elkaar.
+## Stap 5 – Stuur de inloggegevens
+Stuur de persoon een e-mail met de inloggegevens voor de Ledenpas App:
 
-Stap 6 – Klaar
+- **Gebruikersnaam:** het volledige e-mailadres
+- **Wachtwoord:** het wachtwoord dat je bij stap 3 hebt ingesteld
+
+> **Let op**
+>
+> Vraagt iemand om toegang voor meerdere personen op één account? Het systeem koppelt leden met hetzelfde e-mailadres automatisch aan elkaar.
+
+## Stap 6 – Klaar
 De persoon kan met de nieuwe gegevens inloggen op de Ledenpas App.
 
-Er is géén ledenpas
-Controleer eerst of de persoon lid is
-Controleer in Sportlink of de persoon daadwerkelijk lid is.
+---
 
-Persoon is lid
-Zoek vervolgens in iApp op het KNVB-nummer van de persoon.
+## Geen ledenpas gevonden
+Controleer eerst in Sportlink of de persoon daadwerkelijk lid is.
 
-Persoon gevonden?
-Ga verder vanaf stap 3 en stel een wachtwoord in.
+- **Persoon is lid?** Zoek vervolgens in iApp op het KNVB-nummer van de persoon.
+  - Gevonden? Ga verder vanaf stap 3 en stel een wachtwoord in.
+  - Nog steeds niet gevonden? Maak een nieuw account aan voor de persoon en importeer daarna de QR-code in Fullhouse.`,
+    },
+    {
+      title: "Een nieuwe donateur",
+      category: "Fullhouse",
+      body: `## Stap 1 – Log in op Fullhouse
+Log in op Fullhouse en ga naar **Tickets**.
 
-Nog steeds niet gevonden?
-Maak een nieuw account aan voor de persoon.
-Importeer daarna de QR-code in Fullhouse.`,
+## Stap 2 – Maak een nieuw ticket aan
+Klik op **Create ticket**.
+
+## Stap 3 – Zoek de donateur op
+Zoek bij **Customer** naar de betreffende persoon en controleer of het e-mailadres klopt.
+
+- **Customer gevonden en e-mailadres klopt:** ga door naar stap 7.
+- **Customer niet gevonden of gegevens kloppen niet:** klik op **Add customer** en maak een nieuwe customer aan.
+
+## Stap 4 – Vul de gegevens in
+Vul de volgende gegevens in:
+
+- Voornaam
+- Achternaam
+- E-mailadres
+
+## Stap 5 – Vul de verplichte adresvelden
+Voeg bij de volgende velden een spatie in:
+
+- Street
+- Zip
+- City
+
+## Stap 6 – Maak de customer aan
+Klik op **Create Customer**.
+
+## Stap 7 – Selecteer het juiste event
+Selecteer bij Event: **Seizoenspassen [jaartal van het huidige seizoen]**.
+
+## Stap 8 – Kies het juiste type donateurspas
+Controleer welk type toegang de donateur heeft.
+
+- **Geen recht op een tribuneplaats:** selecteer **Donateurspas (reguliere toegang, geen tribune)**.
+- **Wel recht op tribunetoegang:** selecteer **Donateurspas (tribune)**.
+
+## Stap 9 – Zet de e-mailverzending aan
+Activeer in de rechterkolom **Send out tickets via E-mail**. Controleer voor de zekerheid nogmaals of het juiste e-mailadres is ingevuld.
+
+## Stap 10 – Maak het ticket aan
+Klik op de blauwe knop **Create**.
+
+## Klaar
+De donateurspas is aangemaakt en automatisch naar het e-mailadres van de donateur verstuurd.
+
+> Je hoeft geen QR-code aan te maken of te importeren.`,
     },
   ];
   for (let i = 0; i < ticketingArticles.length; i++) {
@@ -518,6 +559,66 @@ Importeer daarna de QR-code in Fullhouse.`,
     const existing = await prisma.ticketingArticle.findFirst({ where: { title } });
     if (!existing) {
       await prisma.ticketingArticle.create({ data: { title, sortOrder: i, ...draft } });
+    } else if (existing.body && !existing.body.includes("##")) {
+      await prisma.ticketingArticle.update({ where: { id: existing.id }, data: draft });
+    }
+  }
+
+  // Ticketing: standaard e-mails, aangeleverd door HHC. Platte tekst (geen
+  // Markdown) zodat ze direct te plakken zijn in een mailprogramma. Zelfde
+  // eenmalig-aanmaken-op-titel patroon als de handleidingen hierboven.
+  const ticketingEmailTemplates = [
+    {
+      title: "Seizoenspas opnieuw verstuurd",
+      category: "Fullhouse",
+      subject: null as string | null,
+      body: `Beste [naam],
+
+Bedankt voor uw bericht.
+
+We hebben uw seizoenspas opnieuw naar u verstuurd. Voor de zekerheid vindt u de pas ook als bijlage bij deze e-mail.
+
+U kunt de pas op uw telefoon bewaren en bij de ingang van Sportpark De Boshoek laten scannen.
+
+Mocht het alsnog niet lukken, laat het ons dan gerust weten.
+
+Met vriendelijke groet,
+
+Team Ticketing
+HHC Hardenberg`,
+    },
+    {
+      title: "Nieuwe inloggegevens Ledenpas App",
+      category: "Ledenpas App",
+      subject: null as string | null,
+      body: `Beste [naam],
+
+Bedankt voor uw bericht.
+
+We hebben nieuwe inloggegevens voor de HHC Ledenpas App voor u ingesteld.
+
+Uw inloggegevens zijn:
+
+Gebruikersnaam: [e-mailadres]
+Wachtwoord: [wachtwoord]
+
+U kunt hiermee opnieuw inloggen in de Ledenpas App.
+
+Zijn er meerdere leden gekoppeld aan hetzelfde e-mailadres? Dan worden deze automatisch binnen hetzelfde account weergegeven.
+
+Mocht het inloggen alsnog niet lukken, laat het ons dan gerust weten.
+
+Met vriendelijke groet,
+
+Team Ticketing
+HHC Hardenberg`,
+    },
+  ];
+  for (let i = 0; i < ticketingEmailTemplates.length; i++) {
+    const { title, ...draft } = ticketingEmailTemplates[i];
+    const existing = await prisma.ticketingEmailTemplate.findFirst({ where: { title } });
+    if (!existing) {
+      await prisma.ticketingEmailTemplate.create({ data: { title, sortOrder: i, ...draft } });
     }
   }
 

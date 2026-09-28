@@ -4,7 +4,7 @@
 // een eigen pagina/databron voor is — tot die tijd staan ze met
 // status "soon" klaar als duidelijke plek in de structuur.
 
-import { BookOpen, HelpCircle, Link2, Phone, Megaphone, type LucideIcon } from "lucide-react";
+import { BookOpen, HelpCircle, Link2, Phone, Megaphone, Mail, type LucideIcon } from "lucide-react";
 
 export interface TicketingModule {
   id: string;
@@ -23,6 +23,14 @@ export const ticketingModules: TicketingModule[] = [
     href: "/ticketing/handleidingen",
     status: "available",
     icon: BookOpen,
+  },
+  {
+    id: "emails",
+    title: "Standaard e-mails",
+    description: "Kant-en-klare e-mailteksten om te kopiëren naar je mailprogramma.",
+    href: "/ticketing/emails",
+    status: "available",
+    icon: Mail,
   },
   {
     id: "faq",

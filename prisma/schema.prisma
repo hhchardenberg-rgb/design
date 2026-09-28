@@ -350,6 +350,22 @@ model TicketingArticle {
   @@map("ticketing_articles")
 }
 
+model TicketingEmailTemplate {
+  id      String  @id @default(cuid())
+  title   String // korte naam, bv. "Seizoenspas opnieuw verstuurd"
+  subject String? // onderwerpregel
+  // Platte tekst (geen Markdown) — moet direct bruikbaar zijn als je 'm
+  // kopieert naar een mailprogramma.
+  body      String
+  category  String?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ticketing_email_templates")
+}
+
 // ---------------------------------------------------------------------------
 // Crisiscommunicatie
 // ---------------------------------------------------------------------------
