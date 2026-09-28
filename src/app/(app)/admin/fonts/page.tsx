@@ -180,7 +180,7 @@ export default function AdminFontsPage() {
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={upload} className="grid gap-3 sm:grid-cols-[1fr_1fr_120px_120px_auto] sm:items-end">
+          <form onSubmit={upload} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_120px_120px_auto] sm:items-end">
             <div>
               <Label htmlFor="fontname">Weergavenaam</Label>
               <Input

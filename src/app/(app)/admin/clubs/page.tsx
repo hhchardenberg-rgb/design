@@ -226,7 +226,7 @@ export default function AdminClubsPage() {
         </p>
         <Card>
           <CardContent className="p-6">
-            <form onSubmit={addOpponent} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <form onSubmit={addOpponent} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
               <div>
                 <Label>Clubnaam</Label>
                 <Input value={newOpponent.name} onChange={(e) => setNewOpponent((p) => ({ ...p, name: e.target.value }))} />

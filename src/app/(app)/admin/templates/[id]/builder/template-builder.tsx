@@ -275,7 +275,7 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
             </Badge>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={category} onChange={(e) => setCategory(e.target.value)} className="w-40">
             {["Wedstrijd", "Opstelling", "Uitslag", "Speler", "Sociaal", "Nieuws", "Evenementen", "Jeugd", "Vrouwenvoetbal", "Overig"].map((c) => (
               <option key={c} value={c}>
@@ -297,7 +297,7 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
 
       {message && <p className="text-sm text-hhc-orange-dark">{message}</p>}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
         <div className="flex flex-col gap-4">
           <Card className="bg-hhc-black p-4">
             <CardContent className="flex justify-center p-0">

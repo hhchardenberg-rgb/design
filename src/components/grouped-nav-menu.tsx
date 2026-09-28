@@ -85,7 +85,7 @@ export function GroupedNavMenu({
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

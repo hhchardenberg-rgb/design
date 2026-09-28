@@ -42,28 +42,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-          <Link href="/hub" className="flex items-center gap-2 font-bold">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:gap-6">
+          <Link href="/hub" className="flex shrink-0 items-center gap-2 font-bold">
             <Image src="/branding/hhc-logo.png" alt="HHC Hardenberg" width={32} height={40} className="h-10 w-8" priority />
             <span className="hidden sm:inline">HHC Hardenberg Hub</span>
           </Link>
           {nav.length > 0 && (
-            <nav className="flex flex-1 items-center gap-1 overflow-x-auto text-sm">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "whitespace-nowrap rounded-md px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground",
-                    pathname?.startsWith(item.href) && "bg-surface-muted text-foreground"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
+            <div className="relative min-w-0 flex-1">
+              <nav className="flex items-center gap-1 overflow-x-auto text-sm">
+                {nav.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "whitespace-nowrap rounded-md px-2 py-2 font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground sm:px-3",
+                      pathname?.startsWith(item.href) && "bg-surface-muted text-foreground"
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface to-transparent" />
+            </div>
           )}
-          <div className={cn("flex items-center gap-2", nav.length === 0 && "flex-1 justify-end")}>
+          <div className={cn("relative flex shrink-0 items-center gap-1.5 sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
             {isAdminSection ? (
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : (

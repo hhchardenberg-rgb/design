@@ -176,7 +176,7 @@ export default function AdminUsersPage() {
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={createUser} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_140px_auto] sm:items-end">
+          <form onSubmit={createUser} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_140px_auto] sm:items-end">
             <div>
               <Label>Naam</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} required />

@@ -104,7 +104,7 @@ export default function AdminFotobankPage() {
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={upload} className="grid gap-3 sm:grid-cols-[1fr_160px_auto_auto] sm:items-end">
+          <form onSubmit={upload} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_160px_auto_auto] sm:items-end">
             <div>
               <Label htmlFor="phototitle">Titel</Label>
               <Input id="phototitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bijv. Clublogo op groen veld" />

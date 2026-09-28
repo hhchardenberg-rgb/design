@@ -86,7 +86,7 @@ export default function AdminColorsPage() {
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={add} className="grid gap-3 sm:grid-cols-[1fr_140px_160px_auto] sm:items-end">
+          <form onSubmit={add} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_140px_160px_auto] sm:items-end">
             <div>
               <Label>Naam</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="HHC Oranje" />

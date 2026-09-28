@@ -154,7 +154,7 @@ export function Wizard({
   const otherFields = fields.filter((f) => ["BRAND_COLOR", "CHECKBOX"].includes(f.type));
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,420px)_1fr]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,420px)_1fr]">
       <div className="order-2 flex flex-col gap-6 lg:order-1">
         <div>
           <h1 className="text-xl font-bold">{templateName}</h1>

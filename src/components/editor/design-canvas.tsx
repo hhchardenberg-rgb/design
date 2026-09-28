@@ -7,6 +7,7 @@ import type { Layer as SchemaLayer, TemplateSchemaJson } from "@/lib/validations
 import { fitText } from "@/lib/render/textFit";
 import { measureBrowser } from "@/lib/render/measureBrowser";
 import { computeImageDraw, type ImageFieldValue } from "@/lib/render/imageFit";
+import { cn } from "@/lib/utils";
 import { useImage } from "./use-image";
 
 export type DesignFormData = Record<string, unknown>;
@@ -60,7 +61,13 @@ export function DesignCanvas({
   const stageHeight = schema.height * scale;
 
   return (
-    <div ref={containerRef} className={className}>
+    // w-full zorgt dat deze div zich naar de werkelijk beschikbare breedte
+    // van de ouder voegt in plaats van naar de breedte van de canvas zelf —
+    // zonder dat zou de ResizeObserver hieronder nooit een kleinere breedte
+    // meten dan maxWidth (de canvas ZOU immers al zo breed zijn als maxWidth
+    // op het eerste render), waardoor de preview op smalle schermen buiten
+    // de viewport uitsteekt in plaats van mee te krimpen.
+    <div ref={containerRef} className={cn("w-full", className)} style={{ maxWidth }}>
       <Stage width={stageWidth} height={stageHeight} scaleX={scale} scaleY={scale}>
         <Layer listening={editable}>
           {schema.layers.map((layer) => (
