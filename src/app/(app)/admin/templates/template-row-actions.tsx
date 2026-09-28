@@ -3,9 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/toast";
 
 export function TemplateRowActions({ templateId, archived }: { templateId: string; archived: boolean }) {
   const router = useRouter();
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
 
@@ -13,7 +15,13 @@ export function TemplateRowActions({ templateId, archived }: { templateId: strin
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/templates/${templateId}/duplicate`, { method: "POST" });
-      if (res.ok) startTransition(() => router.refresh());
+      if (res.ok) {
+        toast.success("Template gedupliceerd.");
+        startTransition(() => router.refresh());
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Dupliceren mislukt.");
+      }
     } finally {
       setBusy(false);
     }
@@ -31,7 +39,13 @@ export function TemplateRowActions({ templateId, archived }: { templateId: strin
           restoreFromArchive: archived,
         }),
       });
-      if (res.ok) startTransition(() => router.refresh());
+      if (res.ok) {
+        toast.success(archived ? "Template hersteld." : "Template gearchiveerd.");
+        startTransition(() => router.refresh());
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Actie mislukt.");
+      }
     } finally {
       setBusy(false);
     }
@@ -47,11 +61,12 @@ export function TemplateRowActions({ templateId, archived }: { templateId: strin
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/templates/${templateId}`, { method: "DELETE" });
-      const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        toast.success("Template verwijderd.");
         startTransition(() => router.refresh());
       } else {
-        alert(data.error ?? "Verwijderen mislukt.");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Verwijderen mislukt.");
       }
     } finally {
       setBusy(false);
