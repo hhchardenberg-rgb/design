@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HHC Hardenberg Hub",
+  title: { default: "HHC Hardenberg Hub", template: "%s · HHC Hardenberg Hub" },
   description:
     "Dé plek voor vrijwilligers van Team Communicatie van HHC Hardenberg: clubafbeeldingen maken, huisstijl opzoeken en meer.",
 };

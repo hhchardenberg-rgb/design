@@ -1,12 +1,16 @@
+import type { Metadata } from "next";
 import { format, isSameDay } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
+import { CalendarDays } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/empty-state";
 import { AgendaEventCard } from "@/components/agenda-event-card";
 import { getMergedAgendaEvents, type MergedAgendaEvent } from "@/lib/agenda";
 import { CLUB_TIME_ZONE } from "@/lib/timezone";
 
 export const revalidate = 900; // 15 min — live agenda, maar niet bij elke paginaweergave opnieuw ophalen
+export const metadata: Metadata = { title: "Agenda" };
 
 function groupByDay(events: MergedAgendaEvent[]) {
   const groups: { day: Date; events: MergedAgendaEvent[] }[] = [];
@@ -44,7 +48,9 @@ export default async function KalenderPage() {
         </Card>
       )}
 
-      {groups.length === 0 && <p className="text-sm text-muted-foreground">Geen aankomende activiteiten gevonden.</p>}
+      {groups.length === 0 && (
+        <EmptyState icon={CalendarDays} title="Geen aankomende activiteiten gevonden" />
+      )}
 
       {groups.length > 0 && (
         <div className="flex flex-col gap-6">

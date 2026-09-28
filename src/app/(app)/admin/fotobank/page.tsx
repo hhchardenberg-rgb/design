@@ -19,6 +19,7 @@ interface StockPhoto {
 export default function AdminFotobankPage() {
   const toast = useToast();
   const [photos, setPhotos] = useState<StockPhoto[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("algemeen");
   const [file, setFile] = useState<File | null>(null);
@@ -33,6 +34,7 @@ export default function AdminFotobankPage() {
     const res = await fetch("/api/admin/stock-photos");
     const data = await res.json();
     setPhotos(data.photos ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -162,7 +164,7 @@ export default function AdminFotobankPage() {
             </CardContent>
           </Card>
         ))}
-        {photos.length === 0 && <p className="text-sm text-muted-foreground">Nog geen foto&apos;s geüpload.</p>}
+        {loaded && photos.length === 0 && <p className="text-sm text-muted-foreground">Nog geen foto&apos;s geüpload.</p>}
       </div>
     </div>
   );

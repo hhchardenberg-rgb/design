@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { KnowledgeBrowser } from "@/components/knowledge-browser";
+
+export const metadata: Metadata = { title: "Kennisbank" };
 
 export default async function KennisbankPage() {
   const articles = await prisma.knowledgeArticle.findMany({ orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { title: "asc" }] });

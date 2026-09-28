@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { templateSchemaJson } from "@/lib/validations/template";
 import { Wizard } from "@/components/wizard/wizard";
 import type { FormData } from "@/components/wizard/wizard";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const template = await prisma.template.findUnique({ where: { slug }, select: { name: true } });
+  return { title: template ? template.name : "Ontwerp maken" };
+}
 
 export default async function CreateDesignPage({
   params,

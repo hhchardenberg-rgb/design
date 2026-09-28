@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+export const metadata: Metadata = { title: "Crisiscommunicatie" };
 
 export default async function CrisisPage() {
   const protocols = await prisma.crisisProtocol.findMany({ orderBy: [{ sortOrder: "asc" }, { title: "asc" }] });

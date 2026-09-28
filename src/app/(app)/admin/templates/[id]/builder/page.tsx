@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { templateSchemaJson } from "@/lib/validations/template";
 import { TemplateBuilder, type BuilderField, type BuilderTemplate } from "./template-builder";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const template = await prisma.template.findUnique({ where: { id }, select: { name: true } });
+  return { title: template ? `${template.name} bewerken` : "Template bewerken" };
+}
 
 export default async function TemplateBuilderPage({
   params,

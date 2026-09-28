@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { FileDown, FileText } from "lucide-react";
+import { FileDown, FileText, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
+import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/components/toast";
 
 interface PressRelease {
@@ -221,7 +222,9 @@ export default function PersberichtenPage() {
             </CardContent>
           </Card>
         ))}
-        {loaded && releases.length === 0 && <p className="text-sm text-muted-foreground">Nog geen persberichten.</p>}
+        {loaded && releases.length === 0 && (
+          <EmptyState icon={Megaphone} title="Nog geen persberichten" description="Maak hierboven je eerste persbericht aan." />
+        )}
       </div>
     </div>
   );

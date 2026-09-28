@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { Pin } from "lucide-react";
+import { Newspaper, Pin } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/empty-state";
+
+export const metadata: Metadata = { title: "Nieuws" };
 
 export default async function NieuwsPage() {
   const posts = await prisma.newsPost.findMany({
@@ -18,7 +22,13 @@ export default async function NieuwsPage() {
         <p className="mt-1 text-muted-foreground">Het laatste nieuws voor Team Communicatie.</p>
       </div>
 
-      {posts.length === 0 && <p className="text-sm text-muted-foreground">Nog geen nieuwsberichten.</p>}
+      {posts.length === 0 && (
+        <EmptyState
+          icon={Newspaper}
+          title="Nog geen nieuwsberichten"
+          description="Zodra Team Communicatie iets plaatst, verschijnt het hier."
+        />
+      )}
 
       <div className="flex flex-col gap-3">
         {posts.map((post) => (

@@ -22,6 +22,7 @@ const emptyForm = { name: "", role: "", email: "", phone: "", notes: "" };
 export default function AdminContactpersonenPage() {
   const toast = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export default function AdminContactpersonenPage() {
     const res = await fetch("/api/admin/contacts");
     const data = await res.json();
     setContacts(data.contacts ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -215,7 +217,7 @@ export default function AdminContactpersonenPage() {
             </CardContent>
           </Card>
         ))}
-        {contacts.length === 0 && <p className="text-sm text-muted-foreground">Nog geen contactpersonen toegevoegd.</p>}
+        {loaded && contacts.length === 0 && <p className="text-sm text-muted-foreground">Nog geen contactpersonen toegevoegd.</p>}
       </div>
     </div>
   );

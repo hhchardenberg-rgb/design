@@ -34,6 +34,7 @@ interface NewsPost {
 export default function AdminNieuwsPage() {
   const toast = useToast();
   const [posts, setPosts] = useState<NewsPost[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("");
@@ -52,6 +53,7 @@ export default function AdminNieuwsPage() {
     const res = await fetch("/api/admin/news");
     const data = await res.json();
     setPosts(data.posts ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -257,7 +259,7 @@ export default function AdminNieuwsPage() {
             </CardContent>
           </Card>
         ))}
-        {posts.length === 0 && <p className="text-sm text-muted-foreground">Nog geen nieuwsberichten.</p>}
+        {loaded && posts.length === 0 && <p className="text-sm text-muted-foreground">Nog geen nieuwsberichten.</p>}
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
-import { Mail, Phone } from "lucide-react";
+import type { Metadata } from "next";
+import { Mail, Phone, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/empty-state";
+
+export const metadata: Metadata = { title: "Contactpersonen" };
 
 export default async function ContactpersonenPage() {
   const contacts = await prisma.contact.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
@@ -12,7 +16,13 @@ export default async function ContactpersonenPage() {
         <p className="mt-1 text-muted-foreground">Wie doet wat binnen Team Communicatie en hoe je iemand bereikt.</p>
       </div>
 
-      {contacts.length === 0 && <p className="text-sm text-muted-foreground">Nog geen contactpersonen toegevoegd.</p>}
+      {contacts.length === 0 && (
+        <EmptyState
+          icon={Users}
+          title="Nog geen contactpersonen toegevoegd"
+          description="Een beheerder kan ze toevoegen via Beheer → Contactpersonen."
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {contacts.map((c) => (

@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { HhcStopwatchTool } from "@/components/hhc-stopwatch-tool";
+
+export const metadata: Metadata = { title: "Stopwatch" };
 
 export default function StopwatchPage() {
   return (

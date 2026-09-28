@@ -17,6 +17,7 @@ interface KnowledgeArticle {
 export default function AdminKennisbankPage() {
   const toast = useToast();
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [body, setBody] = useState("");
@@ -31,6 +32,7 @@ export default function AdminKennisbankPage() {
     const res = await fetch("/api/admin/knowledge");
     const data = await res.json();
     setArticles(data.articles ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -160,7 +162,7 @@ export default function AdminKennisbankPage() {
             </CardContent>
           </Card>
         ))}
-        {articles.length === 0 && <p className="text-sm text-muted-foreground">Nog geen handleidingen toegevoegd.</p>}
+        {loaded && articles.length === 0 && <p className="text-sm text-muted-foreground">Nog geen handleidingen toegevoegd.</p>}
       </div>
     </div>
   );

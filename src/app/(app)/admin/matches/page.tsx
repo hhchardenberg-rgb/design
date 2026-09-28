@@ -31,6 +31,7 @@ interface Match {
 
 export default function AdminMatchesPage() {
   const [matches, setMatches] = useState<Match[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
   const [opponents, setOpponents] = useState<Opponent[]>([]);
   const [form, setForm] = useState({
@@ -53,6 +54,7 @@ export default function AdminMatchesPage() {
     setMatches(matchesRes.matches ?? []);
     setTeams(teamsRes.teams ?? []);
     setOpponents(opponentsRes.opponents ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -169,7 +171,7 @@ export default function AdminMatchesPage() {
             </div>
           </div>
         ))}
-        {matches.length === 0 && <p className="text-sm text-muted-foreground">Nog geen wedstrijden toegevoegd.</p>}
+        {loaded && matches.length === 0 && <p className="text-sm text-muted-foreground">Nog geen wedstrijden toegevoegd.</p>}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>

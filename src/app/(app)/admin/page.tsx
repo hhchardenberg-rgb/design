@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { adminModuleGroups } from "@/lib/admin-modules";
+
+export const metadata: Metadata = { title: "Beheer" };
 
 export default function AdminOverviewPage() {
   return (

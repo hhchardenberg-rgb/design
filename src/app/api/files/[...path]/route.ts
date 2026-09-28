@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStorage } from "@/lib/storage";
+import { requireUser } from "@/lib/api-guards";
 
 /**
  * Serveert bestanden uit de lokale storage-driver (alleen relevant wanneer
  * STORAGE_DRIVER=local). In productie met S3/R2 wijst urlFor() rechtstreeks
  * naar de bucket en komt deze route niet in het spel.
+ *
+ * Vereist een ingelogde gebruiker: de hele hub zit achter een loginmuur (zie
+ * middleware.ts), dus een onbeveiligde bestandsroute zou die bescherming
+ * omzeilen voor iedereen die een bestands-URL weet of deelt.
  */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  try {
+    await requireUser();
+  } catch {
+    return NextResponse.json({ error: "Niet ingelogd." }, { status: 401 });
+  }
+
   const { path: segments } = await params;
   const key = segments.join("/");
   try {

@@ -21,6 +21,7 @@ const emptyForm = { title: "", description: "", whoToCall: "", whoMayCommunicate
 export default function AdminCrisisPage() {
   const toast = useToast();
   const [protocols, setProtocols] = useState<CrisisProtocol[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +32,7 @@ export default function AdminCrisisPage() {
     const res = await fetch("/api/admin/crisis");
     const data = await res.json();
     setProtocols(data.protocols ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -204,7 +206,7 @@ export default function AdminCrisisPage() {
             </CardContent>
           </Card>
         ))}
-        {protocols.length === 0 && <p className="text-sm text-muted-foreground">Nog geen protocollen toegevoegd.</p>}
+        {loaded && protocols.length === 0 && <p className="text-sm text-muted-foreground">Nog geen protocollen toegevoegd.</p>}
       </div>
     </div>
   );

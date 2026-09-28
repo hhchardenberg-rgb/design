@@ -52,14 +52,17 @@ export default async function HubPage() {
         </Link>
         <Link href="/crisis">
           <Card className="h-full border-destructive/40 transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <CardContent className="flex h-full flex-col justify-between gap-3 p-6">
-              <div className="flex items-center gap-2.5">
+            <CardContent className="flex h-full flex-col justify-between gap-4 p-6">
+              <div>
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
-                <p className="font-semibold">Crisiscommunicatie</p>
+                <p className="mt-3 text-lg font-bold">Crisiscommunicatie</p>
+                <p className="mt-1 text-sm text-muted-foreground">Wie bellen, wie mag communiceren.</p>
               </div>
-              <p className="text-sm text-muted-foreground">Wie bellen, wie mag communiceren.</p>
+              <span className="flex items-center gap-1 text-sm font-medium text-destructive">
+                Bekijk protocollen <ArrowRight className="h-4 w-4" />
+              </span>
             </CardContent>
           </Card>
         </Link>

@@ -1,6 +1,10 @@
-import { Download } from "lucide-react";
+import type { Metadata } from "next";
+import { Download, Images } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/empty-state";
+
+export const metadata: Metadata = { title: "Fotobank" };
 
 export default async function FotobankPage() {
   const photos = await prisma.stockPhoto.findMany({ orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }] });
@@ -13,7 +17,13 @@ export default async function FotobankPage() {
         <p className="mt-1 text-muted-foreground">Standaardfoto&apos;s om te gebruiken in je content. Klik op downloaden om de foto op te slaan.</p>
       </div>
 
-      {categories.length === 0 && <p className="text-sm text-muted-foreground">Nog geen foto&apos;s beschikbaar.</p>}
+      {categories.length === 0 && (
+        <EmptyState
+          icon={Images}
+          title="Nog geen foto's beschikbaar"
+          description="Een beheerder kan standaardfoto's uploaden via Beheer → Fotobank."
+        />
+      )}
 
       {categories.map((category) => (
         <section key={category}>

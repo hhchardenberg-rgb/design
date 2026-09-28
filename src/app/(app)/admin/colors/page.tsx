@@ -14,6 +14,7 @@ interface BrandColor {
 
 export default function AdminColorsPage() {
   const [colors, setColors] = useState<BrandColor[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
   const [hex, setHex] = useState("#FF6F00");
   const [group, setGroup] = useState("algemeen");
@@ -27,6 +28,7 @@ export default function AdminColorsPage() {
     const res = await fetch("/api/admin/brand-colors");
     const data = await res.json();
     setColors(data.colors ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -142,7 +144,7 @@ export default function AdminColorsPage() {
             </div>
           )
         )}
-        {colors.length === 0 && <p className="text-sm text-muted-foreground">Nog geen huisstijlkleuren toegevoegd.</p>}
+        {loaded && colors.length === 0 && <p className="text-sm text-muted-foreground">Nog geen huisstijlkleuren toegevoegd.</p>}
       </div>
     </div>
   );

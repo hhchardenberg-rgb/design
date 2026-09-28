@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TemplateRowActions } from "./template-row-actions";
+
+export const metadata: Metadata = { title: "Templates beheren" };
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Concept",

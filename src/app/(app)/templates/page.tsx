@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
+
+export const metadata: Metadata = { title: "Nieuwe afbeelding" };
 
 export default async function TemplateGalleryPage() {
   const templates = await prisma.template.findMany({

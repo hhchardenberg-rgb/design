@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -9,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { DesignDeleteButton } from "@/components/design-delete-button";
 
 const QUICK_ACTION_SLUGS = ["matchday", "opstelling", "eindstand", "social-media-story"];
+
+export const metadata: Metadata = { title: "Designtool" };
 
 export default async function DashboardPage() {
   const session = await auth();

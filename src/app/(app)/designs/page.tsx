@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { Palette } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DesignDeleteButton } from "@/components/design-delete-button";
+import { EmptyState } from "@/components/empty-state";
+
+export const metadata: Metadata = { title: "Mijn ontwerpen" };
 
 export default async function DesignsPage() {
   const session = await auth();
@@ -21,7 +26,7 @@ export default async function DesignsPage() {
       </div>
 
       {designs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Je hebt nog geen ontwerpen gemaakt.</p>
+        <EmptyState icon={Palette} title="Je hebt nog geen ontwerpen gemaakt" description="Open de designtool om je eerste afbeelding te maken." />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {designs.map((d) => (

@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/card";
+
+export const metadata: Metadata = { title: "PSD-naamgevingsconventie" };
 
 const conventions = [
   {

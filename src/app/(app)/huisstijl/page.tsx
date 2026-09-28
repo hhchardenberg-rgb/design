@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+export const metadata: Metadata = { title: "Huisstijl" };
 
 export default async function HuisstijlPage() {
   const [colors, fonts] = await Promise.all([

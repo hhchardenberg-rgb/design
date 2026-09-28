@@ -42,6 +42,7 @@ function toUtcIso(value: string, isFullDay: boolean): string {
 export default function AdminAgendaPage() {
   const toast = useToast();
   const [rows, setRows] = useState<AgendaRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [icsError, setIcsError] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +67,7 @@ export default function AdminAgendaPage() {
     const data = await res.json();
     setRows(data.events ?? []);
     setIcsError(Boolean(data.icsError));
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -367,7 +369,7 @@ export default function AdminAgendaPage() {
             </CardContent>
           </Card>
         ))}
-        {rows.length === 0 && <p className="text-sm text-muted-foreground">Geen aankomende agendapunten.</p>}
+        {loaded && rows.length === 0 && <p className="text-sm text-muted-foreground">Geen aankomende agendapunten.</p>}
       </div>
     </div>
   );
