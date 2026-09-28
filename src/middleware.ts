@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
-import { resolveHomePath, type AppRole } from "@/lib/roles";
+import { hasRole, resolveHomePath, type AppRole } from "@/lib/roles";
 
 // Gebruikt bewust de lichte, edge-safe config (geen Prisma/bcrypt) zodat
 // de Edge Function-bundel binnen Vercel's grootte-limiet blijft. De
@@ -57,7 +57,7 @@ export default auth((req) => {
   }
 
   const roles = (user.roles ?? []) as AppRole[];
-  const has = (role: AppRole) => roles.includes(role);
+  const has = (role: AppRole) => hasRole(roles, role);
   const deny = () => NextResponse.redirect(new URL(resolveHomePath(roles), req.nextUrl.origin));
 
   if (isAdminRoute && !has("ADMIN")) return deny();

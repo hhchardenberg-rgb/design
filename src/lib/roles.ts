@@ -34,8 +34,15 @@ export const ASSIGNABLE_ROLES: RoleDefinition[] = [
   },
 ];
 
+/**
+ * Beheerders kunnen altijd alles zien: wie de rol ADMIN heeft, voldoet
+ * hiermee automatisch aan elke andere rol-check (HUB, TICKETING, en
+ * toekomstige rollen) — ook als die rol niet los is aangevinkt.
+ */
 export function hasRole(roles: AppRole[] | undefined | null, role: AppRole): boolean {
-  return !!roles?.includes(role);
+  if (!roles) return false;
+  if (roles.includes("ADMIN")) return true;
+  return roles.includes(role);
 }
 
 /**

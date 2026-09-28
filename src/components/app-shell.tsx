@@ -97,7 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface to-transparent" />
             </div>
           )}
-          <div className={cn("relative flex shrink-0 items-center gap-1.5 overflow-x-auto sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
+          <div className={cn("relative flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
             {isAdminSection ? (
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : isTicketingSection ? (
@@ -109,14 +109,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 label="Onderdelen"
               />
             )}
-            {sections.length > 1 &&
-              sections.map((s) => (
-                <Link key={s.key} href={s.href}>
-                  <Button variant={activeSectionKey === s.key ? "primary" : "outline"} size="sm" className="whitespace-nowrap">
-                    {s.label}
-                  </Button>
-                </Link>
-              ))}
+            {sections.length > 1 && (
+              // Eigen scrollcontainer, los van de rest van deze rij: zo kan
+              // dít stukje horizontaal scrollen op smalle schermen zonder
+              // dat overflow op de buitenste rij het (absoluut gepositioneerde)
+              // GroupedNavMenu-paneel afsnijdt.
+              <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
+                {sections.map((s) => (
+                  <Link key={s.key} href={s.href} className="shrink-0">
+                    <Button variant={activeSectionKey === s.key ? "primary" : "outline"} size="sm" className="whitespace-nowrap">
+                      {s.label}
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            )}
             <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
               Uitloggen
             </Button>
