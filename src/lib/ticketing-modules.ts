@@ -4,7 +4,7 @@
 // met status "soon" als duidelijke plek in de structuur, zie hub-modules.ts
 // voor dat patroon).
 
-import { BookOpen, Mail, KeyRound, Smartphone, Ticket, AtSign, type LucideIcon } from "lucide-react";
+import { BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, type LucideIcon } from "lucide-react";
 
 export interface TicketingModule {
   id: string;
@@ -73,5 +73,13 @@ export const ticketingModules: TicketingModule[] = [
     href: "/ticketing/wachtwoorden",
     status: "available",
     icon: KeyRound,
+  },
+  {
+    id: "excel",
+    title: "Excel-sjablonen",
+    description: "Standaard Excel-bestanden om te downloaden bij het ticketingsysteem.",
+    href: "/ticketing/excel",
+    status: "available",
+    icon: FileSpreadsheet,
   },
 ];
