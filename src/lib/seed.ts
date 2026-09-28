@@ -1,7 +1,10 @@
+import fs from "fs";
+import path from "path";
 import type { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import type { TemplateSchemaJson } from "@/lib/validations/template";
 import { backfillUserRoles } from "@/lib/user-roles.server";
+import { getStorage, buildKey } from "@/lib/storage";
 
 export interface SeedOptions {
   adminEmail: string;
@@ -677,6 +680,37 @@ HHC Hardenberg`,
     const existing = await prisma.ticketingEmailTemplate.findFirst({ where: { title } });
     if (!existing) {
       await prisma.ticketingEmailTemplate.create({ data: { title, sortOrder: i, ...draft } });
+    }
+  }
+
+  // Ticketing: standaard Excel-sjablonen, aangeleverd door HHC. Het bronbestand
+  // staat in seed-assets/ (niet in public/, want de download loopt via de
+  // storage-abstractie zodat het net als een admin-upload achter de rol
+  // Ticketing blijft) en wordt hier één keer naar de storage-driver gezet.
+  const ticketingExcelTemplates = [
+    {
+      title: "Import leden seizoen 2026-27",
+      description: "Sjabloon voor het importeren van ledenpassen voor het seizoen 2026-27.",
+      category: "Leden",
+      assetPath: "seed-assets/ticketing-excel/import-leden-seizoen-2026-27.xlsx",
+      fileName: "IMPORT_LEDEN_SEIZOEN_26-27.xlsx",
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    },
+  ];
+  for (let i = 0; i < ticketingExcelTemplates.length; i++) {
+    const { title, assetPath, fileName, contentType, ...draft } = ticketingExcelTemplates[i];
+    const existing = await prisma.ticketingExcelTemplate.findFirst({ where: { title } });
+    if (!existing) {
+      const buffer = fs.readFileSync(path.join(process.cwd(), assetPath));
+      const storage = getStorage();
+      const stored = await storage.put({
+        key: buildKey("ticketing-excel", `seed-${i}-${fileName}`),
+        data: buffer,
+        contentType,
+      });
+      await prisma.ticketingExcelTemplate.create({
+        data: { title, sortOrder: i, url: stored.url, fileName, fileSize: buffer.byteLength, ...draft },
+      });
     }
   }
 
