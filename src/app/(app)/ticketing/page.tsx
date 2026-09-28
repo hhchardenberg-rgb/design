@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ExternalLink } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ticketingModules } from "@/lib/ticketing-modules";
+import { ticketingModules, ticketingQuickLinks } from "@/lib/ticketing-modules";
 
 export const metadata: Metadata = { title: "Ticketing" };
 
@@ -14,6 +15,32 @@ export default function TicketingPage() {
         <p className="mt-1 text-white/70">
           Handleidingen, procedures en belangrijke informatie over het ticketingsysteem.
         </p>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Snelle links</h2>
+        <Card>
+          <CardContent className="grid divide-y divide-border p-0 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            {ticketingQuickLinks.map((link) => (
+              <a
+                key={link.id}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-4 transition-colors hover:bg-surface-muted"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
+                  <link.icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{link.title}</p>
+                  <p className="text-sm text-muted-foreground">{link.description}</p>
+                </div>
+                <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </a>
+            ))}
+          </CardContent>
+        </Card>
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
