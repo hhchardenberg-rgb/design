@@ -553,6 +553,64 @@ De donateurspas is aangemaakt en automatisch naar het e-mailadres van de donateu
 
 > Je hoeft geen QR-code aan te maken of te importeren.`,
     },
+    {
+      title: "QR-code aanmaken voor lid OCH",
+      category: "Fullhouse",
+      body: `## Stap 1 – Log in op Fullhouse
+Log in op Fullhouse en ga naar **Tickets**.
+
+## Stap 2 – Maak een nieuw ticket aan
+Klik op **Create ticket**.
+
+## Stap 3 – Zoek de persoon op
+Zoek bij **Customer** naar de betreffende persoon en controleer of het e-mailadres klopt.
+
+- **Customer gevonden en e-mailadres klopt:** ga door naar stap 7.
+- **Customer niet gevonden of gegevens kloppen niet:** klik op **Add customer** en maak een nieuwe customer aan.
+
+## Stap 4 – Vul de gegevens in
+Vul de volgende gegevens in:
+
+- Bedrijfsnaam
+- Voornaam
+- Achternaam
+- E-mailadres
+
+## Stap 5 – Vul de verplichte adresvelden
+Voeg bij de volgende velden een spatie in:
+
+- Street
+- Zip
+- City
+
+## Stap 6 – Maak de customer aan
+Klik op **Create Customer**.
+
+## Stap 7 – Selecteer het juiste event
+Selecteer bij Event: **Seizoenspassen [jaartal van het huidige seizoen]**.
+
+## Stap 8 – Kies het juiste type pas
+Selecteer **Ledenpas OCH**.
+
+## Stap 9 – Let op: verstuur géén e-mail
+Zet **Send out tickets via E-mail** niet aan.
+
+> **Let op**
+>
+> De QR-code moet niet automatisch vanuit Fullhouse worden verstuurd.
+
+## Stap 10 – Maak het ticket aan
+Klik op de blauwe knop **Create**.
+
+## Stap 11 – Kopieer de OCH-code
+Na het aanmaken verschijnt er een pop-up met het ticket. Kopieer de code die achter de naam staat — dit is de code voor OCH. Mail deze code vervolgens naar degene die de code heeft opgevraagd.
+
+- **Pop-up niet meer zichtbaar?** Kijk dan eerst in de rechterbalk of daar de code staat.
+- **Ook daar geen code?** Ga terug naar **Tickets**, zoek het betreffende ticket op en kopieer de code achter de naam van de tickethouder.
+
+## Klaar
+De OCH-code is aangemaakt en kan naar de aanvrager worden verstuurd.`,
+    },
   ];
   for (let i = 0; i < ticketingArticles.length; i++) {
     const { title, ...draft } = ticketingArticles[i];
