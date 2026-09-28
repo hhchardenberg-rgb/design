@@ -4,20 +4,27 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { normalizeEmail } from "@/lib/utils";
+import { backfillUserRoles } from "@/lib/user-roles.server";
+
+const APP_ROLES = ["ADMIN", "HUB", "TICKETING"] as const;
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Naam is verplicht."),
   email: z.email("Ongeldig e-mailadres."),
   password: z.string().min(8, "Wachtwoord moet minimaal 8 tekens zijn."),
-  role: z.enum(["USER", "ADMIN"]).default("USER"),
+  roles: z.array(z.enum(APP_ROLES)).default(["HUB"]),
 });
 
 export async function GET() {
   try {
     await requireAdmin();
+    // Zorgt dat gebruikers die nog op het legacy `role`-veld draaien (roles
+    // is dan leeg) hier automatisch gemigreerd worden, zodat het scherm
+    // altijd een correcte, expliciete rollenset laat zien.
+    await backfillUserRoles(prisma);
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, roles: true, createdAt: true },
     });
     return NextResponse.json({ users });
   } catch (error) {
@@ -39,9 +46,11 @@ export async function POST(req: Request) {
         name: body.name,
         email,
         passwordHash: await bcrypt.hash(body.password, 10),
-        role: body.role,
+        roles: body.roles,
+        // Legacy-veld blijft meelopen zodat de historische kolom betekenisvol blijft.
+        role: body.roles.includes("ADMIN") ? "ADMIN" : "USER",
       },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, roles: true, createdAt: true },
     });
 
     return NextResponse.json({ user });

@@ -5,8 +5,10 @@ import { useSession } from "next-auth/react";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ASSIGNABLE_ROLES, type AppRole } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 
 /** Genereert een sterk, willekeurig wachtwoord (leesbare tekens, geen 0/O/1/l/I). */
 function generatePassword(length = 12): string {
@@ -16,11 +18,46 @@ function generatePassword(length = 12): string {
   return Array.from(bytes, (b) => chars[b % chars.length]).join("");
 }
 
+function toggleRole(roles: AppRole[], role: AppRole): AppRole[] {
+  return roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role];
+}
+
+/** Compacte checkbox-rij voor de rollenset — nieuwe rollen komen hier automatisch bij (zie src/lib/roles.ts). */
+function RoleCheckboxes({
+  value,
+  onChange,
+  idPrefix,
+}: {
+  value: AppRole[];
+  onChange: (roles: AppRole[]) => void;
+  idPrefix: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {ASSIGNABLE_ROLES.map((role) => {
+        const id = `${idPrefix}-${role.value}`;
+        return (
+          <label key={role.value} htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-sm">
+            <input
+              id={id}
+              type="checkbox"
+              className="h-4 w-4 rounded border-border accent-hhc-orange"
+              checked={value.includes(role.value)}
+              onChange={() => onChange(toggleRole(value, role.value))}
+            />
+            {role.label}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 interface UserRow {
   id: string;
   name: string;
   email: string;
-  role: "USER" | "ADMIN";
+  roles: AppRole[];
   createdAt: string;
 }
 
@@ -30,7 +67,7 @@ export default function AdminUsersPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"USER" | "ADMIN">("USER");
+  const [roles, setRoles] = useState<AppRole[]>(["HUB"]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +78,8 @@ export default function AdminUsersPage() {
   const [editEmailValue, setEditEmailValue] = useState("");
   const [editNameId, setEditNameId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
+  const [editRolesId, setEditRolesId] = useState<string | null>(null);
+  const [editRolesValue, setEditRolesValue] = useState<AppRole[]>([]);
 
   async function load() {
     const res = await fetch("/api/admin/users");
@@ -60,14 +99,14 @@ export default function AdminUsersPage() {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, roles }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Aanmaken mislukt.");
       setName("");
       setEmail("");
       setPassword("");
-      setRole("USER");
+      setRoles(["HUB"]);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Er ging iets mis.");
@@ -76,18 +115,19 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function updateRole(id: string, newRole: "USER" | "ADMIN") {
+  async function submitRoles(id: string) {
     setError(null);
     const res = await fetch(`/api/admin/users/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: newRole }),
+      body: JSON.stringify({ roles: editRolesValue }),
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "Wijzigen mislukt.");
+      setError(data.error ?? "Rollen wijzigen mislukt.");
       return;
     }
+    setEditRolesId(null);
     await load();
   }
 
@@ -170,218 +210,245 @@ export default function AdminUsersPage() {
       <div>
         <h1 className="text-2xl font-bold">Gebruikers</h1>
         <p className="mt-1 text-muted-foreground">
-          Beheer wie kan inloggen op de HHC Hardenberg Hub en wie beheerderstoegang heeft.
+          Beheer wie kan inloggen op de HHC Hardenberg Hub en welke onderdelen ze mogen gebruiken. Een gebruiker
+          kan meerdere rollen tegelijk hebben.
         </p>
       </div>
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={createUser} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_140px_auto] sm:items-end">
-            <div>
-              <Label>Naam</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div>
-              <Label>E-mailadres</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div>
-              <Label>Wachtwoord</Label>
-              <div className="flex items-center gap-1">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  minLength={8}
-                  required
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  title="Wachtwoord genereren"
-                  onClick={() => {
-                    setPassword(generatePassword());
-                    setShowPassword(true);
-                  }}
-                >
-                  <Sparkles className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  title={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
-                  onClick={() => setShowPassword((v) => !v)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+          <form onSubmit={createUser} className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <Label>Naam</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div>
+                <Label>E-mailadres</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+              <div>
+                <Label>Wachtwoord</Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={8}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    title="Wachtwoord genereren"
+                    onClick={() => {
+                      setPassword(generatePassword());
+                      setShowPassword(true);
+                    }}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    title={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
             <div>
-              <Label>Rol</Label>
-              <Select value={role} onChange={(e) => setRole(e.target.value as "USER" | "ADMIN")}>
-                <option value="USER">Gebruiker</option>
-                <option value="ADMIN">Beheerder</option>
-              </Select>
+              <Label>Rollen</Label>
+              <RoleCheckboxes value={roles} onChange={setRoles} idPrefix="new" />
             </div>
-            <Button type="submit" disabled={creating}>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" disabled={creating} className="w-fit">
               {creating ? "Bezig..." : "Toevoegen"}
             </Button>
           </form>
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
 
       <div className="flex flex-col gap-2">
         {users.map((u) => (
           <Card key={u.id}>
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                {editNameId === u.id ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      className="h-8 w-48"
-                      value={editNameValue}
-                      onChange={(e) => setEditNameValue(e.target.value)}
-                      autoFocus
-                    />
-                    <Button size="sm" onClick={() => submitName(u.id)}>
-                      Opslaan
+            <CardContent className="flex flex-col gap-3 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  {editNameId === u.id ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        className="h-8 w-48"
+                        value={editNameValue}
+                        onChange={(e) => setEditNameValue(e.target.value)}
+                        autoFocus
+                      />
+                      <Button size="sm" onClick={() => submitName(u.id)}>
+                        Opslaan
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditNameId(null);
+                          setEditNameValue("");
+                        }}
+                      >
+                        Annuleren
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-2 font-medium">
+                      {u.name}
+                      {u.id === session?.user?.id && <span className="text-xs font-normal text-muted-foreground">(jij)</span>}
+                      <button
+                        type="button"
+                        className="text-xs font-normal text-hhc-orange-dark hover:underline"
+                        onClick={() => {
+                          setEditNameId(u.id);
+                          setEditNameValue(u.name);
+                        }}
+                      >
+                        wijzigen
+                      </button>
+                    </p>
+                  )}
+                  {editEmailId === u.id ? (
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input
+                        type="email"
+                        className="h-8 w-56"
+                        value={editEmailValue}
+                        onChange={(e) => setEditEmailValue(e.target.value)}
+                        autoFocus
+                      />
+                      <Button size="sm" onClick={() => submitEmail(u.id)}>
+                        Opslaan
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditEmailId(null);
+                          setEditEmailValue("");
+                        }}
+                      >
+                        Annuleren
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {u.email}
+                      <button
+                        type="button"
+                        className="text-hhc-orange-dark hover:underline"
+                        onClick={() => {
+                          setEditEmailId(u.id);
+                          setEditEmailValue(u.email);
+                        }}
+                      >
+                        wijzigen
+                      </button>
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {resetId === u.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type={showResetPassword ? "text" : "password"}
+                        placeholder="Nieuw wachtwoord"
+                        className="h-8 w-36"
+                        value={resetPassword}
+                        onChange={(e) => setResetPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        title="Wachtwoord genereren"
+                        onClick={() => {
+                          setResetPassword(generatePassword());
+                          setShowResetPassword(true);
+                        }}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        title={showResetPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
+                        onClick={() => setShowResetPassword((v) => !v)}
+                      >
+                        {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                      <Button size="sm" onClick={() => submitResetPassword(u.id)}>
+                        Opslaan
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setResetId(null);
+                          setResetPassword("");
+                          setShowResetPassword(false);
+                        }}
+                      >
+                        Annuleren
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setResetId(u.id)}>
+                      Wachtwoord resetten
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditNameId(null);
-                        setEditNameValue("");
-                      }}
-                    >
-                      Annuleren
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="flex items-center gap-2 font-medium">
-                    {u.name}
-                    {u.id === session?.user?.id && <span className="text-xs font-normal text-muted-foreground">(jij)</span>}
-                    <button
-                      type="button"
-                      className="text-xs font-normal text-hhc-orange-dark hover:underline"
-                      onClick={() => {
-                        setEditNameId(u.id);
-                        setEditNameValue(u.name);
-                      }}
-                    >
-                      wijzigen
-                    </button>
-                  </p>
-                )}
-                {editEmailId === u.id ? (
-                  <div className="mt-1 flex items-center gap-2">
-                    <Input
-                      type="email"
-                      className="h-8 w-56"
-                      value={editEmailValue}
-                      onChange={(e) => setEditEmailValue(e.target.value)}
-                      autoFocus
-                    />
-                    <Button size="sm" onClick={() => submitEmail(u.id)}>
-                      Opslaan
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditEmailId(null);
-                        setEditEmailValue("");
-                      }}
-                    >
-                      Annuleren
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {u.email}
-                    <button
-                      type="button"
-                      className="text-hhc-orange-dark hover:underline"
-                      onClick={() => {
-                        setEditEmailId(u.id);
-                        setEditEmailValue(u.email);
-                      }}
-                    >
-                      wijzigen
-                    </button>
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={u.role === "ADMIN" ? "primary" : "outline"}>
-                  {u.role === "ADMIN" ? "Beheerder" : "Gebruiker"}
-                </Badge>
-                <Select
-                  className="h-8 w-40"
-                  value={u.role}
-                  onChange={(e) => updateRole(u.id, e.target.value as "USER" | "ADMIN")}
-                >
-                  <option value="USER">Gebruiker</option>
-                  <option value="ADMIN">Beheerder</option>
-                </Select>
+                  )}
 
-                {resetId === u.id ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type={showResetPassword ? "text" : "password"}
-                      placeholder="Nieuw wachtwoord"
-                      className="h-8 w-36"
-                      value={resetPassword}
-                      onChange={(e) => setResetPassword(e.target.value)}
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      title="Wachtwoord genereren"
-                      onClick={() => {
-                        setResetPassword(generatePassword());
-                        setShowResetPassword(true);
-                      }}
-                    >
-                      <Sparkles className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      title={showResetPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
-                      onClick={() => setShowResetPassword((v) => !v)}
-                    >
-                      {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                    <Button size="sm" onClick={() => submitResetPassword(u.id)}>
-                      Opslaan
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setResetId(null);
-                        setResetPassword("");
-                        setShowResetPassword(false);
-                      }}
-                    >
-                      Annuleren
-                    </Button>
-                  </div>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => setResetId(u.id)}>
-                    Wachtwoord resetten
+                  <Button size="sm" variant="ghost" onClick={() => remove(u.id)} disabled={u.id === session?.user?.id}>
+                    Verwijderen
                   </Button>
-                )}
+                </div>
+              </div>
 
-                <Button size="sm" variant="ghost" onClick={() => remove(u.id)} disabled={u.id === session?.user?.id}>
-                  Verwijderen
-                </Button>
+              <div className={cn("flex flex-col gap-2 border-t border-border pt-3", editRolesId !== u.id && "sm:flex-row sm:items-center")}>
+                {editRolesId === u.id ? (
+                  <div className="flex flex-col gap-2">
+                    <RoleCheckboxes value={editRolesValue} onChange={setEditRolesValue} idPrefix={u.id} />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => submitRoles(u.id)}>
+                        Opslaan
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditRolesId(null)}>
+                        Annuleren
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {u.roles.length === 0 && <Badge variant="outline">Geen rollen</Badge>}
+                      {ASSIGNABLE_ROLES.filter((r) => u.roles.includes(r.value)).map((r) => (
+                        <Badge key={r.value} variant={r.value === "ADMIN" ? "primary" : "default"}>
+                          {r.label}
+                        </Badge>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-hhc-orange-dark hover:underline"
+                      onClick={() => {
+                        setEditRolesId(u.id);
+                        setEditRolesValue(u.roles);
+                      }}
+                    >
+                      rollen wijzigen
+                    </button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/lib/auth.config";
 import { normalizeEmail } from "@/lib/utils";
+import { effectiveRoles } from "@/lib/roles";
 
 // Volledige configuratie — alleen gebruikt in de Node.js-runtime (API-route
 // api/auth/[...nextauth], server components/actions). Bevat de
@@ -39,7 +40,7 @@ export const {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          roles: effectiveRoles(user),
         };
       },
     }),

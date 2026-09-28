@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
+import { resolveHomePath, type AppRole } from "@/lib/roles";
 
 // Gebruikt bewust de lichte, edge-safe config (geen Prisma/bcrypt) zodat
 // de Edge Function-bundel binnen Vercel's grootte-limiet blijft. De
@@ -8,9 +9,9 @@ import { authConfig } from "@/lib/auth.config";
 // draait alleen server-side (API-route, server components).
 const { auth } = NextAuth(authConfig);
 
-// Alle onderdelen van de hub (buiten /admin) vereisen een ingelogde
-// gebruiker — nieuwe onderdelen hier én in de matcher hieronder toevoegen.
-const PROTECTED_PREFIXES = [
+// De communicatie-hub — vereist de rol HUB. Nieuwe hub-onderdelen hier én in
+// de matcher hieronder toevoegen.
+const HUB_PREFIXES = [
   "/hub",
   "/dashboard",
   "/templates",
@@ -27,10 +28,24 @@ const PROTECTED_PREFIXES = [
   "/persberichten",
 ];
 
+// Het afgeschermde Ticketing-gedeelte — vereist de rol TICKETING.
+const TICKETING_PREFIXES = ["/ticketing"];
+
+// Vereist alleen ingelogd zijn, geen specifieke rol (bv. de "geen
+// toegang"-pagina voor gebruikers zonder enige rol).
+const LOGIN_ONLY_PREFIXES = ["/geen-toegang"];
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAdminRoute = pathname.startsWith("/admin");
-  const isProtectedRoute = isAdminRoute || PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  // Ticketing-content beheren (/admin/ticketing) vereist behalve ADMIN ook
+  // expliciet de rol TICKETING — anders zou een beheerder zonder die rol via
+  // het beheergedeelte alsnog Ticketing-inhoud kunnen zien/bewerken.
+  const isTicketingAdminRoute = pathname.startsWith("/admin/ticketing");
+  const isHubRoute = HUB_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isTicketingRoute = TICKETING_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isLoginOnlyRoute = LOGIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isProtectedRoute = isAdminRoute || isHubRoute || isTicketingRoute || isLoginOnlyRoute;
 
   if (!isProtectedRoute) return NextResponse.next();
 
@@ -41,16 +56,21 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && user.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
-  }
+  const roles = (user.roles ?? []) as AppRole[];
+  const has = (role: AppRole) => roles.includes(role);
+  const deny = () => NextResponse.redirect(new URL(resolveHomePath(roles), req.nextUrl.origin));
+
+  if (isAdminRoute && !has("ADMIN")) return deny();
+  if (isTicketingAdminRoute && !has("TICKETING")) return deny();
+  if (isHubRoute && !has("HUB")) return deny();
+  if (isTicketingRoute && !has("TICKETING")) return deny();
 
   return NextResponse.next();
 });
 
 // Next.js parseert `matcher` statisch tijdens de build — dit moet dus een
-// letterlijke array zijn (geen `.map()` over PROTECTED_PREFIXES). Hou deze
-// lijst in sync met PROTECTED_PREFIXES hierboven.
+// letterlijke array zijn (geen `.map()` over de prefix-lijsten hierboven).
+// Hou deze lijst in sync met HUB_PREFIXES/TICKETING_PREFIXES/LOGIN_ONLY_PREFIXES.
 export const config = {
   matcher: [
     "/admin/:path*",
@@ -68,5 +88,7 @@ export const config = {
     "/stopwatch/:path*",
     "/contactpersonen/:path*",
     "/persberichten/:path*",
+    "/ticketing/:path*",
+    "/geen-toegang/:path*",
   ],
 };

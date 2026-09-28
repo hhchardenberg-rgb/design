@@ -2,10 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { adminModuleGroups } from "@/lib/admin-modules";
+import { auth } from "@/lib/auth";
+import { hasRole } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Beheer" };
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
+  const session = await auth();
+  const roles = session?.user?.roles ?? [];
+  const visibleGroups = adminModuleGroups
+    .map((group) => ({
+      ...group,
+      modules: group.modules.filter((mod) => !mod.requiredRole || hasRole(roles, mod.requiredRole)),
+    }))
+    .filter((group) => group.modules.length > 0);
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -13,7 +24,7 @@ export default function AdminOverviewPage() {
         <p className="mt-1 text-muted-foreground">Overzicht van alles wat je binnen de HHC Hardenberg Hub kunt beheren.</p>
       </div>
 
-      {adminModuleGroups.map((group) => (
+      {visibleGroups.map((group) => (
         <section key={group.id}>
           <h2 className="mb-3 text-lg font-semibold">{group.label}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

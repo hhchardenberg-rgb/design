@@ -71,7 +71,7 @@ export const hubModuleGroups: HubModuleGroup[] = [
       {
         id: "contacten",
         title: "Contactpersonen",
-        description: "Wie doet wat binnen Team Communicatie en hoe bereik je elkaar.",
+        description: "Wie doet wat binnen HHC Hardenberg en hoe bereik je elkaar?",
         href: "/contactpersonen",
         status: "available",
         icon: Users,

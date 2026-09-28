@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { GroupedNavMenu, type NavMenuGroup } from "@/components/grouped-nav-menu";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { adminModuleGroups } from "@/lib/admin-modules";
+import { ticketingModules } from "@/lib/ticketing-modules";
+import { hasRole, resolveHomePath, type AppRole } from "@/lib/roles";
 
 // Sub-navigatie bínnen het designtool-onderdeel — apart van het apps-menu,
 // zodat je niet elke keer een dropdown hoeft te openen om van "Nieuwe
@@ -25,25 +27,54 @@ const hubMenuGroups: NavMenuGroup[] = hubModuleGroups.map((g) => ({
   items: g.modules.map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
 }));
 
-const adminMenuGroups: NavMenuGroup[] = adminModuleGroups.map((g) => ({
-  id: g.id,
-  label: g.label,
-  items: g.modules.map((m) => ({ title: m.title, href: m.href, icon: m.icon })),
-}));
+const ticketingMenuGroups: NavMenuGroup[] = [
+  {
+    id: "ticketing",
+    label: "Ticketing",
+    items: ticketingModules.map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
+  },
+];
+
+// Drie mogelijke top-level secties — enkel getoond aan wie er rechten voor
+// heeft. Nieuwe rol met een eigen sectie? Hier een entry toevoegen.
+const SECTION_DEFINITIONS: { key: string; role: AppRole; label: string; href: string }[] = [
+  { key: "hub", role: "HUB", label: "Communicatie", href: "/hub" },
+  { key: "ticketing", role: "TICKETING", label: "Ticketing", href: "/ticketing" },
+  { key: "admin", role: "ADMIN", label: "Beheer", href: "/admin" },
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const roles = session?.user?.roles ?? [];
+
   const isAdminSection = pathname?.startsWith("/admin");
+  const isTicketingSection = !isAdminSection && pathname?.startsWith("/ticketing");
   const isDesigntoolSection =
-    pathname?.startsWith("/dashboard") || pathname?.startsWith("/templates") || pathname?.startsWith("/designs");
-  const nav = isAdminSection ? [] : isDesigntoolSection ? designtoolNav : [];
+    !isAdminSection &&
+    !isTicketingSection &&
+    (pathname?.startsWith("/dashboard") || pathname?.startsWith("/templates") || pathname?.startsWith("/designs"));
+  const nav = isAdminSection || isTicketingSection ? [] : isDesigntoolSection ? designtoolNav : [];
+
+  const adminMenuGroups: NavMenuGroup[] = adminModuleGroups
+    .map((g) => ({
+      id: g.id,
+      label: g.label,
+      items: g.modules
+        .filter((m) => !m.requiredRole || hasRole(roles, m.requiredRole))
+        .map((m) => ({ title: m.title, href: m.href, icon: m.icon })),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  const activeSectionKey = isAdminSection ? "admin" : isTicketingSection ? "ticketing" : "hub";
+  const sections = SECTION_DEFINITIONS.filter((s) => hasRole(roles, s.role));
+  const homeHref = resolveHomePath(roles);
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:gap-6">
-          <Link href="/hub" className="flex shrink-0 items-center gap-2 font-bold">
+          <Link href={homeHref} className="flex shrink-0 items-center gap-2 font-bold">
             <Image src="/branding/hhc-logo.png" alt="HHC Hardenberg" width={32} height={40} className="h-10 w-8" priority />
             <span className="hidden sm:inline">HHC Hardenberg Hub</span>
           </Link>
@@ -66,9 +97,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface to-transparent" />
             </div>
           )}
-          <div className={cn("relative flex shrink-0 items-center gap-1.5 sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
+          <div className={cn("relative flex shrink-0 items-center gap-1.5 overflow-x-auto sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
             {isAdminSection ? (
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
+            ) : isTicketingSection ? (
+              <GroupedNavMenu groups={ticketingMenuGroups} label="Onderdelen" />
             ) : (
               <GroupedNavMenu
                 groups={hubMenuGroups}
@@ -76,13 +109,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 label="Onderdelen"
               />
             )}
-            {session?.user?.role === "ADMIN" && (
-              <Link href={isAdminSection ? "/hub" : "/admin"}>
-                <Button variant="outline" size="sm">
-                  {isAdminSection ? "Naar hub" : "Beheer"}
-                </Button>
-              </Link>
-            )}
+            {sections.length > 1 &&
+              sections.map((s) => (
+                <Link key={s.key} href={s.href}>
+                  <Button variant={activeSectionKey === s.key ? "primary" : "outline"} size="sm" className="whitespace-nowrap">
+                    {s.label}
+                  </Button>
+                </Link>
+              ))}
             <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
               Uitloggen
             </Button>

@@ -116,7 +116,7 @@ export default function PersberichtenPage() {
   }
 
   function canManage(release: PressRelease) {
-    return release.authorId === session?.user?.id || session?.user?.role === "ADMIN";
+    return release.authorId === session?.user?.id || !!session?.user?.roles?.includes("ADMIN");
   }
 
   return (

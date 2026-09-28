@@ -14,9 +14,15 @@ datasource db {
 // Auth & gebruikers
 // ---------------------------------------------------------------------------
 
+// USER blijft in de enum staan als legacy-waarde van het oude, enkelvoudige
+// `role`-veld (zie hieronder) — nieuwe code kent nooit USER toe aan `roles`.
+// HUB en TICKETING zijn de eerste twee "sectie"-rollen naast ADMIN; nieuwe
+// rollen kunnen hier simpelweg worden toegevoegd (zie ook src/lib/roles.ts).
 enum Role {
   USER
   ADMIN
+  HUB
+  TICKETING
 }
 
 model User {
@@ -24,7 +30,18 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
-  role         Role     @default(USER)
+  // Legacy: het oorspronkelijke enkelvoudige rolveld. Niet meer gelezen door
+  // nieuwe autorisatielogica, maar bewust behouden (en bij elke wijziging via
+  // /api/admin/users meeveranderd) zodat bestaande data nooit verloren gaat
+  // en er geen aparte migratie nodig is om ADMIN/USER-informatie te bewaren.
+  role  Role   @default(USER)
+  // Nieuwe bron van waarheid: een gebruiker kan nul of meer rollen hebben
+  // (bv. zowel HUB als TICKETING). Leeg (`[]`) betekent "nog niet
+  // gemigreerd" — zie effectiveRoles() in src/lib/roles.ts, dat in dat geval
+  // terugvalt op het legacy `role`-veld zodat bestaande accounts nooit
+  // toegang verliezen. Wordt automatisch éénmalig gevuld (zie
+  // backfillUserRoles in src/lib/user-roles.server.ts).
+  roles Role[] @default([])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -314,6 +331,23 @@ model KnowledgeArticle {
   updatedAt DateTime @updatedAt
 
   @@map("knowledge_articles")
+}
+
+// ---------------------------------------------------------------------------
+// Ticketing (afgeschermd — zie src/lib/roles.ts en src/middleware.ts)
+// ---------------------------------------------------------------------------
+
+model TicketingArticle {
+  id        String  @id @default(cuid())
+  title     String
+  body      String? // leeg = nog te schrijven, getoond als "nog niet ingevuld"
+  category  String?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ticketing_articles")
 }
 
 // ---------------------------------------------------------------------------

@@ -17,14 +17,20 @@ import {
   SwatchBook,
   UserCog,
   FileText,
+  Ticket,
   type LucideIcon,
 } from "lucide-react";
+import type { AppRole } from "@/lib/roles";
 
 export interface AdminModule {
   title: string;
   description: string;
   href: string;
   icon: LucideIcon;
+  // Alleen tonen aan beheerders die ook deze rol hebben (bv. Ticketing-
+  // content beheren vereist naast ADMIN ook de rol TICKETING). Ontbreekt
+  // dit veld, dan is het onderdeel zichtbaar voor elke beheerder — zoals nu.
+  requiredRole?: AppRole;
 }
 
 export interface AdminModuleGroup {
@@ -45,6 +51,13 @@ export const adminModuleGroups: AdminModuleGroup[] = [
       { title: "Kennisbank", description: "Handleidingen en werkwijzen beheren.", href: "/admin/kennisbank", icon: BookOpen },
       { title: "Crisiscommunicatie", description: "Protocollen per incidenttype beheren.", href: "/admin/crisis", icon: AlertTriangle },
       { title: "Contactpersonen", description: "Wie doet wat binnen Team Communicatie.", href: "/admin/contactpersonen", icon: Users },
+      {
+        title: "Ticketing",
+        description: "Handleidingen en procedures voor het ticketingsysteem beheren.",
+        href: "/admin/ticketing",
+        icon: Ticket,
+        requiredRole: "TICKETING",
+      },
     ],
   },
   {

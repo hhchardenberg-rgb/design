@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { hasRole } from "@/lib/roles";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -8,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const existing = await prisma.pressRelease.findUnique({ where: { id } });
     if (!existing) throw new ApiError(404, "Persbericht niet gevonden.");
-    if (existing.authorId !== user.id && user.role !== "ADMIN") {
+    if (existing.authorId !== user.id && !hasRole(user.roles, "ADMIN")) {
       throw new ApiError(403, "Je kunt alleen je eigen persberichten bewerken.");
     }
 
@@ -35,7 +36,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const existing = await prisma.pressRelease.findUnique({ where: { id } });
     if (!existing) throw new ApiError(404, "Persbericht niet gevonden.");
-    if (existing.authorId !== user.id && user.role !== "ADMIN") {
+    if (existing.authorId !== user.id && !hasRole(user.roles, "ADMIN")) {
       throw new ApiError(403, "Je kunt alleen je eigen persberichten verwijderen.");
     }
 

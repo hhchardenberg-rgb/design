@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import type { TemplateSchemaJson } from "@/lib/validations/template";
+import { backfillUserRoles } from "@/lib/user-roles.server";
 
 export interface SeedOptions {
   adminEmail: string;
@@ -42,6 +43,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
       email: adminEmail,
       passwordHash: await bcrypt.hash(adminPassword, 10),
       role: "ADMIN",
+      roles: ["ADMIN", "HUB"],
     },
   });
 
@@ -53,8 +55,14 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
       email: "vrijwilliger@hhchardenberg.nl",
       passwordHash: await bcrypt.hash("wachtwoord123", 10),
       role: "USER",
+      roles: ["HUB"],
     },
   });
+
+  // Migreert bestaande accounts (aangemaakt vóór de meerdere-rollen-update)
+  // van het legacy `role`-veld naar de nieuwe `roles`-set. Idempotent en
+  // veilig om vaak te draaien — zie src/lib/user-roles.server.ts.
+  await backfillUserRoles(prisma);
 
   // Officiële huisstijlkleuren uit het HHC Hardenberg huisstijlhandboek
   // (PMS Orange 021 / PMS Black, RGB/hex-kolom). Het handboek stelt
@@ -398,6 +406,118 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     const existing = await prisma.knowledgeArticle.findFirst({ where: { title } });
     if (!existing) {
       await prisma.knowledgeArticle.create({ data: { title, sortOrder: i } });
+    }
+  }
+
+  // Ticketing: de eerste twee handleidingen, aangeleverd door HHC. Elke
+  // handleiding wordt maar één keer aangemaakt (op titel); eenmaal door een
+  // beheerder bewerkt, laat een her-seed het met rust.
+  const ticketingArticles = [
+    {
+      title: "Donateur zegt geen pas te hebben of is de pas kwijt",
+      category: "Fullhouse",
+      body: `Stap 1 – Inloggen in Fullhouse
+Ga naar Fullhouse en log in met je gegevens:
+https://dashboard.fullhouse.tech/login
+
+Stap 2 – Zoek de persoon op naam
+Ga in Fullhouse naar 'Tickets'.
+Klik bij 'Name' en vul daar de achternaam van de persoon in.
+
+Stap 3 – Controleer of er een seizoenspas is
+Kijk in de kolom 'Event' of er een seizoenspas van het huidige seizoen tussen staat.
+
+Er staat wél een seizoenspas
+Ga verder met stap 4.
+
+Stap 4 – Open het ticket
+Klik op het betreffende ticket om het te openen.
+
+Stap 5 – Controleer en verstuur het ticket per e-mail
+Klik onderaan op 'Send E-mail'.
+Controleer vervolgens of het e-mailadres in Fullhouse hetzelfde is als het e-mailadres van de persoon die contact heeft opgenomen.
+- E-mailadres klopt: klik op 'Confirm'.
+- E-mailadres klopt niet: wijzig het e-mailadres en klik daarna op 'Confirm'.
+
+Let op bij een gewijzigd e-mailadres
+Als het e-mailadres is gewijzigd en het nieuwe adres nog niet in Sportlink staat, geef de wijziging dan door aan de ledenadministratie.
+Gaat het om een donateur? Zet dan ook Dirk Nijeboer in de cc via administratie-HHC@kpnmail.nl.
+
+Stap 6 – Download het ticket
+Klik op 'Download'.
+Reageer vervolgens op de e-mail van de persoon en voeg het gedownloade ticket als bijlage toe.
+
+Stap 7 – Klaar
+De persoon heeft de seizoenspas opnieuw ontvangen.
+
+Geen seizoenspas gevonden?
+Staat er bij het zoeken op achternaam geen seizoenspas van het huidige seizoen?
+Zoek dan bij 'Tickets' opnieuw, maar nu op het e-mailadres van de persoon.
+
+Wel een ticket gevonden?
+Ga verder vanaf stap 5 en rond het proces af.
+
+Nog steeds geen ticket gevonden?
+Zoek verder of je het ticket op een andere manier kunt vinden.
+Is er uiteindelijk helemaal geen ticket te vinden? Controleer dan of de persoon daadwerkelijk donateur is.
+Voor het controleren of iemand donateur is, is een aparte handleiding beschikbaar.`,
+    },
+    {
+      title: "Een lid kan niet inloggen op de Ledenpas App",
+      category: "Ledenpas App",
+      body: `Stap 1 – Log in op iApp
+Ga naar iApp en log in:
+https://iapp.cloud/
+Ga vervolgens naar 'Leden'.
+
+Stap 2 – Controleer of de persoon een ledenpas heeft
+Zoek de betreffende persoon op en controleer of er een ledenpas aanwezig is.
+
+Er is wél een ledenpas
+Stap 3 – Stel een nieuw wachtwoord in
+Verzin zelf een wachtwoord of gebruik de wachtwoord-generator.
+
+Stap 4 – Controleer het e-mailadres
+Controleer of het e-mailadres bij het account juist is.
+- E-mailadres klopt: ga verder naar stap 5.
+- E-mailadres klopt niet: wijzig het e-mailadres naar het juiste adres.
+
+Let op bij een gewijzigd e-mailadres
+Als het e-mailadres is gewijzigd en het nieuwe adres nog niet in Sportlink staat, geef de wijziging dan door aan de ledenadministratie.
+Gaat het om een donateur? Zet dan ook Dirk Nijeboer in de cc via administratie-HHC@kpnmail.nl.
+
+Stap 5 – Stuur de inloggegevens
+Stuur de persoon een e-mail met de inloggegevens voor de Ledenpas App.
+De inloggegevens zijn:
+- Gebruikersnaam: het volledige e-mailadres
+- Wachtwoord: het wachtwoord dat je bij stap 3 hebt ingesteld
+
+Let op
+Vraagt iemand om toegang voor meerdere personen op één account? Het systeem koppelt leden met hetzelfde e-mailadres automatisch aan elkaar.
+
+Stap 6 – Klaar
+De persoon kan met de nieuwe gegevens inloggen op de Ledenpas App.
+
+Er is géén ledenpas
+Controleer eerst of de persoon lid is
+Controleer in Sportlink of de persoon daadwerkelijk lid is.
+
+Persoon is lid
+Zoek vervolgens in iApp op het KNVB-nummer van de persoon.
+
+Persoon gevonden?
+Ga verder vanaf stap 3 en stel een wachtwoord in.
+
+Nog steeds niet gevonden?
+Maak een nieuw account aan voor de persoon.
+Importeer daarna de QR-code in Fullhouse.`,
+    },
+  ];
+  for (let i = 0; i < ticketingArticles.length; i++) {
+    const { title, ...draft } = ticketingArticles[i];
+    const existing = await prisma.ticketingArticle.findFirst({ where: { title } });
+    if (!existing) {
+      await prisma.ticketingArticle.create({ data: { title, sortOrder: i, ...draft } });
     }
   }
 

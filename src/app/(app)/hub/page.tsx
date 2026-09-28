@@ -71,7 +71,7 @@ export default async function HubPage() {
       {highlightedEvents.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Aankomende events</h2>
+            <h2 className="text-lg font-semibold">Uitgelichte events</h2>
             <Link href="/kalender" className="text-sm font-medium text-hhc-orange-dark hover:underline">
               Volledige agenda
             </Link>
