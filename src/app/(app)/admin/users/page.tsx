@@ -8,15 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ASSIGNABLE_ROLES, type AppRole } from "@/lib/roles";
+import { generatePassword } from "@/lib/password";
 import { cn } from "@/lib/utils";
-
-/** Genereert een sterk, willekeurig wachtwoord (leesbare tekens, geen 0/O/1/l/I). */
-function generatePassword(length = 12): string {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*";
-  const bytes = new Uint32Array(length);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
-}
 
 function toggleRole(roles: AppRole[], role: AppRole): AppRole[] {
   return roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role];

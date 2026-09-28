@@ -4,7 +4,7 @@
 // een eigen pagina/databron voor is — tot die tijd staan ze met
 // status "soon" klaar als duidelijke plek in de structuur.
 
-import { BookOpen, HelpCircle, Link2, Phone, Megaphone, Mail, type LucideIcon } from "lucide-react";
+import { BookOpen, HelpCircle, Link2, Phone, Megaphone, Mail, KeyRound, type LucideIcon } from "lucide-react";
 
 export interface TicketingModule {
   id: string;
@@ -31,6 +31,14 @@ export const ticketingModules: TicketingModule[] = [
     href: "/ticketing/emails",
     status: "available",
     icon: Mail,
+  },
+  {
+    id: "wachtwoorden",
+    title: "Wachtwoord genereren",
+    description: "Maak een willekeurig wachtwoord voor een lid waarvoor je een pas aanmaakt.",
+    href: "/ticketing/wachtwoorden",
+    status: "available",
+    icon: KeyRound,
   },
   {
     id: "faq",
