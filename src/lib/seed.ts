@@ -181,6 +181,46 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     await prisma.opponent.upsert({ where: { id: o.id }, update: {}, create: o });
   }
 
+  // Tegenstanders-bibliotheek: echte clublogo's uit de Tweede Divisie,
+  // aangeleverd door HHC. Bronbestanden staan in seed-assets/opponents/ en
+  // worden via de storage-abstractie opgeslagen. Bestaat een tegenstander
+  // met deze naam al (bv. de voorbeelddata hierboven) maar zonder logo, dan
+  // krijgt die het logo erbij in plaats van een dubbele rij aan te maken.
+  const realOpponentLogos = [
+    { name: "AFC", assetPath: "seed-assets/opponents/afc.png" },
+    { name: "Almere City FC", assetPath: "seed-assets/opponents/almere-city-fc.png" },
+    { name: "BVV Barendrecht", assetPath: "seed-assets/opponents/bvv-barendrecht.png" },
+    { name: "De Treffers", assetPath: "seed-assets/opponents/de-treffers.png" },
+    { name: "GVVV", assetPath: "seed-assets/opponents/gvvv.png" },
+    { name: "HSV Hoek", assetPath: "seed-assets/opponents/hsv-hoek.png" },
+    { name: "IJsselmeervogels", assetPath: "seed-assets/opponents/ijsselmeervogels.png" },
+    { name: "Jong Sparta Rotterdam", assetPath: "seed-assets/opponents/jong-sparta-rotterdam.png" },
+    { name: "Koninklijke HFC", assetPath: "seed-assets/opponents/koninklijke-hfc.png" },
+    { name: "Kozakken Boys", assetPath: "seed-assets/opponents/kozakken-boys.png" },
+    { name: "Quick Boys", assetPath: "seed-assets/opponents/kvv-quick-boys.png" },
+    { name: "Rijnsburgse Boys", assetPath: "seed-assets/opponents/rijnsburgse-boys.png" },
+    { name: "RKAV Volendam", assetPath: "seed-assets/opponents/rkav-volendam.png" },
+    { name: "Rohda Raalte", assetPath: "seed-assets/opponents/rohda-raalte.png" },
+    { name: "SV Spakenburg", assetPath: "seed-assets/opponents/sv-spakenburg.png" },
+    { name: "VV Katwijk", assetPath: "seed-assets/opponents/vv-katwijk.png" },
+  ];
+  for (const o of realOpponentLogos) {
+    const existing = await prisma.opponent.findFirst({ where: { name: o.name } });
+    if (existing && existing.logoUrl) continue;
+    const buffer = fs.readFileSync(path.join(process.cwd(), o.assetPath));
+    const storage = getStorage();
+    const stored = await storage.put({
+      key: buildKey("opponents", path.basename(o.assetPath)),
+      data: buffer,
+      contentType: "image/png",
+    });
+    if (existing) {
+      await prisma.opponent.update({ where: { id: existing.id }, data: { logoUrl: stored.url } });
+    } else {
+      await prisma.opponent.create({ data: { name: o.name, logoUrl: stored.url } });
+    }
+  }
+
   const match = await prisma.match.upsert({
     where: { id: "match-hhc-katwijk" },
     update: {},
