@@ -54,7 +54,7 @@ export function TemplateRowActions({ templateId, archived }: { templateId: strin
   async function remove() {
     if (
       !confirm(
-        "Deze template en al zijn versies definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
+        "Deze template, al zijn versies en alle ontwerpen die ermee gemaakt zijn definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
       )
     )
       return;
