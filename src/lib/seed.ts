@@ -199,6 +199,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     { name: "HSV Hoek", assetPath: "seed-assets/opponents/hsv-hoek.png" },
     { name: "IJsselmeervogels", assetPath: "seed-assets/opponents/ijsselmeervogels.png" },
     { name: "Jong Sparta Rotterdam", assetPath: "seed-assets/opponents/jong-sparta-rotterdam.png" },
+    { name: "Kloetinge", assetPath: "seed-assets/opponents/kloetinge.png" },
     { name: "Koninklijke HFC", assetPath: "seed-assets/opponents/koninklijke-hfc.png" },
     { name: "Kozakken Boys", assetPath: "seed-assets/opponents/kozakken-boys.png" },
     { name: "Quick Boys", assetPath: "seed-assets/opponents/kvv-quick-boys.png" },
