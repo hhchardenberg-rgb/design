@@ -188,7 +188,11 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
   // krijgt die het logo erbij in plaats van een dubbele rij aan te maken.
   const realOpponentLogos = [
     { name: "AFC", assetPath: "seed-assets/opponents/afc.png" },
-    { name: "Almere City FC", assetPath: "seed-assets/opponents/almere-city-fc.png" },
+    // In de Tweede Divisie komt HHC niet "Almere City FC" (het eerste elftal)
+    // tegen maar "Jong Almere City FC" — zelfde clublogo, dus die naam
+    // gebruiken zodat dit de bestaande voorbeeld-tegenstander van een logo
+    // voorziet in plaats van er een dubbele naast te zetten.
+    { name: "Jong Almere City FC", assetPath: "seed-assets/opponents/almere-city-fc.png" },
     { name: "BVV Barendrecht", assetPath: "seed-assets/opponents/bvv-barendrecht.png" },
     { name: "De Treffers", assetPath: "seed-assets/opponents/de-treffers.png" },
     { name: "GVVV", assetPath: "seed-assets/opponents/gvvv.png" },
