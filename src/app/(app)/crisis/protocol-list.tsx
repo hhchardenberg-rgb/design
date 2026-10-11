@@ -16,6 +16,19 @@ export interface CrisisProtocolItem {
 const NOT_FILLED = "Nog niet ingevuld — vraag dit na bij een beheerder.";
 
 /**
+ * Splitst de vrije tekst van "steps" in losse stappen. Werkt zowel voor één
+ * stap per regel als voor een doorlopende tekst als "1) Eerste hulp. 2) Bel…",
+ * en haalt bestaande nummering ("1)", "2.", "-") weg: de nummering wordt
+ * bij het tonen opnieuw gegenereerd.
+ */
+function parseSteps(text: string | null): string[] {
+  if (!text) return [];
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const parts = lines.length > 1 ? lines : text.split(/(?:^|\s)(?=\d+[).]\s)/).map((l) => l.trim()).filter(Boolean);
+  return parts.map((l) => l.replace(/^(?:\d+[).]|[-*•])\s*/, "").trim()).filter(Boolean);
+}
+
+/**
  * Compacte lijst met één tegel per incidenttype; klikken opent het
  * volledige protocol in een pop-up, zodat de pagina overzichtelijk blijft
  * ook als er veel protocollen zijn.
@@ -23,6 +36,7 @@ const NOT_FILLED = "Nog niet ingevuld — vraag dit na bij een beheerder.";
 export function CrisisProtocolList({ protocols }: { protocols: CrisisProtocolItem[] }) {
   const [selected, setSelected] = useState<CrisisProtocolItem | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const steps = parseSteps(selected?.steps ?? null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -90,7 +104,21 @@ export function CrisisProtocolList({ protocols }: { protocols: CrisisProtocolIte
                 <p className="whitespace-pre-wrap text-sm">{selected.whoMayCommunicate || NOT_FILLED}</p>
               </div>
             </div>
-            {selected.steps && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{selected.steps}</p>}
+            {steps.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm font-semibold">Stappen</p>
+                <ol className="flex flex-col gap-2">
+                  {steps.map((step, i) => (
+                    <li key={i} className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                        {i + 1}
+                      </span>
+                      <span className="pt-0.5">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
           </div>
         )}
       </dialog>
