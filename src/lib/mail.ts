@@ -24,7 +24,11 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
   const resend = getClient();
   const resetUrl = `${APP_URL}/wachtwoord-resetten/${token}`;
 
-  await resend.emails.send({
+  // De Resend-SDK gooit bij een API-fout niet zelf, maar geeft { error } terug.
+  // Zonder deze controle lijkt een geweigerde mail (bv. 403 omdat het
+  // testdomein alleen naar het adres van de Resend-eigenaar mag sturen)
+  // gewoon geslaagd en blijft er niets in de logs achter.
+  const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
     subject: "Wachtwoord resetten — HHC Hardenberg Hub",
@@ -36,6 +40,9 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
       <p>Heb je dit niet zelf aangevraagd? Dan kun je deze e-mail gewoon negeren — er verandert niets aan je account.</p>
     `,
   });
+  if (error) {
+    throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+  }
 }
 
 function escapeHtml(value: string): string {
