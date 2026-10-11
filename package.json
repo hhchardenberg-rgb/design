@@ -63,6 +63,14 @@
     "typescript": "^5"
   },
   "overrides": {
-    "deepmerge-ts": "^8.0.2"
+    "deepmerge-ts": "^8.0.2",
+    "@auth/core": {
+      "@simplewebauthn/browser": "$@simplewebauthn/browser",
+      "@simplewebauthn/server": "$@simplewebauthn/server"
+    },
+    "next-auth": {
+      "@simplewebauthn/browser": "$@simplewebauthn/browser",
+      "@simplewebauthn/server": "$@simplewebauthn/server"
+    }
   }
 }
