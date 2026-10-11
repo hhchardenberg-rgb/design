@@ -79,8 +79,29 @@ model User {
   totpCredential     TotpCredential?
   recoveryCodes      RecoveryCode[]
   webauthnCredentials WebAuthnCredential[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
+}
+
+// Wachtwoord-vergeten-flow (zie src/lib/password-reset.ts). Alleen de hash
+// van het token wordt opgeslagen (zelfde reden als bij RecoveryCode: zo
+// heeft een eventuele databaselek geen bruikbare resetlinks op te leveren).
+// `ip` wordt bewaard om, naast de limiet per e-mailadres, ook aanvragen
+// vanaf één adres over meerdere accounts heen af te remmen.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  ip        String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([ip, createdAt])
+  @@map("password_reset_tokens")
 }
 
 // ---------------------------------------------------------------------------
