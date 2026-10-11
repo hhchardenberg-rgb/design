@@ -10,6 +10,8 @@ const CONTENT_TYPES: Record<string, string> = {
   csv: "text/csv",
 };
 
+const MAX_BYTES = 20 * 1024 * 1024;
+
 export async function GET() {
   try {
     await requireTicketingAdmin();
@@ -32,6 +34,7 @@ export async function POST(req: NextRequest) {
     const category = String(form.get("category") ?? "").trim();
 
     if (!(file instanceof File)) throw new ApiError(400, "Geen bestand ontvangen.");
+    if (file.size > MAX_BYTES) throw new ApiError(400, `Bestand is te groot (max ${Math.round(MAX_BYTES / (1024 * 1024))}MB).`);
     if (!title) throw new ApiError(400, "Titel is verplicht.");
 
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";

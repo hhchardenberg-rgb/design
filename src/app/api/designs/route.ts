@@ -32,6 +32,14 @@ export async function POST(req: Request) {
       where: { id: body.templateVersionId },
       include: { template: true },
     });
+    // Zelfde regel als /api/templates en /api/templates/[slug]: een
+    // conceptsjabloon dat een admin nog aan het bouwen is, mag geen
+    // gebruiker kunnen gebruiken (ook niet door het templateVersionId te
+    // raden) — dat zou de structuur van een nog niet gepubliceerde
+    // template lekken via het resulterende ontwerp.
+    if (version.template.status !== "PUBLISHED") {
+      throw new ApiError(404, "Sjabloon niet gevonden.");
+    }
 
     const design = await prisma.generatedDesign.create({
       data: {

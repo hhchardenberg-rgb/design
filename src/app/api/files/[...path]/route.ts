@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStorage } from "@/lib/storage";
 import { requireUser } from "@/lib/api-guards";
+import { hasRole } from "@/lib/roles";
 
 /**
  * Serveert bestanden uit de lokale storage-driver (alleen relevant wanneer
@@ -10,19 +11,38 @@ import { requireUser } from "@/lib/api-guards";
  * Vereist een ingelogde gebruiker: de hele hub zit achter een loginmuur (zie
  * middleware.ts), dus een onbeveiligde bestandsroute zou die bescherming
  * omzeilen voor iedereen die een bestands-URL weet of deelt.
+ *
+ * De meeste prefixes (templates/, fonts/, opponents/, contacts/, news/,
+ * stock-photos/) zijn bewust voor elke ingelogde hub-gebruiker zichtbaar —
+ * dat is precies waar ze voor bedoeld zijn (sjablonen/lettertypen worden
+ * voor alle gebruikers gerenderd, contactfoto's/nieuwsafbeeldingen/
+ * fotobank zijn gedeelde content). Twee prefixes horen dat niet te zijn en
+ * krijgen daarom een expliciete extra check: "ticketing-excel/" (alleen
+ * voor de rol TICKETING) en "uploads/"/"exports/" (alleen de eigenaar, aan
+ * de hand van het {userId}-segment in de key, of een beheerder).
  */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  let user;
   try {
-    await requireUser();
+    user = await requireUser();
   } catch {
     return NextResponse.json({ error: "Niet ingelogd." }, { status: 401 });
   }
 
   const { path: segments } = await params;
   const key = segments.join("/");
+
+  const isAdmin = hasRole(user.roles, "ADMIN");
+  if (segments[0] === "ticketing-excel" && !isAdmin && !hasRole(user.roles, "TICKETING")) {
+    return NextResponse.json({ error: "Geen toegang." }, { status: 403 });
+  }
+  if ((segments[0] === "uploads" || segments[0] === "exports") && !isAdmin && segments[1] !== user.id) {
+    return NextResponse.json({ error: "Geen toegang." }, { status: 403 });
+  }
+
   try {
     const storage = getStorage();
     const buffer = await storage.get(key);

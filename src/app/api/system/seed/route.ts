@@ -17,19 +17,14 @@ export const maxDuration = 30;
  * nooit overschreven (zie src/lib/seed.ts), dus veilig om meerdere keren
  * aan te roepen.
  *
- * GET wordt bewust ook ondersteund (naast POST): zo kan dit endpoint ook
- * als gewone link in de browser geopend worden (?secret=...) door iemand
- * zonder terminal/curl bij de hand.
+ * Alleen POST met het secret in een header (x-seed-secret): een GET met
+ * ?secret=... in de query-string werd eerder ook ondersteund voor het
+ * gemak, maar een secret in een query-string kan belanden in
+ * reverse-proxy-/CDN-logs, browsergeschiedenis en Referer-headers — dat
+ * risico is niet nodig voor een endpoint dat alleen bedoeld is om via
+ * curl/Postman met een header aangeroepen te worden.
  */
-export async function GET(req: Request) {
-  return handleSeed(req);
-}
-
 export async function POST(req: Request) {
-  return handleSeed(req);
-}
-
-async function handleSeed(req: Request) {
   const configuredSecret = process.env.SEED_SECRET;
   if (!configuredSecret) {
     return NextResponse.json(
@@ -38,8 +33,7 @@ async function handleSeed(req: Request) {
     );
   }
 
-  const url = new URL(req.url);
-  const provided = req.headers.get("x-seed-secret") ?? url.searchParams.get("secret") ?? "";
+  const provided = req.headers.get("x-seed-secret") ?? "";
 
   if (!safeEqual(provided, configuredSecret)) {
     return NextResponse.json({ error: "Niet geautoriseerd." }, { status: 401 });

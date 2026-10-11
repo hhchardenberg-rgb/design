@@ -11,6 +11,8 @@ import type { TemplateSchemaJson } from "@/lib/validations/template";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+const MAX_FORM_UPLOAD_BYTES = 50 * 1024 * 1024;
+
 interface UploadInput {
   buffer: Buffer;
   name: string;
@@ -183,6 +185,12 @@ async function parseInput(req: NextRequest): Promise<UploadInput> {
 
   if (!(file instanceof File)) {
     throw new ApiError(400, "Geen PSD-bestand ontvangen.");
+  }
+  // Op Vercel wordt dit al afgedwongen door de 4,5MB-bodylimiet van de
+  // functie (zie de bestandskop hierboven); deze check is defense-in-depth
+  // voor andere hostingomgevingen, waar die platformlimiet er niet is.
+  if (file.size > MAX_FORM_UPLOAD_BYTES) {
+    throw new ApiError(400, `Bestand is te groot voor directe upload (max ${Math.round(MAX_FORM_UPLOAD_BYTES / (1024 * 1024))}MB) — gebruik de Blob-upload voor grotere PSD's.`);
   }
   if (!file.name.toLowerCase().endsWith(".psd")) {
     throw new ApiError(400, "Upload een .psd-bestand.");

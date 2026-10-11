@@ -51,7 +51,12 @@ export function getStorage(): StorageDriver {
 
 export function buildKey(...segments: string[]): string {
   return segments
-    .map((s) => s.replace(/^\/+|\/+$/g, ""))
+    // ".."-sequenties verwijderen (bv. uit een client-aangeleverde
+    // bestandsnaam) vóórdat de key gebouwd wordt — dit is de ene centrale
+    // plek waar elke storage-key ontstaat, dus hier saneren dekt alle drie
+    // drivers in één keer, in plaats van per driver apart (zoals de lokale
+    // driver al deed als tweede verdedigingslinie).
+    .map((s) => s.replace(/\.\.+/g, "").replace(/^\/+|\/+$/g, ""))
     .filter(Boolean)
     .join("/");
 }

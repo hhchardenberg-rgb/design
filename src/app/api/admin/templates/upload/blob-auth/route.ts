@@ -1,6 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/api-guards";
+import { ApiError, requireAdmin } from "@/lib/api-guards";
 
 export const runtime = "nodejs";
 
@@ -47,14 +47,21 @@ export async function POST(request: Request): Promise<NextResponse> {
     // — dat werkt alleen als de store via het dashboard (Storage-tab) ook
     // echt aan dit project gekoppeld is, niet als BLOB_STORE_ID handmatig
     // is overgetypt.
+    // requireAdmin() gooit een ApiError met een al veilige, voor de
+    // gebruiker bedoelde melding (bv. "Alleen voor beheerders.") — die mag
+    // gewoon terug. Alles anders (bv. een @vercel/blob-configuratiefout)
+    // kan interne details bevatten (zie de log hieronder) en krijgt daarom
+    // een generieke melding, conform hoe apiErrorResponse() dat elders in
+    // de app doet.
+    if (error instanceof ApiError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     console.error("[blob-auth] mislukt:", error, {
       heeftBlobStoreId: Boolean(process.env.BLOB_STORE_ID),
       heeftReadWriteToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
       heeftOidcToken: Boolean(process.env.VERCEL_OIDC_TOKEN),
     });
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Uploaden mislukt." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Uploaden mislukt." }, { status: 400 });
   }
 }

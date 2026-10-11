@@ -11,6 +11,11 @@ const FORMATS: Record<string, string> = {
   otf: "otf",
 };
 
+// Lettertypebestanden zijn normaliter een paar honderd KB; ruim voldoende
+// marge voor grote variable fonts, zonder een onbeperkte serverside buffer
+// toe te staan (relevant buiten Vercel, waar de platform-bodylimiet er niet is).
+const MAX_BYTES = 10 * 1024 * 1024;
+
 export async function GET() {
   try {
     await requireAdmin();
@@ -32,6 +37,7 @@ export async function POST(req: NextRequest) {
     const style = String(form.get("style") ?? "normal");
 
     if (!(file instanceof File)) throw new ApiError(400, "Geen lettertype-bestand ontvangen.");
+    if (file.size > MAX_BYTES) throw new ApiError(400, `Bestand is te groot (max ${Math.round(MAX_BYTES / (1024 * 1024))}MB).`);
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     const format = FORMATS[ext];
     if (!format) throw new ApiError(400, "Ondersteunde formaten: WOFF2, WOFF, TTF, OTF.");
