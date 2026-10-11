@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -191,7 +192,12 @@ export function LoginForm() {
           />
         </div>
         <div>
-          <Label htmlFor="password">Wachtwoord</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Wachtwoord</Label>
+            <Link href="/wachtwoord-vergeten" className="text-xs text-muted-foreground hover:underline">
+              Wachtwoord vergeten?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
