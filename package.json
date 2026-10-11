@@ -73,5 +73,12 @@
       "@simplewebauthn/browser": "$@simplewebauthn/browser",
       "@simplewebauthn/server": "$@simplewebauthn/server"
     }
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "prisma": false,
+    "unrs-resolver": false,
+    "@prisma/client": false,
+    "@prisma/engines": false
   }
 }
