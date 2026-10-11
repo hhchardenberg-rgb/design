@@ -25,13 +25,27 @@
 export const PAGE_WIDTH_PT = 595; // 11900 twips
 export const PAGE_HEIGHT_PT = 842; // 16840 twips
 
-// Paginamarges — rechtstreeks uit w:pgMar in het referentiedocument. Bewust
-// NIET aan elkaar gelijkgemaakt: links en rechts zijn in het echte document
-// verschillend.
-export const MARGIN_TOP_PT = 120.5; // 2410 twips
+// Paginamarges — rechtstreeks uit w:pgMar in het referentiedocument.
+// Links en rechts zijn bewust aan elkaar gelijkgemaakt (anker: de
+// bestaande linkermarge) nadat bleek dat de oorspronkelijke rechtermarge
+// van het bronbestand de pagina visueel uit het midden trok.
+export const MARGIN_TOP_PT = 120.5; // 2410 twips — alleen pagina 1 (zie CONTINUATION_MARGIN_TOP_PT)
 export const MARGIN_LEFT_PT = 77.95; // 1559 twips
-export const MARGIN_RIGHT_PT = 53.85; // 1077 twips
+export const MARGIN_RIGHT_PT = 77.95; // 1559 twips (was 1077 — gelijkgemaakt aan links)
 export const MARGIN_BOTTOM_PT = 12.2; // 244 twips
+
+// Topmarge voor vervolgpagina's (pagina 2+). Pagina 1 heeft vóór de eerste
+// zichtbare tekstregel ("PERSBERICHT") drie lege alinea's staan, waardoor
+// de tekst vanzelf onder de 127pt hoge briefhoofdafbeelding uitkomt, ook al
+// is MARGIN_TOP_PT (120.5pt) kleiner dan de afbeeldingshoogte. Een
+// vervolgpagina begint middenin de doorlopende tekst, zonder die lege
+// alinea's, dus zonder aangepaste marge zou de eerste regel tekst over het
+// logo heen vallen. Deze waarde is zo berekend dat de eerste regel op een
+// vervolgpagina dezelfde zichtbare afstand tot de afbeelding houdt als
+// "PERSBERICHT" op pagina 1 (afbeeldingshoogte + gemeten liniaal-gap op
+// pagina 1 + lettertype-ascent van de broodtekst bij 12pt) — zie
+// scratchpad-berekening in de sessie die dit invoerde.
+export const CONTINUATION_MARGIN_TOP_PT = 168.73; // 3375 twips
 
 // Regelhoogte als veelvoud van de lettergrootte (benadering van "enkele
 // regelafstand" — het referentiedocument specificeert zelf geen expliciete

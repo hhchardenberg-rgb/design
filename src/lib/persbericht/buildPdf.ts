@@ -9,6 +9,7 @@ import {
   MARGIN_RIGHT_PT,
   MARGIN_BOTTOM_PT,
   MARGIN_LEFT_PT,
+  CONTINUATION_MARGIN_TOP_PT,
   LINE_HEIGHT_RATIO,
   HEADER_IMAGE_WIDTH_PT,
   HEADER_IMAGE_HEIGHT_PT,
@@ -177,7 +178,11 @@ export async function buildPersberichtPdf(data: PersberichtData): Promise<Buffer
   function newPage() {
     page = pdfDoc.addPage([PAGE_WIDTH_PT, PAGE_HEIGHT_PT]);
     drawHeader(page, false);
-    y = PAGE_HEIGHT_PT - MARGIN_TOP_PT;
+    // Vervolgpagina's hebben geen lege alinea's vóór de eerste tekstregel
+    // (anders dan pagina 1 vóór "PERSBERICHT"), dus zonder een grotere
+    // topmarge zou de tekst over de briefhoofdafbeelding heen vallen — zie
+    // CONTINUATION_MARGIN_TOP_PT in layout.ts.
+    y = PAGE_HEIGHT_PT - CONTINUATION_MARGIN_TOP_PT;
   }
 
   function ensureSpace(lineHeight: number) {
