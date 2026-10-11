@@ -124,6 +124,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ))}
               </div>
             )}
+            <Link href="/account/security" className="shrink-0">
+              <Button variant="outline" size="sm" className="whitespace-nowrap">
+                Accountbeveiliging
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
               Uitloggen
             </Button>

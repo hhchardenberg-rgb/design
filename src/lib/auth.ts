@@ -6,10 +6,24 @@ import { authConfig } from "@/lib/auth.config";
 import { normalizeEmail } from "@/lib/utils";
 import { effectiveRoles } from "@/lib/roles";
 import { checkLoginRateLimit, clientIpFrom, recordLoginAttempt } from "@/lib/login-rate-limit";
+import { hasTotpEnabled, verifyTotpLogin, verifyRecoveryCodeLogin } from "@/lib/mfa/totp-service";
 
 /** Aparte foutcode zodat de loginpagina een andere melding kan tonen dan "onjuiste combinatie". */
 class TooManyAttemptsError extends CredentialsSignin {
   code = "too-many-attempts";
+}
+
+/**
+ * Wachtwoord was correct, maar dit account heeft tweestapsverificatie
+ * actief en er is nog geen code meegestuurd. Geen echte foutmelding — de
+ * client herkent deze code en toont het code-invoerveld, waarna hetzelfde
+ * formulier (e-mail + wachtwoord + code) in één keer opnieuw wordt
+ * verzonden. Er bestaat op geen enkel moment een sessie die wél is
+ * ingelogd maar nog geen MFA heeft doorlopen — authorize() geeft pas een
+ * gebruiker terug nadat zowel wachtwoord als code (of herstelcode) kloppen.
+ */
+class MfaRequiredError extends CredentialsSignin {
+  code = "mfa-required";
 }
 
 // Vaste, nergens aan een echt wachtwoord gekoppelde bcrypt-hash — gebruikt
@@ -36,17 +50,23 @@ export const {
       credentials: {
         email: { label: "E-mailadres", type: "email" },
         password: { label: "Wachtwoord", type: "password" },
+        totpCode: { label: "Verificatiecode", type: "text" },
+        recoveryCode: { label: "Herstelcode", type: "text" },
       },
       authorize: async (credentials, request) => {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
+        const totpCode = (credentials?.totpCode as string | undefined)?.trim();
+        const recoveryCode = (credentials?.recoveryCode as string | undefined)?.trim();
         if (!email || !password) return null;
 
         const normalizedEmail = normalizeEmail(email);
         const ip = clientIpFrom(request);
 
         // Vóór het dure bcrypt-vergelijk: brute-force/credential-stuffing
-        // afremmen. Zie src/lib/login-rate-limit.ts voor de drempels.
+        // afremmen. Zie src/lib/login-rate-limit.ts voor de drempels. Dekt
+        // zowel wachtwoord- als code-pogingen, want beide lopen via dit
+        // zelfde authorize()-pad.
         const rateLimit = await checkLoginRateLimit(prisma, normalizedEmail, ip);
         if (rateLimit.limited) {
           throw new TooManyAttemptsError();
@@ -57,11 +77,34 @@ export const {
         // Draait altijd een bcrypt-vergelijk — ook wanneer de gebruiker niet
         // bestaat (tegen een vaste dummy-hash) — zodat de responstijd geen
         // (zwak) signaal geeft of een e-mailadres wél een account heeft.
-        const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+        const passwordValid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
 
-        await recordLoginAttempt(prisma, normalizedEmail, ip, Boolean(user && valid));
+        if (!user || !passwordValid) {
+          await recordLoginAttempt(prisma, normalizedEmail, ip, false);
+          return null;
+        }
 
-        if (!user || !valid) return null;
+        const mfaEnabled = await hasTotpEnabled(prisma, user.id);
+        if (mfaEnabled) {
+          if (!totpCode && !recoveryCode) {
+            // Wachtwoord klopt, maar de tweede factor is nog niet
+            // meegestuurd — geen succes én geen mislukking, dus (nog) geen
+            // rij in LoginAttempt: het echte resultaat volgt pas hieronder,
+            // op de volgende aanroep met de code erbij.
+            throw new MfaRequiredError();
+          }
+
+          const codeValid = totpCode
+            ? await verifyTotpLogin(prisma, user.id, totpCode)
+            : await verifyRecoveryCodeLogin(prisma, user.id, recoveryCode!);
+
+          if (!codeValid) {
+            await recordLoginAttempt(prisma, normalizedEmail, ip, false);
+            return null;
+          }
+        }
+
+        await recordLoginAttempt(prisma, normalizedEmail, ip, true);
 
         return {
           id: user.id,

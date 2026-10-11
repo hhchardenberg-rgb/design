@@ -32,8 +32,10 @@ const HUB_PREFIXES = [
 const TICKETING_PREFIXES = ["/ticketing"];
 
 // Vereist alleen ingelogd zijn, geen specifieke rol (bv. de "geen
-// toegang"-pagina voor gebruikers zonder enige rol).
-const LOGIN_ONLY_PREFIXES = ["/geen-toegang"];
+// toegang"-pagina voor gebruikers zonder enige rol, en
+// accountbeveiliging — élke gebruiker moet zijn eigen MFA kunnen
+// beheren, ongeacht welke sectierol hij verder heeft).
+const LOGIN_ONLY_PREFIXES = ["/geen-toegang", "/account"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -90,5 +92,6 @@ export const config = {
     "/persberichten/:path*",
     "/ticketing/:path*",
     "/geen-toegang/:path*",
+    "/account/:path*",
   ],
 };
