@@ -25,6 +25,31 @@ enum Role {
   TICKETING
 }
 
+// Houdt inlogpogingen bij (geslaagd én mislukt) zodat login() in
+// src/lib/auth.ts brute-force/credential-stuffing kan afremmen — vóór dit
+// model bestond er helemaal geen rate limiting op inloggen. Database-backed
+// (i.p.v. in-memory) omdat Vercel's serverless functions geen gedeeld
+// geheugen hebben tussen instanties; dit werkt dus betrouwbaar ongeacht
+// hoeveel functie-instanties er tegelijk draaien. Rijen ouder dan de
+// gehanteerde tijdsvensters worden bij elke nieuwe poging opportunistisch
+// opgeruimd (zie recordLoginAttempt() in src/lib/login-rate-limit.ts) —
+// geen aparte cronjob nodig voor dit kleinschalige gebruik.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  // Genormaliseerd e-mailadres (zie normalizeEmail()) — ook bijgehouden
+  // voor een niet-bestaand account, zodat een aanvaller niet via het
+  // uitblijven van een lockout kan afleiden welke e-mailadressen wél
+  // bestaan.
+  email     String
+  ip        String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+  @@map("login_attempts")
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String

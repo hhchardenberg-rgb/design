@@ -44,7 +44,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     create: {
       name: "Beheerder HHC",
       email: adminEmail,
-      passwordHash: await bcrypt.hash(adminPassword, 10),
+      passwordHash: await bcrypt.hash(adminPassword, 12),
       role: "ADMIN",
       roles: ["ADMIN", "HUB"],
     },
@@ -56,7 +56,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
     create: {
       name: "Vrijwilliger",
       email: "vrijwilliger@hhchardenberg.nl",
-      passwordHash: await bcrypt.hash("wachtwoord123", 10),
+      passwordHash: await bcrypt.hash("wachtwoord123", 12),
       role: "USER",
       roles: ["HUB"],
     },

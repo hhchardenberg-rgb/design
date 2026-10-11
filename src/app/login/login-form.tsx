@@ -26,7 +26,11 @@ export function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("E-mailadres of wachtwoord onjuist.");
+      setError(
+        res.code === "too-many-attempts"
+          ? "Te veel mislukte inlogpogingen. Probeer het over een kwartier opnieuw."
+          : "E-mailadres of wachtwoord onjuist."
+      );
       return;
     }
     router.push(callbackUrl);

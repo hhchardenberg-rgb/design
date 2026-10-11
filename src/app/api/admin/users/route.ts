@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       data: {
         name: body.name,
         email,
-        passwordHash: await bcrypt.hash(body.password, 10),
+        passwordHash: await bcrypt.hash(body.password, 12),
         roles: body.roles,
         // Legacy-veld blijft meelopen zodat de historische kolom betekenisvol blijft.
         role: body.roles.includes("ADMIN") ? "ADMIN" : "USER",

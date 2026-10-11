@@ -72,7 +72,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         roles: body.roles,
         // Legacy-veld blijft meelopen zodat de historische kolom betekenisvol blijft.
         role: body.roles ? (body.roles.includes("ADMIN") ? "ADMIN" : "USER") : undefined,
-        passwordHash: body.password ? await bcrypt.hash(body.password, 10) : undefined,
+        passwordHash: body.password ? await bcrypt.hash(body.password, 12) : undefined,
       },
       select: { id: true, name: true, email: true, roles: true, createdAt: true },
     });
