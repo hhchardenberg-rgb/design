@@ -6,6 +6,14 @@ import type { TemplateSchemaJson } from "@/lib/validations/template";
 import { backfillUserRoles } from "@/lib/user-roles.server";
 import { getStorage, buildKey } from "@/lib/storage";
 
+// Bewust gescoped tot de map "seed-assets": zo traceert Next.js alleen die map
+// mee naar de serverless-functie, in plaats van het hele project (dat gebeurt
+// bij een volledig dynamisch pad vanaf process.cwd()). De paden in dit
+// bestand beginnen met "seed-assets/".
+function readSeedAsset(relPath: string): Buffer {
+  return fs.readFileSync(path.join(process.cwd(), "seed-assets", relPath.replace(/^seed-assets\//, "")));
+}
+
 export interface SeedOptions {
   adminEmail: string;
   adminPassword: string;
@@ -212,7 +220,7 @@ export async function runSeed(prisma: PrismaClient, options: SeedOptions): Promi
   for (const o of realOpponentLogos) {
     const existing = await prisma.opponent.findFirst({ where: { name: o.name } });
     if (existing && existing.logoUrl) continue;
-    const buffer = fs.readFileSync(path.join(process.cwd(), o.assetPath));
+    const buffer = readSeedAsset(o.assetPath);
     const storage = getStorage();
     const stored = await storage.put({
       key: buildKey("opponents", path.basename(o.assetPath)),
@@ -746,7 +754,7 @@ HHC Hardenberg`,
     const { title, assetPath, fileName, contentType, ...draft } = ticketingExcelTemplates[i];
     const existing = await prisma.ticketingExcelTemplate.findFirst({ where: { title } });
     if (!existing) {
-      const buffer = fs.readFileSync(path.join(process.cwd(), assetPath));
+      const buffer = readSeedAsset(assetPath);
       const storage = getStorage();
       const stored = await storage.put({
         key: buildKey("ticketing-excel", `seed-${i}-${fileName}`),

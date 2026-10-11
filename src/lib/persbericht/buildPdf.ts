@@ -31,8 +31,12 @@ export interface PersberichtData {
   body: string;
 }
 
+// Bewust gescoped tot de map "public": zo traceert Next.js alleen die map mee
+// naar de serverless-functie, in plaats van het hele project (dat gebeurt bij
+// een volledig dynamisch pad vanaf process.cwd()). De paden uit layout.ts
+// beginnen met "public/".
 async function loadFile(relPath: string): Promise<Buffer> {
-  return fs.readFile(path.join(process.cwd(), relPath));
+  return fs.readFile(path.join(process.cwd(), "public", relPath.replace(/^public\//, "")));
 }
 
 function formatDate(date: Date): string {
