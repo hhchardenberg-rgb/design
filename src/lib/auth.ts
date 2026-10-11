@@ -34,6 +34,15 @@ class MfaRequiredError extends CredentialsSignin {
 // login niet verraadt of het e-mailadres wél of niet geregistreerd is.
 const DUMMY_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8Dt0b1Fj5Y3OvKk2tLvfUFoPpINsAG";
 
+// next-auth/react serialiseert een `undefined`-veld als de tekst "undefined";
+// zonder deze normalisatie telt zo'n veld als een ingevulde (foute) tweede
+// factor en faalt elke login van een account met tweestapsverificatie.
+function optionalField(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed === "" || trimmed === "undefined" ? undefined : trimmed;
+}
+
 // Volledige configuratie — alleen gebruikt in de Node.js-runtime (API-route
 // api/auth/[...nextauth], server components/actions). Bevat de
 // Credentials-provider met Prisma- en bcrypt-afhankelijkheden, die te zwaar
@@ -60,9 +69,9 @@ export const {
       authorize: async (credentials, request) => {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
-        const totpCode = (credentials?.totpCode as string | undefined)?.trim();
-        const recoveryCode = (credentials?.recoveryCode as string | undefined)?.trim();
-        const webauthnAssertionRaw = credentials?.webauthnAssertion as string | undefined;
+        const totpCode = optionalField(credentials?.totpCode);
+        const recoveryCode = optionalField(credentials?.recoveryCode);
+        const webauthnAssertionRaw = optionalField(credentials?.webauthnAssertion);
         if (!email || !password) return null;
 
         const normalizedEmail = normalizeEmail(email);
