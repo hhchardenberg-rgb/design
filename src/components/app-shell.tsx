@@ -7,6 +7,7 @@ import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { GroupedNavMenu, type NavMenuGroup } from "@/components/grouped-nav-menu";
+import { SectionSwitcher, type SectionLink } from "@/components/section-switcher";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { adminModuleGroups } from "@/lib/admin-modules";
 import { ticketingModules } from "@/lib/ticketing-modules";
@@ -21,10 +22,17 @@ const designtoolNav = [
   { href: "/designs", label: "Mijn ontwerpen" },
 ];
 
+// In het Onderdelen-menu staat de designtool gewoon tussen de bronnen en
+// hulpmiddelen; alleen de hub-startpagina geeft hem een eigen, grote tegel.
 const hubMenuGroups: NavMenuGroup[] = hubModuleGroups.map((g) => ({
   id: g.id,
   label: g.label,
-  items: g.modules.map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
+  items: (g.id === "bronnen" ? [featuredModule, ...g.modules] : g.modules).map((m) => ({
+    title: m.title,
+    href: m.href,
+    status: m.status,
+    icon: m.icon,
+  })),
 }));
 
 const ticketingMenuGroups: NavMenuGroup[] = [
@@ -66,8 +74,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }))
     .filter((g) => g.items.length > 0);
 
-  const activeSectionKey = isAdminSection ? "admin" : isTicketingSection ? "ticketing" : "hub";
+  const isAccountSection = pathname?.startsWith("/account");
+  const activeSectionKey = isAccountSection ? "account" : isAdminSection ? "admin" : isTicketingSection ? "ticketing" : "hub";
   const sections = SECTION_DEFINITIONS.filter((s) => hasRole(roles, s.role));
+  const sectionLinks: SectionLink[] = [
+    ...(sections.length > 1 ? sections : []),
+    { key: "account", label: "Accountbeveiliging", href: "/account/security" },
+  ];
   const homeHref = resolveHomePath(roles);
 
   return (
@@ -103,32 +116,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : isTicketingSection ? (
               <GroupedNavMenu groups={ticketingMenuGroups} label="Onderdelen" />
             ) : (
-              <GroupedNavMenu
-                groups={hubMenuGroups}
-                featured={{ title: featuredModule.title, href: featuredModule.href, icon: featuredModule.icon }}
-                label="Onderdelen"
-              />
+              <GroupedNavMenu groups={hubMenuGroups} label="Onderdelen" />
             )}
-            {sections.length > 1 && (
-              // Eigen scrollcontainer, los van de rest van deze rij: zo kan
-              // dít stukje horizontaal scrollen op smalle schermen zonder
-              // dat overflow op de buitenste rij het (absoluut gepositioneerde)
-              // GroupedNavMenu-paneel afsnijdt.
-              <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
-                {sections.map((s) => (
-                  <Link key={s.key} href={s.href} className="shrink-0">
-                    <Button variant={activeSectionKey === s.key ? "primary" : "outline"} size="sm" className="whitespace-nowrap">
-                      {s.label}
-                    </Button>
-                  </Link>
-                ))}
-              </div>
-            )}
-            <Link href="/account/security" className="shrink-0">
-              <Button variant="outline" size="sm" className="whitespace-nowrap">
-                Accountbeveiliging
-              </Button>
-            </Link>
+            <SectionSwitcher items={sectionLinks} activeKey={activeSectionKey} />
             <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
               Uitloggen
             </Button>
