@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, ShieldAlert, Copy, Download } from "lucide-react";
+import { startRegistration } from "@simplewebauthn/browser";
+import { ShieldCheck, ShieldAlert, Copy, Download, KeyRound, Trash2, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -12,6 +13,14 @@ interface MfaStatus {
   recoveryCodesRemaining: number;
 }
 
+interface Passkey {
+  id: string;
+  name: string;
+  deviceType: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
 type EnrollStep = "idle" | "scanning" | "recovery-codes";
 
 async function parseJsonOrThrow(res: Response) {
@@ -20,12 +29,16 @@ async function parseJsonOrThrow(res: Response) {
   return body;
 }
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("nl-NL", { dateStyle: "medium" }).format(new Date(value));
+}
+
 export default function AccountSecurityPage() {
   const toast = useToast();
   const [status, setStatus] = useState<MfaStatus | null>(null);
   const [step, setStep] = useState<EnrollStep>("idle");
 
-  // Setup-state
+  // TOTP-setup-state
   const [secret, setSecret] = useState("");
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [code, setCode] = useState("");
@@ -33,17 +46,33 @@ export default function AccountSecurityPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Her-authenticatie (uitschakelen / nieuwe herstelcodes)
+  // Her-authenticatie (TOTP uitschakelen / nieuwe herstelcodes)
   const [confirmAction, setConfirmAction] = useState<"disable" | "regenerate" | null>(null);
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Passkeys
+  const [passkeys, setPasskeys] = useState<Passkey[]>([]);
+  const [addingPasskey, setAddingPasskey] = useState(false);
+  const [newPasskeyName, setNewPasskeyName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Passkey | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function loadStatus() {
     const res = await fetch("/api/account/mfa/status");
     if (res.ok) setStatus(await res.json());
   }
 
+  async function loadPasskeys() {
+    const res = await fetch("/api/account/passkeys");
+    if (res.ok) setPasskeys((await res.json()).passkeys);
+  }
+
   useEffect(() => {
     loadStatus();
+    loadPasskeys();
   }, []);
 
   async function startEnrollment() {
@@ -148,11 +177,80 @@ export default function AccountSecurityPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function addPasskey(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const options = await parseJsonOrThrow(
+        await fetch("/api/account/passkeys/register-options", { method: "POST" })
+      );
+      const response = await startRegistration({ optionsJSON: options });
+      await parseJsonOrThrow(
+        await fetch("/api/account/passkeys/register-verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newPasskeyName, response }),
+        })
+      );
+      toast.success("Passkey toegevoegd.");
+      setAddingPasskey(false);
+      setNewPasskeyName("");
+      await loadPasskeys();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toevoegen is mislukt of geannuleerd.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitRename(id: string) {
+    setBusy(true);
+    try {
+      await parseJsonOrThrow(
+        await fetch(`/api/account/passkeys/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: renameValue }),
+        })
+      );
+      setRenamingId(null);
+      await loadPasskeys();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Hernoemen is mislukt.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitDeletePasskey(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deleteTarget) return;
+    setBusy(true);
+    setDeleteError(null);
+    try {
+      await parseJsonOrThrow(
+        await fetch(`/api/account/passkeys/${deleteTarget.id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: deletePassword }),
+        })
+      );
+      toast.success("Passkey verwijderd.");
+      setDeleteTarget(null);
+      setDeletePassword("");
+      await loadPasskeys();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Verwijderen is mislukt.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold">Accountbeveiliging</h1>
-        <p className="mt-1 text-muted-foreground">Beheer tweestapsverificatie voor je account.</p>
+        <p className="mt-1 text-muted-foreground">Beheer tweestapsverificatie en passkeys voor je account.</p>
       </div>
 
       {step === "recovery-codes" && (
@@ -319,6 +417,146 @@ export default function AccountSecurityPage() {
                     setError(null);
                   }}
                 >
+                  Annuleren
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-foreground" />
+            <CardTitle>Passkeys</CardTitle>
+          </div>
+          <CardDescription>
+            Log in met Face ID, Touch ID, Windows Hello of een fysieke beveiligingssleutel — als tweede factor
+            of, als je dat liever hebt, volledig zonder wachtwoord.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {passkeys.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {passkeys.map((pk) => (
+                <li
+                  key={pk.id}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2"
+                >
+                  {renamingId === pk.id ? (
+                    <div className="flex flex-1 items-center gap-2">
+                      <Input
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        autoFocus
+                        className="h-8"
+                      />
+                      <Button type="button" size="sm" disabled={busy} onClick={() => submitRename(pk.id)}>
+                        Opslaan
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setRenamingId(null)}>
+                        Annuleren
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{pk.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Toegevoegd op {formatDate(pk.createdAt)}
+                          {pk.lastUsedAt && ` · laatst gebruikt op ${formatDate(pk.lastUsedAt)}`}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Hernoemen"
+                          onClick={() => {
+                            setRenamingId(pk.id);
+                            setRenameValue(pk.name);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Verwijderen"
+                          onClick={() => {
+                            setDeleteTarget(pk);
+                            setDeletePassword("");
+                            setDeleteError(null);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {addingPasskey ? (
+            <form onSubmit={addPasskey} className="flex flex-col gap-3 border-t border-border pt-3">
+              <div>
+                <Label htmlFor="passkey-name">Naam voor deze passkey</Label>
+                <Input
+                  id="passkey-name"
+                  placeholder="Bijv. iPhone, MacBook, Beveiligingssleutel"
+                  value={newPasskeyName}
+                  onChange={(e) => setNewPasskeyName(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={busy}>
+                  Doorgaan
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setAddingPasskey(false)}>
+                  Annuleren
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <Button type="button" variant="outline" className="self-start" onClick={() => setAddingPasskey(true)}>
+              Passkey toevoegen
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {deleteTarget && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Passkey &ldquo;{deleteTarget.name}&rdquo; verwijderen</CardTitle>
+            <CardDescription>Bevestig met je wachtwoord.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submitDeletePasskey} className="flex flex-col gap-3">
+              <div>
+                <Label htmlFor="delete-passkey-password">Wachtwoord</Label>
+                <Input
+                  id="delete-passkey-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  required
+                />
+              </div>
+              {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+              <div className="flex gap-2">
+                <Button type="submit" disabled={busy} variant="destructive">
+                  Verwijderen
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
                   Annuleren
                 </Button>
               </div>

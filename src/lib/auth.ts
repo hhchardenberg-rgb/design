@@ -7,6 +7,8 @@ import { normalizeEmail } from "@/lib/utils";
 import { effectiveRoles } from "@/lib/roles";
 import { checkLoginRateLimit, clientIpFrom, recordLoginAttempt } from "@/lib/login-rate-limit";
 import { hasTotpEnabled, verifyTotpLogin, verifyRecoveryCodeLogin } from "@/lib/mfa/totp-service";
+import { verifyPasskeyLogin, verifyPasswordlessLogin } from "@/lib/webauthn/service";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 
 /** Aparte foutcode zodat de loginpagina een andere melding kan tonen dan "onjuiste combinatie". */
 class TooManyAttemptsError extends CredentialsSignin {
@@ -52,12 +54,15 @@ export const {
         password: { label: "Wachtwoord", type: "password" },
         totpCode: { label: "Verificatiecode", type: "text" },
         recoveryCode: { label: "Herstelcode", type: "text" },
+        // JSON.stringify() van een @simplewebauthn/browser startAuthentication()-resultaat.
+        webauthnAssertion: { label: "Passkey", type: "text" },
       },
       authorize: async (credentials, request) => {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
         const totpCode = (credentials?.totpCode as string | undefined)?.trim();
         const recoveryCode = (credentials?.recoveryCode as string | undefined)?.trim();
+        const webauthnAssertionRaw = credentials?.webauthnAssertion as string | undefined;
         if (!email || !password) return null;
 
         const normalizedEmail = normalizeEmail(email);
@@ -65,8 +70,8 @@ export const {
 
         // Vóór het dure bcrypt-vergelijk: brute-force/credential-stuffing
         // afremmen. Zie src/lib/login-rate-limit.ts voor de drempels. Dekt
-        // zowel wachtwoord- als code-pogingen, want beide lopen via dit
-        // zelfde authorize()-pad.
+        // zowel wachtwoord- als code-/passkey-pogingen, want alle lopen via
+        // dit zelfde authorize()-pad.
         const rateLimit = await checkLoginRateLimit(prisma, normalizedEmail, ip);
         if (rateLimit.limited) {
           throw new TooManyAttemptsError();
@@ -84,19 +89,34 @@ export const {
           return null;
         }
 
-        const mfaEnabled = await hasTotpEnabled(prisma, user.id);
+        const [totpEnabled, passkeyCount] = await Promise.all([
+          hasTotpEnabled(prisma, user.id),
+          prisma.webAuthnCredential.count({ where: { userId: user.id } }),
+        ]);
+        const mfaEnabled = totpEnabled || passkeyCount > 0;
+
         if (mfaEnabled) {
-          if (!totpCode && !recoveryCode) {
+          if (!totpCode && !recoveryCode && !webauthnAssertionRaw) {
             // Wachtwoord klopt, maar de tweede factor is nog niet
             // meegestuurd — geen succes én geen mislukking, dus (nog) geen
             // rij in LoginAttempt: het echte resultaat volgt pas hieronder,
-            // op de volgende aanroep met de code erbij.
+            // op de volgende aanroep met de code/passkey erbij.
             throw new MfaRequiredError();
           }
 
-          const codeValid = totpCode
-            ? await verifyTotpLogin(prisma, user.id, totpCode)
-            : await verifyRecoveryCodeLogin(prisma, user.id, recoveryCode!);
+          let codeValid: boolean;
+          if (webauthnAssertionRaw) {
+            try {
+              const assertion = JSON.parse(webauthnAssertionRaw) as AuthenticationResponseJSON;
+              codeValid = await verifyPasskeyLogin(prisma, user.id, assertion);
+            } catch {
+              codeValid = false;
+            }
+          } else {
+            codeValid = totpCode
+              ? await verifyTotpLogin(prisma, user.id, totpCode)
+              : await verifyRecoveryCodeLogin(prisma, user.id, recoveryCode!);
+          }
 
           if (!codeValid) {
             await recordLoginAttempt(prisma, normalizedEmail, ip, false);
@@ -105,6 +125,42 @@ export const {
         }
 
         await recordLoginAttempt(prisma, normalizedEmail, ip, true);
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          roles: effectiveRoles(user),
+        };
+      },
+    }),
+    Credentials({
+      // Volledig wachtwoordloos inloggen met een discoverable passkey —
+      // bewust een APARTE provider (andere velden, geen wachtwoord, geen
+      // rate-limit-sleutel vooraf bekend) in plaats van een modus van de
+      // "credentials"-provider hierboven. Zie opdracht sectie 3: dit is
+      // uitdrukkelijk iets anders dan "passkey als tweede factor".
+      id: "passkey",
+      name: "passkey",
+      credentials: {
+        webauthnAssertion: { label: "Passkey", type: "text" },
+      },
+      authorize: async (credentials) => {
+        const raw = credentials?.webauthnAssertion as string | undefined;
+        if (!raw) return null;
+
+        let assertion: AuthenticationResponseJSON;
+        try {
+          assertion = JSON.parse(raw);
+        } catch {
+          return null;
+        }
+
+        const userId = await verifyPasswordlessLogin(prisma, assertion);
+        if (!userId) return null;
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) return null;
 
         return {
           id: user.id,

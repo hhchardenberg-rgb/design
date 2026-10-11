@@ -76,8 +76,9 @@ model User {
   newsPosts        NewsPost[]
   pressReleases    PressRelease[]
 
-  totpCredential   TotpCredential?
-  recoveryCodes    RecoveryCode[]
+  totpCredential     TotpCredential?
+  recoveryCodes      RecoveryCode[]
+  webauthnCredentials WebAuthnCredential[]
 
   @@map("users")
 }
@@ -130,6 +131,64 @@ model RecoveryCode {
 
   @@index([userId])
   @@map("recovery_codes")
+}
+
+// Een passkey (WebAuthn/FIDO2) — een gebruiker kan er meerdere koppelen
+// (telefoon, laptop, fysieke sleutel). Gebruikt zowel als tweede factor
+// (naast wachtwoord) als voor volledig wachtwoordloos inloggen — zie
+// src/lib/webauthn/.
+model WebAuthnCredential {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Base64url credential-ID zoals de authenticator die teruggeeft —
+  // uniek over ALLE gebruikers (nodig om bij wachtwoordloos inloggen de
+  // bijbehorende gebruiker te vinden vóórdat die bekend is).
+  credentialId String @unique
+  // COSE-publieke sleutel (ruwe bytes) — nooit een privésleutel; die blijft
+  // altijd op het apparaat van de gebruiker.
+  publicKey    Bytes
+  // Signature-counter voor clone-detectie. Veel synced passkeys
+  // (iCloud Keychain, Google Password Manager) rapporteren hier altijd 0 —
+  // zie verifyWebauthnAuthentication() in src/lib/webauthn/service.ts voor
+  // hoe daarmee wordt omgegaan.
+  counter      Int    @default(0)
+  transports   String[]
+  // "singleDevice" (bv. een fysieke sleutel) of "multiDevice" (een
+  // gesynchroniseerde passkey) — puur informatief voor de gebruiker.
+  deviceType   String
+  backedUp     Boolean @default(false)
+
+  // Door de gebruiker gekozen naam, bv. "iPhone" of "Beveiligingssleutel".
+  name       String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("webauthn_credentials")
+}
+
+// Tijdelijke opslag voor een WebAuthn-challenge tussen het genereren van de
+// registratie-/inlogopties en het verifiëren van het antwoord — nodig omdat
+// dat twee losse requests zijn en Vercel's serverless functions geen
+// gedeeld geheugen hebben (zelfde reden als LoginAttempt in
+// src/lib/login-rate-limit.ts). Elke rij wordt bij verificatie direct
+// verwijderd (zie findAndConsumeChallenge in src/lib/webauthn/service.ts),
+// dus een challenge is hoe dan ook maar één keer bruikbaar; de index op
+// createdAt is alleen voor de opportunistische opruiming van verlopen,
+// nooit-afgemaakte pogingen.
+model WebAuthnChallenge {
+  id        String   @id @default(cuid())
+  challenge String   @unique
+  // null = wachtwoordloos inloggen (de gebruiker is nog niet bekend —
+  // zie userHandle in het antwoord van de authenticator).
+  userId    String?
+  purpose   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("webauthn_challenges")
 }
 
 // ---------------------------------------------------------------------------
