@@ -35,11 +35,14 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    // Alleen meesturen wat er echt is: next-auth zet een `undefined`-waarde om
+    // in de letterlijke tekst "undefined", die de server anders als ingevulde
+    // (en dus foute) code zou zien.
+    const secondFactor = needsMfa ? { [useRecoveryCode ? "recoveryCode" : "totpCode"]: code } : {};
     const res = await signIn("credentials", {
       email,
       password,
-      totpCode: needsMfa && !useRecoveryCode ? code : undefined,
-      recoveryCode: needsMfa && useRecoveryCode ? code : undefined,
+      ...secondFactor,
       redirect: false,
     });
     setLoading(false);
