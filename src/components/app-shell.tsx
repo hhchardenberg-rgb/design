@@ -22,10 +22,17 @@ const designtoolNav = [
   { href: "/designs", label: "Mijn ontwerpen" },
 ];
 
+// In het Onderdelen-menu staat de designtool gewoon tussen de bronnen en
+// hulpmiddelen; alleen de hub-startpagina geeft hem een eigen, grote tegel.
 const hubMenuGroups: NavMenuGroup[] = hubModuleGroups.map((g) => ({
   id: g.id,
   label: g.label,
-  items: g.modules.map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
+  items: (g.id === "bronnen" ? [featuredModule, ...g.modules] : g.modules).map((m) => ({
+    title: m.title,
+    href: m.href,
+    status: m.status,
+    icon: m.icon,
+  })),
 }));
 
 const ticketingMenuGroups: NavMenuGroup[] = [
@@ -109,11 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : isTicketingSection ? (
               <GroupedNavMenu groups={ticketingMenuGroups} label="Onderdelen" />
             ) : (
-              <GroupedNavMenu
-                groups={hubMenuGroups}
-                featured={{ title: featuredModule.title, href: featuredModule.href, icon: featuredModule.icon }}
-                label="Onderdelen"
-              />
+              <GroupedNavMenu groups={hubMenuGroups} label="Onderdelen" />
             )}
             <SectionSwitcher items={sectionLinks} activeKey={activeSectionKey} />
             <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
