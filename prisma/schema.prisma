@@ -911,11 +911,12 @@ model CommercialCompany {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  contacts   CommercialContact[]
-  activities CommercialActivity[]
-  tasks      CommercialTask[]
-  files      CommercialFile[]
-  contracts  CommercialContract[]
+  contacts      CommercialContact[]
+  activities    CommercialActivity[]
+  tasks         CommercialTask[]
+  files         CommercialFile[]
+  contracts     CommercialContract[]
+  opportunities CommercialOpportunity[]
 
   @@index([nameKey])
   @@index([kvkNumber])
@@ -1152,4 +1153,32 @@ model CommercialCounterpart {
   @@index([contractId])
   @@index([companyId])
   @@map("commercial_counterparts")
+}
+
+/// Acquisitiekans: een mogelijke sponsorovereenkomst in de pijplijn.
+model CommercialOpportunity {
+  id                  String            @id @default(cuid())
+  companyId           String
+  company             CommercialCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  title               String
+  stage               String            @default("LEAD") // LEAD | CONTACTED | PROPOSAL | NEGOTIATION | WON | LOST
+  packageId           String?
+  // Verwachte waarde in eurocenten (financieel gegeven: alleen met bedragenrechten zichtbaar).
+  expectedAmountCents Int?
+  expectedCloseOn     DateTime?         @db.Date
+  ownerId             String?
+  lostReason          String?
+  notes               String?
+  wonContractId       String?
+  stageChangedAt      DateTime          @default(now())
+  version             Int               @default(1)
+  archivedAt          DateTime?
+  createdById         String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([companyId])
+  @@index([stage, archivedAt])
+  @@index([ownerId])
+  @@map("commercial_opportunities")
 }

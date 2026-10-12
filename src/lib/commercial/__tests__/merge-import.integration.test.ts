@@ -39,6 +39,7 @@ before(async () => {
   fl = await import("../files.server");
   tk = await import("../tasks.server");
   im = await import("../import.server");
+  await db.commercialOpportunity.deleteMany();
   await db.commercialCounterpart.deleteMany();
   await db.commercialContract.deleteMany();
   await db.commercialFile.deleteMany();
@@ -55,6 +56,7 @@ before(async () => {
 });
 after(async () => {
   if (skip) return;
+  await db.commercialOpportunity.deleteMany();
   await db.commercialCounterpart.deleteMany();
   await db.commercialContract.deleteMany();
   await db.commercialFile.deleteMany();
