@@ -138,9 +138,12 @@ export function SponsorList({ canCreate }: { canCreate: boolean }) {
           <p className="text-sm text-muted-foreground">Eén dossier per bedrijf: potentiële, actieve en voormalige sponsoren.</p>
         </div>
         {canCreate && (
-          <Button onClick={() => setCreating((v) => !v)}>
-            <Plus className="h-4 w-4" /> Nieuw bedrijf
-          </Button>
+          <div className="flex gap-2">
+            <Link href="/commercieel/sponsoren/importeren" className="inline-flex h-10 items-center rounded-md border border-border px-3 text-sm hover:bg-surface-muted">Importeren</Link>
+            <Button onClick={() => setCreating((v) => !v)}>
+              <Plus className="h-4 w-4" /> Nieuw bedrijf
+            </Button>
+          </div>
         )}
       </div>
 

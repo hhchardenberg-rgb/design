@@ -365,3 +365,48 @@ export async function archiveActivity(ctx: RecordCtx, id: string) {
   await visibleCompany(ctx, a.companyId);
   await prisma.commercialActivity.update({ where: { id }, data: { archivedAt: new Date() } });
 }
+
+// --- Samenvoegen -------------------------------------------------------------
+
+/**
+ * Voegt het dossier `sourceId` samen in `targetId`. Contactpersonen, historie, taken en bestanden
+ * verhuizen mee; lege velden van het doel worden aangevuld, tags en notities worden gecombineerd.
+ * Het bronsdossier blijft bewaard (gearchiveerd, met verwijzing). Eigenaarsbeslissingen zijn
+ * gevoelig voor bereik, dus dit vereist bereik 'alles'.
+ * Let op voor latere fases: nieuwe tabellen met een companyId moeten hier worden toegevoegd.
+ */
+export async function mergeCompanies(ctx: RecordCtx, targetId: string, sourceId: string) {
+  need(ctx, "companies:update");
+  need(ctx, "companies:archive");
+  if (targetId === sourceId) throw new ApiError(400, "Kies twee verschillende dossiers.");
+  if (ctx.scope("companies") !== "ALL") throw new ApiError(403, "Samenvoegen kan alleen met bereik 'alles'.");
+  const [target, source] = [await visibleCompany(ctx, targetId), await visibleCompany(ctx, sourceId)];
+  if (target.archivedAt || source.archivedAt) throw new ApiError(409, "Gearchiveerde dossiers kunnen niet worden samengevoegd.");
+
+  const fill = <K extends keyof typeof target>(k: K) => (target[k] == null || target[k] === "" ? source[k] : undefined);
+  const notes = [target.internalNotes, source.internalNotes && `Samengevoegd uit “${source.name}”:\n${source.internalNotes}`].filter(Boolean).join("\n\n") || null;
+  const moved = await prisma.$transaction(async (tx) => {
+    const [contacts, activities, tasks, files] = await Promise.all([
+      tx.commercialContact.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
+      tx.commercialActivity.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
+      tx.commercialTask.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
+      tx.commercialFile.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
+    ]);
+    await tx.commercialCompany.update({
+      where: { id: targetId },
+      data: {
+        tradeName: fill("tradeName"), street: fill("street"), postalCode: fill("postalCode"), city: fill("city"), country: fill("country"),
+        website: fill("website"), email: fill("email"), phone: fill("phone"), kvkNumber: fill("kvkNumber"), vatNumber: fill("vatNumber"),
+        billingName: fill("billingName"), billingEmail: fill("billingEmail"), billingAddress: fill("billingAddress"),
+        industry: fill("industry"), sponsorCategory: fill("sponsorCategory"),
+        tags: [...new Set([...target.tags, ...source.tags])],
+        internalNotes: notes,
+        version: { increment: 1 },
+      },
+    });
+    await tx.commercialCompany.update({ where: { id: sourceId }, data: { archivedAt: new Date(), mergedIntoId: targetId, version: { increment: 1 } } });
+    return { contacts: contacts.count, activities: activities.count, tasks: tasks.count, files: files.count };
+  });
+  await auditRecord(ctx, { action: "company.merge", entity: "company", entityId: targetId, before: { sourceId }, after: moved });
+  return moved;
+}
