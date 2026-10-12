@@ -11,6 +11,7 @@ import { useStableToast as useToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, toLocalInput } from "@/lib/commercial/client";
 import type { Permission } from "@/lib/commercial/permissions";
 import { FilesTab } from "./files-tab";
+import { MergePanel } from "./merge-panel";
 
 interface Company {
   id: string;
@@ -103,6 +104,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
       </div>
 
       {tab === "overview" && <Overview company={company} canEdit={can("companies:update")} canArchive={can("companies:archive")} onSaved={load} />}
+      {tab === "overview" && can("companies:update") && can("companies:archive") && !company.archivedAt && <MergePanel companyId={id} companyName={company.name} onDone={load} />}
       {tab === "contacts" && <Contacts companyId={id} can={can} />}
       {tab === "history" && <History companyId={id} can={can} />}
       {tab === "tasks" && <CompanyTasks companyId={id} can={can} />}
