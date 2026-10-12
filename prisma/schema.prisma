@@ -1118,6 +1118,8 @@ model CommercialContract {
   // Wat het pakket bevatte op het moment van afsluiten; los van latere pakketwijzigingen.
   packageSnapshot Json?
   renewedFromId   String?
+  // Gezet zodra een indexatie het bedrag heeft aangepast; voorkomt dubbel indexeren.
+  indexationId    String?
   version         Int                @default(1)
   archivedAt      DateTime?
   createdById     String?
@@ -1181,4 +1183,19 @@ model CommercialOpportunity {
   @@index([stage, archivedAt])
   @@index([ownerId])
   @@map("commercial_opportunities")
+}
+
+/// Eén toegepaste indexatieronde (percentage over de verlengingen van een seizoen). Bevat bewust geen bedragen.
+model CommercialIndexation {
+  id            String   @id @default(cuid())
+  seasonId      String
+  // Percentage in basispunten (350 = 3,5%).
+  basisPoints   Int
+  roundingCents Int
+  contractCount Int
+  appliedById   String
+  appliedAt     DateTime @default(now())
+
+  @@index([seasonId])
+  @@map("commercial_indexations")
 }

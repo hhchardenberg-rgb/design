@@ -37,6 +37,7 @@ before(async () => {
   ctxMod = await import("../ctx.server");
   co = await import("../companies.server");
   fl = await import("../files.server");
+  await db.commercialIndexation.deleteMany();
   await db.commercialOpportunity.deleteMany();
   await db.commercialCounterpart.deleteMany();
   await db.commercialContract.deleteMany();
@@ -54,6 +55,7 @@ before(async () => {
 });
 after(async () => {
   if (skip) return;
+  await db.commercialIndexation.deleteMany();
   await db.commercialOpportunity.deleteMany();
   await db.commercialCounterpart.deleteMany();
   await db.commercialContract.deleteMany();
