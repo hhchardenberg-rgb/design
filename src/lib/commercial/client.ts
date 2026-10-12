@@ -35,3 +35,18 @@ export function toLocalInput(d: Date = new Date()): string {
   const p = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam", dateStyle: "short", timeStyle: "short" }).format(d);
   return p.replace(" ", "T");
 }
+
+/** Eurocenten naar "€ 2.500,00". */
+export function formatEuro(cents: number | null | undefined): string {
+  if (cents == null) return "–";
+  return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(cents / 100);
+}
+
+/** "2.500,50" of "2500.50" naar eurocenten; null bij ongeldige invoer. Lege invoer geeft undefined. */
+export function parseEuro(input: string): number | null | undefined {
+  const t = input.trim().replace(/[€\s]/g, "");
+  if (t === "") return undefined;
+  const normalized = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t;
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  return Math.round(parseFloat(normalized) * 100);
+}
