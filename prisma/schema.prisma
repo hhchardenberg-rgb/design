@@ -59,14 +59,14 @@ model User {
   // nieuwe autorisatielogica, maar bewust behouden (en bij elke wijziging via
   // /api/admin/users meeveranderd) zodat bestaande data nooit verloren gaat
   // en er geen aparte migratie nodig is om ADMIN/USER-informatie te bewaren.
-  role  Role   @default(USER)
+  role         Role     @default(USER)
   // Nieuwe bron van waarheid: een gebruiker kan nul of meer rollen hebben
   // (bv. zowel HUB als TICKETING). Leeg (`[]`) betekent "nog niet
   // gemigreerd" — zie effectiveRoles() in src/lib/roles.ts, dat in dat geval
   // terugvalt op het legacy `role`-veld zodat bestaande accounts nooit
   // toegang verliezen. Wordt automatisch éénmalig gevuld (zie
   // backfillUserRoles in src/lib/user-roles.server.ts).
-  roles Role[] @default([])
+  roles        Role[]   @default([])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -76,11 +76,12 @@ model User {
   newsPosts        NewsPost[]
   pressReleases    PressRelease[]
 
-  totpCredential     TotpCredential?
-  recoveryCodes      RecoveryCode[]
-  webauthnCredentials WebAuthnCredential[]
-  passwordResetTokens PasswordResetToken[]
-  commercialMembership CommercialMembership?
+  totpCredential            TotpCredential?
+  recoveryCodes             RecoveryCode[]
+  webauthnCredentials       WebAuthnCredential[]
+  passwordResetTokens       PasswordResetToken[]
+  commercialMembership      CommercialMembership?
+  commercialTeamMemberships CommercialTeamMember[]
 
   @@map("users")
 }
@@ -167,7 +168,7 @@ model WebAuthnCredential {
   // Base64url credential-ID zoals de authenticator die teruggeeft —
   // uniek over ALLE gebruikers (nodig om bij wachtwoordloos inloggen de
   // bijbehorende gebruiker te vinden vóórdat die bekend is).
-  credentialId String @unique
+  credentialId String   @unique
   // COSE-publieke sleutel (ruwe bytes) — nooit een privésleutel; die blijft
   // altijd op het apparaat van de gebruiker.
   publicKey    Bytes
@@ -175,12 +176,12 @@ model WebAuthnCredential {
   // (iCloud Keychain, Google Password Manager) rapporteren hier altijd 0 —
   // zie verifyWebauthnAuthentication() in src/lib/webauthn/service.ts voor
   // hoe daarmee wordt omgegaan.
-  counter      Int    @default(0)
+  counter      Int      @default(0)
   transports   String[]
   // "singleDevice" (bv. een fysieke sleutel) of "multiDevice" (een
   // gesynchroniseerde passkey) — puur informatief voor de gebruiker.
   deviceType   String
-  backedUp     Boolean @default(false)
+  backedUp     Boolean  @default(false)
 
   // Door de gebruiker gekozen naam, bv. "iPhone" of "Beveiligingssleutel".
   name       String
@@ -224,16 +225,16 @@ enum TemplateStatus {
 }
 
 model Template {
-  id          String         @id @default(cuid())
-  slug        String         @unique
-  name        String
-  description String?
-  category    String
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  name         String
+  description  String?
+  category     String
   thumbnailUrl String?
-  status      TemplateStatus @default(DRAFT)
-  sortOrder   Int            @default(0)
+  status       TemplateStatus @default(DRAFT)
+  sortOrder    Int            @default(0)
 
-  activeVersionId String?         @unique
+  activeVersionId String?          @unique
   activeVersion   TemplateVersion? @relation("ActiveVersion", fields: [activeVersionId], references: [id])
 
   createdById String?
@@ -269,10 +270,10 @@ model TemplateVersion {
   createdAt   DateTime  @default(now())
   publishedAt DateTime?
 
-  fields          TemplateField[]
-  assets          TemplateAsset[] @relation("VersionAssets")
+  fields           TemplateField[]
+  assets           TemplateAsset[]   @relation("VersionAssets")
   generatedDesigns GeneratedDesign[]
-  activeFor       Template?       @relation("ActiveVersion")
+  activeFor        Template?         @relation("ActiveVersion")
 
   @@unique([templateId, versionNumber])
   @@map("template_versions")
@@ -398,7 +399,7 @@ model AgendaEvent {
   // Koppelt een ICS-agendapunt (uid + starttijd, zie CalendarEvent.id) aan dit
   // record, zodat uitlichten/toelichten niet dubbel kan en overleeft als de
   // beheerder het item nogmaals opent. Alleen gezet bij source = ICS.
-  icsUid String? @unique
+  icsUid String?           @unique
 
   title       String
   description String? // de "meer uitleg" die achter het event getoond wordt
@@ -526,9 +527,9 @@ model TicketingExcelTemplate {
 }
 
 model TicketingEmailTemplate {
-  id      String  @id @default(cuid())
-  title   String // korte naam, bv. "Seizoenspas opnieuw verstuurd"
-  subject String? // onderwerpregel
+  id        String  @id @default(cuid())
+  title     String // korte naam, bv. "Seizoenspas opnieuw verstuurd"
+  subject   String? // onderwerpregel
   // Platte tekst (geen Markdown) — moet direct bruikbaar zijn als je 'm
   // kopieert naar een mailprogramma.
   body      String
@@ -567,9 +568,9 @@ model CrisisProtocol {
 // ---------------------------------------------------------------------------
 
 model Contact {
-  id    String @id @default(cuid())
-  name  String
-  role  String // functie/rol binnen Team Communicatie
+  id   String @id @default(cuid())
+  name String
+  role String // functie/rol binnen Team Communicatie
 
   email    String?
   phone    String?
@@ -589,11 +590,11 @@ model Contact {
 // ---------------------------------------------------------------------------
 
 model Club {
-  id         String  @id @default(cuid())
-  name       String
-  shortName  String?
-  logoUrl    String?
-  isOwnClub  Boolean @default(false)
+  id        String  @id @default(cuid())
+  name      String
+  shortName String?
+  logoUrl   String?
+  isOwnClub Boolean @default(false)
 
   teams Team[]
 
@@ -613,8 +614,8 @@ model Team {
   competition String?
   ageGroup    String? // "Senioren" | "Vrouwen" | "O23" | "O19" | ...
 
-  players       Player[]
-  homeMatches   Match[]  @relation("TeamHomeMatches")
+  players     Player[]
+  homeMatches Match[]  @relation("TeamHomeMatches")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -747,7 +748,6 @@ model UploadedAsset {
   @@map("uploaded_assets")
 }
 
-
 // ---------------------------------------------------------------------------
 // Commerciële Zaken — toegang en fijnmazige rechten (alleen additief)
 // ---------------------------------------------------------------------------
@@ -789,6 +789,7 @@ model CommercialMembership {
   updatedAt   DateTime        @updatedAt
 
   overrides CommercialPermissionOverride[]
+  scopes    CommercialMemberScope[]
 
   @@index([roleId])
   @@map("commercial_memberships")
@@ -796,12 +797,12 @@ model CommercialMembership {
 
 // Individuele uitzondering op de rol: expliciet toestaan of blokkeren.
 model CommercialPermissionOverride {
-  id           String                    @id @default(cuid())
+  id           String                   @id @default(cuid())
   membershipId String
-  membership   CommercialMembership      @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  membership   CommercialMembership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   permission   String
   effect       CommercialOverrideEffect
-  createdAt    DateTime                  @default(now())
+  createdAt    DateTime                 @default(now())
 
   @@unique([membershipId, permission])
   @@map("commercial_permission_overrides")
@@ -824,4 +825,197 @@ model CommercialAuditEvent {
   @@index([createdAt])
   @@index([targetUserId, createdAt])
   @@map("commercial_audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Commerciële Zaken — fase 3: bedrijven, contacten, historie, taken (additief)
+// ---------------------------------------------------------------------------
+
+enum CommercialScope {
+  OWN
+  TEAM
+  ALL
+}
+
+// Recordbereik per onderdeel en lid. Geen rij = geen beperking op eigenaarschap
+// door de bevoegdheden zelf; de default wordt in code bepaald (zie scope.ts).
+model CommercialMemberScope {
+  id           String               @id @default(cuid())
+  membershipId String
+  membership   CommercialMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  area         String
+  scope        CommercialScope
+
+  @@unique([membershipId, area])
+  @@map("commercial_member_scopes")
+}
+
+model CommercialTeam {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  members   CommercialTeamMember[]
+  companies CommercialCompany[]
+  tasks     CommercialTask[]
+
+  @@map("commercial_teams")
+}
+
+model CommercialTeamMember {
+  teamId String
+  team   CommercialTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId String
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+  @@map("commercial_team_members")
+}
+
+// Eén bedrijf = één dossier, ongeacht seizoen of aantal contracten.
+model CommercialCompany {
+  id              String          @id @default(cuid())
+  name            String
+  tradeName       String?
+  // Genormaliseerde naam voor dubbelcontrole (kleine letters, zonder leestekens).
+  nameKey         String
+  status          String          @default("PROSPECT") // PROSPECT | ACTIVE | FORMER (configureerbaar volgt in fase 4)
+  street          String?
+  postalCode      String?
+  city            String?
+  country         String?
+  website         String?
+  email           String?
+  phone           String?
+  kvkNumber       String?
+  vatNumber       String?
+  billingName     String?
+  billingEmail    String?
+  billingAddress  String?
+  industry        String?
+  tags            String[]
+  sponsorCategory String?
+  source          String?
+  internalNotes   String?
+  // Eigenaarschap bepaalt het recordbereik. Alleen te wijzigen met bereik 'alle'.
+  ownerId         String?
+  teamId          String?
+  team            CommercialTeam? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  // Optimistic locking: wijzigen vereist de versie die de gebruiker zag.
+  version         Int             @default(1)
+  archivedAt      DateTime?
+  createdById     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  contacts   CommercialContact[]
+  activities CommercialActivity[]
+  tasks      CommercialTask[]
+
+  @@index([nameKey])
+  @@index([kvkNumber])
+  @@index([ownerId])
+  @@index([teamId])
+  @@index([archivedAt])
+  @@map("commercial_companies")
+}
+
+model CommercialContact {
+  id         String            @id @default(cuid())
+  companyId  String
+  company    CommercialCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name       String
+  jobTitle   String?
+  email      String?
+  phone      String?
+  role       String? // contactrol, bv. "Beslisser", "Facturatie"
+  notes      String?
+  archivedAt DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  activities CommercialActivity[]
+
+  @@index([companyId])
+  @@map("commercial_contacts")
+}
+
+enum CommercialActivityKind {
+  CALL
+  VISIT
+  MEETING
+  EMAIL
+  WHATSAPP
+  QUOTE
+  OTHER
+}
+
+// Gespreksnotitie, voorlopige toezegging of formele afspraak zijn bewust verschillend.
+enum CommercialActivityNature {
+  NOTE
+  PROVISIONAL
+  FORMAL
+}
+
+model CommercialActivity {
+  id         String                   @id @default(cuid())
+  companyId  String
+  company    CommercialCompany        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  contactId  String?
+  contact    CommercialContact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  kind       CommercialActivityKind
+  nature     CommercialActivityNature @default(NOTE)
+  // Moment van het contact of de geplande afspraak (met tijd).
+  occurredAt DateTime
+  isPlanned  Boolean                  @default(false)
+  summary    String
+  followUp   String?
+  authorId   String?
+  archivedAt DateTime?
+  createdAt  DateTime                 @default(now())
+
+  tasks CommercialTask[]
+
+  @@index([companyId, occurredAt])
+  @@map("commercial_activities")
+}
+
+enum CommercialTaskStatus {
+  OPEN
+  DONE
+}
+
+enum CommercialTaskPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+model CommercialTask {
+  id            String                 @id @default(cuid())
+  title         String
+  description   String?
+  assigneeId    String?
+  createdById   String?
+  teamId        String?
+  team          CommercialTeam?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  dueAt         DateTime?
+  priority      CommercialTaskPriority @default(NORMAL)
+  status        CommercialTaskStatus   @default(OPEN)
+  completedAt   DateTime?
+  completedById String?
+  companyId     String?
+  company       CommercialCompany?     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  activityId    String?
+  activity      CommercialActivity?    @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  version       Int                    @default(1)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([assigneeId, status])
+  @@index([companyId])
+  @@index([teamId])
+  @@index([dueAt])
+  @@map("commercial_tasks")
 }
