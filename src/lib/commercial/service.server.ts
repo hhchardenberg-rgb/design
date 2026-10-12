@@ -6,6 +6,8 @@ import { checkAssignRole, checkEditRole, checkGrant, checkMembershipChange, chec
 import { findInconsistencies, isPermission, type Permission } from "./permissions";
 import { loadCommercialAccess, ensureSystemRoles } from "./authz.server";
 import { summarize } from "./explain";
+import { DEFAULT_SCOPE, SCOPED_AREAS, scopeWithinLimit, type Scope, type ScopedArea } from "./scope";
+import { loadScopes } from "./ctx.server";
 
 // Alle schrijfacties op toegang en rechten lopen via dit bestand: eerst de
 // delegatieregels, dan de wijziging én de auditregel in één transactie.
@@ -216,6 +218,39 @@ export async function setMemberPermissions(actor: ServiceActor, userId: string, 
   });
 }
 
+// --- Recordbereik ---------------------------------------------------------------
+
+/**
+ * Stelt per onderdeel het recordbereik (eigen / team / alles) van een lid in.
+ * Je kunt geen ruimer bereik uitdelen dan je zelf hebt en niet je eigen bereik wijzigen.
+ */
+export async function setMemberScopes(actor: ServiceActor, userId: string, scopes: Partial<Record<ScopedArea, Scope>>) {
+  enforce(checkRestrict(actor, userId)); // rechtenbeheer + niet jezelf
+  const actorScopes = await loadScopes(actor.userId);
+  for (const area of SCOPED_AREAS) {
+    const requested = scopes[area];
+    if (requested && !scopeWithinLimit(requested, actorScopes[area])) {
+      throw new ApiError(403, "Je kunt geen ruimer bereik toekennen dan je zelf hebt.");
+    }
+  }
+  return prisma.$transaction(async (tx) => {
+    const m = await tx.commercialMembership.findUnique({ where: { userId }, include: { scopes: true } });
+    if (!m) throw new ApiError(404, "Deze gebruiker heeft geen toegang tot Commerciële Zaken.");
+    const before = Object.fromEntries(SCOPED_AREAS.map((a) => [a, m.scopes.find((r) => r.area === a)?.scope ?? DEFAULT_SCOPE]));
+    for (const area of SCOPED_AREAS) {
+      const scope = scopes[area];
+      if (!scope) continue;
+      await tx.commercialMemberScope.upsert({
+        where: { membershipId_area: { membershipId: m.id, area } },
+        update: { scope },
+        create: { membershipId: m.id, area, scope },
+      });
+    }
+    const after = { ...before, ...scopes };
+    await audit(tx, actor, { action: "member.scopes", entity: "membership", entityId: m.id, targetUserId: userId, before, after });
+  });
+}
+
 // --- Rollen ---------------------------------------------------------------------
 
 function slug(name: string): string {
@@ -271,11 +306,12 @@ export async function getRightsOverview(actor: ServiceActor) {
   await ensureSystemRoles();
   const [memberships, roles, events] = await Promise.all([
     prisma.commercialMembership.findMany({
-      include: { user: { select: { id: true, name: true, email: true } }, role: true, overrides: true },
+      include: { user: { select: { id: true, name: true, email: true } }, role: true, overrides: true, scopes: true },
       orderBy: { createdAt: "asc" },
     }),
     prisma.commercialRole.findMany({ orderBy: [{ isSystem: "desc" }, { name: "asc" }] }),
-    prisma.commercialAuditEvent.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
+    // Alleen toegangs- en rechtenwijzigingen; dossiermutaties horen niet bij het rechtenscherm.
+    prisma.commercialAuditEvent.findMany({ where: { entity: { in: ["membership", "role", "team"] } }, orderBy: { createdAt: "desc" }, take: 50 }),
   ]);
 
   const members = memberships.map((m) => {
@@ -290,6 +326,7 @@ export async function getRightsOverview(actor: ServiceActor) {
       email: m.user.email,
       roleId: m.roleId,
       roleName: m.role?.name ?? null,
+      scopes: Object.fromEntries(SCOPED_AREAS.map((a) => [a, (m.scopes.find((r) => r.area === a)?.scope ?? DEFAULT_SCOPE) as Scope])) as Record<ScopedArea, Scope>,
       effective: summarize(eff),
     };
   });

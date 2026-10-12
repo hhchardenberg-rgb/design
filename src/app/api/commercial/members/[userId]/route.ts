@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiErrorResponse } from "@/lib/api-guards";
 import { requireCommercial } from "@/lib/commercial/authz.server";
-import { buildActor, setMemberPermissions, setMemberRole } from "@/lib/commercial/service.server";
+import { buildActor, setMemberPermissions, setMemberRole, setMemberScopes } from "@/lib/commercial/service.server";
 
 const schema = z
   .object({
     roleId: z.string().nullable().optional(),
     permissions: z.array(z.string()).optional(),
+    scopes: z.object({ companies: z.enum(["OWN", "TEAM", "ALL"]).optional(), tasks: z.enum(["OWN", "TEAM", "ALL"]).optional() }).optional(),
   })
   .strict();
 
@@ -20,6 +21,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ userId: 
     // Eerst de rol, daarna de individuele uitzonderingen (die gelden t.o.v. de nieuwe rol).
     if (body.roleId !== undefined) await setMemberRole(actor, userId, body.roleId);
     if (body.permissions) await setMemberPermissions(await buildActor(user), userId, body.permissions);
+    if (body.scopes) await setMemberScopes(await buildActor(user), userId, body.scopes);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);

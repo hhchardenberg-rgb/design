@@ -33,6 +33,7 @@ interface Member {
   email: string;
   roleId: string | null;
   roleName: string | null;
+  scopes: Record<"companies" | "tasks", "OWN" | "TEAM" | "ALL">;
   effective: EffectiveRow[];
 }
 interface Role {
@@ -207,6 +208,7 @@ export function RightsManager({ canManage }: { canManage: boolean }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Set<Permission>>(new Set());
   const [draftRole, setDraftRole] = useState<string | null>(null);
+  const [draftScopes, setDraftScopes] = useState<Member["scopes"]>({ companies: "ALL", tasks: "ALL" });
   const [saving, setSaving] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [roleDraft, setRoleDraft] = useState<Set<Permission>>(new Set());
@@ -235,6 +237,7 @@ export function RightsManager({ canManage }: { canManage: boolean }) {
     setSelected(m.userId);
     setDraft(toSet(m.effective));
     setDraftRole(m.roleId);
+    setDraftScopes(m.scopes);
   }
   function pickRole(r: Role | null) {
     setSelectedRole(r?.id ?? "new");
@@ -249,7 +252,8 @@ export function RightsManager({ canManage }: { canManage: boolean }) {
     if (!member) return;
     setSaving(true);
     // Bij een rolwissel is de gewenste set de rol zelf; anders de handmatig ingestelde matrix.
-    const body: { roleId?: string | null; permissions?: Permission[] } = {};
+    const body: { roleId?: string | null; permissions?: Permission[]; scopes?: Member["scopes"] } = {};
+    if (draftScopes.companies !== member.scopes.companies || draftScopes.tasks !== member.scopes.tasks) body.scopes = draftScopes;
     if (draftRole !== member.roleId) body.roleId = draftRole;
     body.permissions = [...draft];
     const r = await send(`/api/commercial/members/${member.userId}`, "PUT", body);
@@ -356,6 +360,23 @@ export function RightsManager({ canManage }: { canManage: boolean }) {
                     ))}
                   </select>
                   <p className="mt-1 text-xs text-muted-foreground">Een andere rol kiezen zet de matrix terug naar die rol; daarna kun je uitzonderingen instellen.</p>
+                </div>
+                <div className="rounded-md border border-border p-3">
+                  <h4 className="text-sm font-semibold">Bereik: welke dossiers en taken ziet deze persoon?</h4>
+                  <p className="mb-2 text-xs text-muted-foreground">Dit wordt server-side afgedwongen. “Alleen eigen” betekent: alleen dossiers waarvan deze persoon de verantwoordelijke is.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {([["companies", "Sponsordossiers"], ["tasks", "Taken"]] as const).map(([area, label]) => (
+                      <div key={area}>
+                        <Label htmlFor={`scope-${area}`}>{label}</Label>
+                        <select id={`scope-${area}`} className="mt-1 h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" disabled={!canManage || isSelf}
+                          value={draftScopes[area]} onChange={(e) => setDraftScopes((s) => ({ ...s, [area]: e.target.value as "OWN" | "TEAM" | "ALL" }))}>
+                          <option value="OWN">Alleen eigen</option>
+                          <option value="TEAM">Eigen team</option>
+                          <option value="ALL">Alles</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <Matrix value={draft} onChange={setDraft} disabled={!canManage || isSelf} grantable={grantable} sources={sources} />
                 {memberIssues.length > 0 && (

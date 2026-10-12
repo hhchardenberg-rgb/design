@@ -11,5 +11,8 @@ export interface CommercialNavItem {
 
 export const COMMERCIAL_NAV: CommercialNavItem[] = [
   { href: "/commercieel", label: "Dashboard" },
+  { href: "/commercieel/sponsoren", label: "Sponsoren", requires: "companies:read" },
+  { href: "/commercieel/taken", label: "Taken", requires: "tasks:read" },
+  { href: "/commercieel/instellingen/teams", label: "Teams", requires: "settings:read" },
   { href: "/commercieel/instellingen/rechten", label: "Rechten", requires: "rights:read" },
 ];
