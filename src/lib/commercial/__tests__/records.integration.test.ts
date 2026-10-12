@@ -34,6 +34,7 @@ before(async () => {
   co = await import("../companies.server");
   tk = await import("../tasks.server");
   tm = await import("../teams.server");
+  await db.commercialOpportunity.deleteMany();
   await db.commercialCounterpart.deleteMany();
   await db.commercialContract.deleteMany();
   await db.commercialFile.deleteMany();

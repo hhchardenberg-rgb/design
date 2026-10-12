@@ -68,3 +68,13 @@ export const contractSchema = z.object({
 export const contractUpdateSchema = contractSchema.partial().extend({ version: z.number().int() });
 export const counterpartSchema = z.object({ title: z.string().trim().min(1, "Geef de tegenprestatie een titel.").max(200), description: z.string().trim().max(1000).nullish(), quantity: z.number().int().min(1).max(999).optional(), dueOn: day.nullish() });
 export const counterpartUpdateSchema = z.object({ status: z.enum(["PLANNED", "IN_PROGRESS", "DELIVERED", "CANCELLED"]).optional(), dueOn: day.nullish(), notes: z.string().trim().max(2000).nullish(), description: z.string().trim().max(1000).nullish() });
+
+export const opportunitySchema = z.object({
+  title: z.string().trim().min(1, "Geef de kans een titel.").max(200),
+  packageId: z.string().nullish(),
+  expectedAmountCents: z.number().int().min(0).nullable().optional(),
+  expectedCloseOn: day.nullish(),
+  ownerId: z.string().nullish(),
+  notes: z.string().trim().max(2000).nullish(),
+});
+export const opportunityUpdateSchema = opportunitySchema.partial().extend({ version: z.number().int() });

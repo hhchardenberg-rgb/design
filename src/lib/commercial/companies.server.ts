@@ -394,6 +394,7 @@ export async function mergeCompanies(ctx: RecordCtx, targetId: string, sourceId:
       tx.commercialContract.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
     ]);
     await tx.commercialCounterpart.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } });
+    await tx.commercialOpportunity.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } });
     await tx.commercialCompany.update({
       where: { id: targetId },
       data: {
