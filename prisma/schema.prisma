@@ -80,6 +80,7 @@ model User {
   recoveryCodes      RecoveryCode[]
   webauthnCredentials WebAuthnCredential[]
   passwordResetTokens PasswordResetToken[]
+  commercialMembership CommercialMembership?
 
   @@map("users")
 }
@@ -744,4 +745,83 @@ model UploadedAsset {
   createdAt DateTime @default(now())
 
   @@map("uploaded_assets")
+}
+
+
+// ---------------------------------------------------------------------------
+// Commerciële Zaken — toegang en fijnmazige rechten (alleen additief)
+// ---------------------------------------------------------------------------
+// Sectietoegang staat los van de rollen in `User.roles`: wie ADMIN is, heeft
+// hier GEEN toegang zonder expliciet lidmaatschap. Effectieve rechten worden
+// bij elk verzoek uit deze tabellen berekend (zie src/lib/commercial), niet
+// uit het JWT, zodat intrekken direct werkt.
+
+enum CommercialOverrideEffect {
+  ALLOW
+  DENY
+}
+
+// Herbruikbaar sjabloon: een lijst concrete bevoegdheden ("onderdeel:actie").
+model CommercialRole {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  permissions String[]
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships CommercialMembership[]
+
+  @@map("commercial_roles")
+}
+
+// Eén rij = deze gebruiker heeft toegang tot de sectie Commerciële Zaken.
+model CommercialMembership {
+  id          String          @id @default(cuid())
+  userId      String          @unique
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId      String?
+  role        CommercialRole? @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  createdById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  overrides CommercialPermissionOverride[]
+
+  @@index([roleId])
+  @@map("commercial_memberships")
+}
+
+// Individuele uitzondering op de rol: expliciet toestaan of blokkeren.
+model CommercialPermissionOverride {
+  id           String                    @id @default(cuid())
+  membershipId String
+  membership   CommercialMembership      @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  permission   String
+  effect       CommercialOverrideEffect
+  createdAt    DateTime                  @default(now())
+
+  @@unique([membershipId, permission])
+  @@map("commercial_permission_overrides")
+}
+
+// Wie wijzigde wat en wanneer. Bewust zonder foreign keys: de historie moet
+// blijven bestaan als een gebruiker later verwijderd wordt.
+model CommercialAuditEvent {
+  id           String   @id @default(cuid())
+  actorId      String?
+  actorLabel   String?
+  targetUserId String?
+  action       String
+  entity       String
+  entityId     String?
+  before       Json?
+  after        Json?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetUserId, createdAt])
+  @@map("commercial_audit_events")
 }
