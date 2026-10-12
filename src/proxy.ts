@@ -35,7 +35,7 @@ const TICKETING_PREFIXES = ["/ticketing"];
 // toegang"-pagina voor gebruikers zonder enige rol, en
 // accountbeveiliging — élke gebruiker moet zijn eigen MFA kunnen
 // beheren, ongeacht welke sectierol hij verder heeft).
-const LOGIN_ONLY_PREFIXES = ["/geen-toegang", "/account"];
+const LOGIN_ONLY_PREFIXES = ["/geen-toegang", "/account", "/commercieel"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -93,5 +93,6 @@ export const config = {
     "/ticketing/:path*",
     "/geen-toegang/:path*",
     "/account/:path*",
+    "/commercieel/:path*",
   ],
 };
