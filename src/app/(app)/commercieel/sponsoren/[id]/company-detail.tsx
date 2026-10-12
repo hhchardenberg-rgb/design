@@ -12,6 +12,7 @@ import { api, formatDate, toLocalInput } from "@/lib/commercial/client";
 import type { Permission } from "@/lib/commercial/permissions";
 import { FilesTab } from "./files-tab";
 import { MergePanel } from "./merge-panel";
+import { ContractsTab } from "./contracts-tab";
 
 interface Company {
   id: string;
@@ -50,7 +51,7 @@ const KIND: Record<string, string> = { CALL: "Telefoongesprek", VISIT: "Bezoek",
 const NATURE: Record<string, string> = { NOTE: "Gespreksnotitie", PROVISIONAL: "Voorlopige toezegging", FORMAL: "Formele afspraak" };
 const STATUS: Record<string, string> = { PROSPECT: "Potentieel", ACTIVE: "Actief", FORMER: "Voormalig" };
 
-type Tab = "overview" | "contacts" | "history" | "tasks" | "files";
+type Tab = "overview" | "contacts" | "history" | "tasks" | "contracts" | "files";
 
 export function CompanyDetail({ id, permissions }: { id: string; permissions: Permission[] }) {
   const can = useCallback((p: Permission) => permissions.includes(p), [permissions]);
@@ -82,6 +83,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
     { key: "contacts", label: "Contactpersonen", show: can("contacts:read") },
     { key: "history", label: "Contacthistorie", show: can("history:read") },
     { key: "tasks", label: "Taken", show: can("tasks:read") },
+    { key: "contracts", label: "Contracten", show: can("contracts:read") },
     { key: "files", label: "Bestanden", show: can("files:read") },
   ];
 
@@ -108,6 +110,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
       {tab === "contacts" && <Contacts companyId={id} can={can} />}
       {tab === "history" && <History companyId={id} can={can} />}
       {tab === "tasks" && <CompanyTasks companyId={id} can={can} />}
+      {tab === "contracts" && <ContractsTab companyId={id} can={can} />}
       {tab === "files" && <FilesTab companyId={id} can={can} />}
     </div>
   );

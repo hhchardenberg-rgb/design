@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { apiErrorResponse } from "@/lib/api-guards";
 import { requireCommercial } from "./authz.server";
 import { buildRecordCtx, type RecordCtx } from "./ctx.server";
@@ -14,6 +15,8 @@ export async function handle(fn: (ctx: RecordCtx) => Promise<unknown>) {
     const result = await fn(await buildRecordCtx(user));
     return NextResponse.json(result ?? { ok: true });
   } catch (error) {
+    // Ongeldige invoer is een fout van de aanvrager, geen serverfout.
+    if (error instanceof ZodError) return NextResponse.json({ error: error.issues[0]?.message || "Controleer de ingevulde gegevens." }, { status: 400 });
     return apiErrorResponse(error);
   }
 }

@@ -39,6 +39,8 @@ before(async () => {
   fl = await import("../files.server");
   tk = await import("../tasks.server");
   im = await import("../import.server");
+  await db.commercialCounterpart.deleteMany();
+  await db.commercialContract.deleteMany();
   await db.commercialFile.deleteMany();
   await db.commercialTask.deleteMany();
   await db.commercialActivity.deleteMany();
@@ -53,6 +55,8 @@ before(async () => {
 });
 after(async () => {
   if (skip) return;
+  await db.commercialCounterpart.deleteMany();
+  await db.commercialContract.deleteMany();
   await db.commercialFile.deleteMany();
   await db.$disconnect();
   process.chdir(cwd);
@@ -85,7 +89,7 @@ test("samenvoegen verhuist alles, vult aan en respecteert bevoegdheid en bereik"
   await rejects(co.mergeCompanies(co1, target.id, source.id), 403); // bereik niet 'alles'
 
   const moved = await co.mergeCompanies(cm, target.id, source.id);
-  assert.deepEqual(moved, { contacts: 1, activities: 1, tasks: 1, files: 1 });
+  assert.deepEqual(moved, { contacts: 1, activities: 1, tasks: 1, files: 1, contracts: 0 });
   const t = await db.commercialCompany.findUniqueOrThrow({ where: { id: target.id } });
   assert.equal(t.email, "info@jansen.test"); // aangevuld
   assert.equal(t.city, "Hardenberg"); // eigen waarde blijft

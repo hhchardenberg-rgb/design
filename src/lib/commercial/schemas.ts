@@ -45,3 +45,26 @@ export const taskSchema = z.object({
   priority: z.enum(["LOW", "NORMAL", "HIGH"]).optional(),
   companyId: z.string().nullish(),
 });
+
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Gebruik een datum in de vorm JJJJ-MM-DD.");
+export const seasonSchema = z.object({ name: z.string().trim().min(1).max(60), startsOn: day, endsOn: day, status: z.enum(["DRAFT", "ACTIVE", "CLOSED"]).optional() });
+export const packageSchema = z.object({
+  name: z.string().trim().min(1, "Geef het pakket een naam.").max(120),
+  description: z.string().trim().max(2000).nullish(),
+  defaultAmountCents: z.number().int().min(0).nullable().optional(),
+  items: z.array(z.object({ title: z.string().trim().min(1).max(200), description: z.string().trim().max(1000).nullish(), quantity: z.number().int().min(1).max(999).optional() })).max(50).optional(),
+});
+export const contractSchema = z.object({
+  seasonId: z.string().min(1, "Kies een seizoen."),
+  packageId: z.string().nullish(),
+  startsOn: day,
+  endsOn: day,
+  amountCents: z.number().int().min(0).nullable().optional(),
+  renewalOn: day.nullish(),
+  noticeUntil: day.nullish(),
+  autoRenew: z.boolean().optional(),
+  notes: z.string().trim().max(2000).nullish(),
+});
+export const contractUpdateSchema = contractSchema.partial().extend({ version: z.number().int() });
+export const counterpartSchema = z.object({ title: z.string().trim().min(1, "Geef de tegenprestatie een titel.").max(200), description: z.string().trim().max(1000).nullish(), quantity: z.number().int().min(1).max(999).optional(), dueOn: day.nullish() });
+export const counterpartUpdateSchema = z.object({ status: z.enum(["PLANNED", "IN_PROGRESS", "DELIVERED", "CANCELLED"]).optional(), dueOn: day.nullish(), notes: z.string().trim().max(2000).nullish(), description: z.string().trim().max(1000).nullish() });

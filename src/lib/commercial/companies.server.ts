@@ -386,12 +386,14 @@ export async function mergeCompanies(ctx: RecordCtx, targetId: string, sourceId:
   const fill = <K extends keyof typeof target>(k: K) => (target[k] == null || target[k] === "" ? source[k] : undefined);
   const notes = [target.internalNotes, source.internalNotes && `Samengevoegd uit “${source.name}”:\n${source.internalNotes}`].filter(Boolean).join("\n\n") || null;
   const moved = await prisma.$transaction(async (tx) => {
-    const [contacts, activities, tasks, files] = await Promise.all([
+    const [contacts, activities, tasks, files, contracts] = await Promise.all([
       tx.commercialContact.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
       tx.commercialActivity.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
       tx.commercialTask.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
       tx.commercialFile.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
+      tx.commercialContract.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } }),
     ]);
+    await tx.commercialCounterpart.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } });
     await tx.commercialCompany.update({
       where: { id: targetId },
       data: {
@@ -405,7 +407,7 @@ export async function mergeCompanies(ctx: RecordCtx, targetId: string, sourceId:
       },
     });
     await tx.commercialCompany.update({ where: { id: sourceId }, data: { archivedAt: new Date(), mergedIntoId: targetId, version: { increment: 1 } } });
-    return { contacts: contacts.count, activities: activities.count, tasks: tasks.count, files: files.count };
+    return { contacts: contacts.count, activities: activities.count, tasks: tasks.count, files: files.count, contracts: contracts.count };
   });
   await auditRecord(ctx, { action: "company.merge", entity: "company", entityId: targetId, before: { sourceId }, after: moved });
   return moved;

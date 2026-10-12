@@ -915,6 +915,7 @@ model CommercialCompany {
   activities CommercialActivity[]
   tasks      CommercialTask[]
   files      CommercialFile[]
+  contracts  CommercialContract[]
 
   @@index([nameKey])
   @@index([kvkNumber])
@@ -1046,4 +1047,109 @@ model CommercialFile {
   @@index([companyId, category])
   @@index([versionGroup])
   @@map("commercial_files")
+}
+
+/// Sponsorseizoen, bv. "2026/2027".
+model CommercialSeason {
+  id         String    @id @default(cuid())
+  name       String    @unique
+  startsOn   DateTime  @db.Date
+  endsOn     DateTime  @db.Date
+  status     String    @default("DRAFT") // DRAFT | ACTIVE | CLOSED
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  contracts CommercialContract[]
+
+  @@map("commercial_seasons")
+}
+
+/// Sponsorpakket (sjabloon). Wijzigingen werken niet door in bestaande contracten: die bewaren een momentopname.
+model CommercialPackage {
+  id                 String    @id @default(cuid())
+  name               String
+  description        String?
+  // Standaardbedrag in eurocenten (financieel gegeven: alleen met bedragenrechten zichtbaar).
+  defaultAmountCents Int?
+  archivedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  items     CommercialPackageItem[]
+  contracts CommercialContract[]
+
+  @@map("commercial_packages")
+}
+
+/// Tegenprestatie-sjabloon binnen een pakket.
+model CommercialPackageItem {
+  id          String            @id @default(cuid())
+  packageId   String
+  package     CommercialPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  quantity    Int               @default(1)
+  position    Int               @default(0)
+
+  @@index([packageId])
+  @@map("commercial_package_items")
+}
+
+/// Sponsorcontract van een bedrijf voor een seizoen.
+model CommercialContract {
+  id              String             @id @default(cuid())
+  companyId       String
+  company         CommercialCompany  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  seasonId        String
+  season          CommercialSeason   @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  packageId       String?
+  package         CommercialPackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  status          String             @default("DRAFT") // DRAFT | ACTIVE | ENDED | CANCELLED
+  startsOn        DateTime           @db.Date
+  endsOn          DateTime           @db.Date
+  // Bedrag in eurocenten, exclusief btw; btw wordt pas bij facturatie bepaald.
+  amountCents     Int?
+  renewalOn       DateTime?          @db.Date // moment om het gesprek over verlengen te voeren
+  noticeUntil     DateTime?          @db.Date // uiterste opzegdatum
+  autoRenew       Boolean            @default(false)
+  notes           String?
+  // Wat het pakket bevatte op het moment van afsluiten; los van latere pakketwijzigingen.
+  packageSnapshot Json?
+  renewedFromId   String?
+  version         Int                @default(1)
+  archivedAt      DateTime?
+  createdById     String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  counterparts CommercialCounterpart[]
+
+  @@index([companyId])
+  @@index([seasonId, status])
+  @@index([endsOn])
+  @@map("commercial_contracts")
+}
+
+/// Tegenprestatie: wat HHC aan de sponsor heeft toegezegd.
+model CommercialCounterpart {
+  id            String             @id @default(cuid())
+  contractId    String
+  contract      CommercialContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  companyId     String
+  title         String
+  description   String?
+  quantity      Int                @default(1)
+  status        String             @default("PLANNED") // PLANNED | IN_PROGRESS | DELIVERED | CANCELLED
+  dueOn         DateTime?          @db.Date
+  deliveredAt   DateTime?
+  responsibleId String?
+  notes         String?
+  proofFileId   String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([contractId])
+  @@index([companyId])
+  @@map("commercial_counterparts")
 }
