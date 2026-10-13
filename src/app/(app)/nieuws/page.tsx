@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import { format } from "date-fns";
-import { nl } from "date-fns/locale";
-import { Newspaper, Pin } from "lucide-react";
+import { Newspaper } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
+import { NewsPosts } from "@/components/news-posts";
 
 export const metadata: Metadata = { title: "Nieuws" };
 
@@ -30,32 +27,10 @@ export default async function NieuwsPage() {
         />
       )}
 
-      <div className="flex flex-col gap-3">
-        {posts.map((post) => (
-          <Card key={post.id} className={post.pinned ? "overflow-hidden border-hhc-orange" : "overflow-hidden"}>
-            {post.imageUrl && (
-              <div className="aspect-[3/1] bg-surface-muted bg-cover bg-center" style={{ backgroundImage: `url(${post.imageUrl})` }} />
-            )}
-            <CardContent className="flex flex-col gap-2 p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                {post.pinned && (
-                  <Badge variant="primary" className="flex items-center gap-1">
-                    <Pin className="h-3 w-3" />
-                    Vastgezet
-                  </Badge>
-                )}
-                {post.category && <Badge variant="outline">{post.category}</Badge>}
-                <p className="font-semibold">{post.title}</p>
-              </div>
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{post.body}</p>
-              <p className="text-xs text-muted-foreground">
-                {format(post.createdAt, "d MMMM yyyy", { locale: nl })}
-                {post.author?.name ? ` · ${post.author.name}` : ""}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <NewsPosts
+        variant="feed"
+        posts={posts.map(({ author, ...post }) => ({ ...post, authorName: author?.name ?? null }))}
+      />
     </div>
   );
 }
