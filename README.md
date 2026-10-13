@@ -95,8 +95,9 @@ en een correcte `NEXTAUTH_URL`.
 
 De Hub draait op `https://hub.hhc-hardenberg.nl`. Het oude adres
 `communicatie.hhc-hardenberg.nl` blijft aan het Vercel-project gekoppeld en
-stuurt met een 308-redirect door naar het nieuwe adres (ingesteld bij
-Vercel → Settings → Domains, niet in de code).
+stuurt met een 308-redirect door naar het nieuwe adres. Die redirect staat in
+`next.config.ts`; routes onder `/api/` worden niet doorgestuurd, zodat cron en
+webhooks op het oude adres blijven werken.
 
 Alle absolute links (wachtwoordreset, herinneringsmails, afmeldlinks in
 mailings) en de WebAuthn-instellingen voor passkeys worden afgeleid van
@@ -105,7 +106,7 @@ mailings) en de WebAuthn-instellingen voor passkeys worden afgeleid van
 1. Zet een CNAME-record voor het nieuwe subdomein naar `cname.vercel-dns.com`.
 2. Voeg het domein toe aan het Vercel-project en wacht tot het geldig is.
 3. Zet `NEXTAUTH_URL` op het nieuwe adres en deploy productie opnieuw.
-4. Zet het oude domein in Vercel op "Redirect to" het nieuwe domein.
+4. Pas de host-redirect in `next.config.ts` aan naar het nieuwe domein.
 5. Pas de Resend-webhook aan naar `https://<nieuw domein>/api/webhooks/resend`
    (een webhook volgt geen redirect).
 
