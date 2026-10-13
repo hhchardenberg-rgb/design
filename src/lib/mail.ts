@@ -81,7 +81,7 @@ export async function sendMailingEmail(mail: { to: string; name: string | null; 
   const resend = getClient();
   const { e, t } = unsubscribeParams(mail.to);
   const unsubscribeUrl = `${APP_URL}/afmelden?e=${e}&t=${t}`;
-  const { html, text } = renderMailing(mail.bodyText, mail.name, unsubscribeUrl);
+  const { html, text } = renderMailing(mail.bodyText, mail.name, unsubscribeUrl, { logoUrl: `${APP_URL}/branding/hhc-logo.png` });
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: mail.to,

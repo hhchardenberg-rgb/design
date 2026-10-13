@@ -74,6 +74,7 @@ bedragen, adressen of berichttekst.
    doelgroep, "Ontvangers voorbereiden", controleer de lijst, "Versturen". Mislukte mails kun je opnieuw proberen.
    Met "Testmail versturen" stuur je het bericht, zoals het in het scherm staat, naar een e-mailadres naar keuze (maximaal
    10 per uur, alleen met het recht om te versturen). Er gaat niets naar sponsoren; het onderwerp begint met [TESTMAIL].
+   Mailings krijgen automatisch de HHC-opmaak: logo, een dunne oranje balk, rustige witte kaart en een afmeldregel onderaan.
 8. **Tegenprestaties**: Tegenprestaties in het menu toont per seizoen wat HHC nog moet leveren, met
    afvinken, status (gepland, bezig, vervallen) en een markering "te laat" na de einddatum.
 9. **Rapportages**: kies een seizoen; exporteren kan als je het exportrecht hebt.
