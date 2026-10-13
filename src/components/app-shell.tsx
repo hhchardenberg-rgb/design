@@ -125,7 +125,7 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
               <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface to-transparent" />
             </div>
           )}
-          <div className={cn("relative flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
+          <div className={cn("flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
             {isAdminSection ? (
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : isTicketingSection ? (

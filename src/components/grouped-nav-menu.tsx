@@ -26,6 +26,10 @@ export interface NavMenuGroup {
  * /admin. Eén kolom met korte groepskopjes in plaats van een brede
  * kaartengrid, zodat het menu ook met veel onderdelen (10+) overzichtelijk
  * blijft en zelden hoeft te scrollen.
+ *
+ * Positie: vanaf md klapt het menu direct onder de knop uit (links uitgelijnd);
+ * op smalle schermen is de knop te dicht bij de rand, dus daar vult het menu
+ * de breedte onder de (sticky) header.
  */
 export function GroupedNavMenu({
   groups,
@@ -85,7 +89,7 @@ export function GroupedNavMenu({
   }
 
   return (
-    <div ref={ref}>
+    <div ref={ref} className="md:relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -101,7 +105,7 @@ export function GroupedNavMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-30 mt-2 flex max-h-[75vh] w-72 max-w-[calc(100vw-1.5rem)] flex-col overflow-y-auto rounded-lg border border-border bg-surface p-2 shadow-lg">
+        <div className="absolute inset-x-3 top-full z-30 mt-1 flex max-h-[75vh] flex-col overflow-y-auto rounded-lg border border-border bg-surface p-2 shadow-lg md:inset-x-auto md:left-0 md:mt-2 md:w-72">
           {featured && (
             <>
               {renderItem(featured, true)}
