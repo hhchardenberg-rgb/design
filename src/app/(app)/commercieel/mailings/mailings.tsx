@@ -7,10 +7,12 @@ import { Input, Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate } from "@/lib/commercial/client";
 import { renderMailing } from "@/lib/commercial/mail-render";
+import { TierFilter } from "@/components/commercial/sponsor-tier";
+import { tierLabel } from "@/lib/commercial/sponsor-tiers";
 
-interface Row { id: string; subject: string; status: string; sentAt: string | null; createdAt: string; counts: Record<string, number> }
+interface Row { id: string; subject: string; audienceTiers: string[]; status: string; sentAt: string | null; createdAt: string; counts: Record<string, number> }
 interface Recipient { id: string; email: string; name: string | null; status: string; error: string | null }
-interface Detail { id: string; subject: string; bodyText: string; audienceStatus: string | null; status: string; version: number; recipients: Recipient[] }
+interface Detail { id: string; subject: string; bodyText: string; audienceStatus: string | null; audienceTiers: string[]; status: string; version: number; recipients: Recipient[] }
 
 const STATUS: Record<string, string> = { DRAFT: "Concept", SENDING: "Wordt verstuurd", SENT: "Verstuurd" };
 const R_STATUS: Record<string, string> = { PENDING: "Wacht", SENDING: "Bezig", SENT: "Verstuurd", DELIVERED: "Afgeleverd", BOUNCED: "Gebounced", COMPLAINED: "Klacht", FAILED: "Mislukt", SKIPPED: "Overgeslagen" };
@@ -22,8 +24,8 @@ function PreviewDialog({ subject, bodyText, name, onClose }: { subject: string; 
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-  const { html } = renderMailing(bodyText, name, "#");
-  const doc = `<!doctype html><meta charset="utf-8"><base target="_blank"><body style="font:15px/1.5 -apple-system,Segoe UI,Arial,sans-serif;color:#222;margin:16px">${html}</body>`;
+  const { html } = renderMailing(bodyText, name, "#", { logoUrl: `${window.location.origin}/branding/hhc-logo.png` });
+  const doc = html.replace("<body", '<head><meta charset="utf-8"><base target="_blank"></head><body');
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" aria-labelledby="ml-prev-title" className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg border border-border bg-surface shadow-xl">
@@ -48,8 +50,10 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [audience, setAudience] = useState("");
+  const [tiers, setTiers] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [testTo, setTestTo] = useState("");
 
   const loadList = useCallback(async () => {
     const r = await api<{ mailings: Row[] }>("/api/commercial/mailings");
@@ -66,12 +70,13 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
     setSubject(r.data.subject);
     setBodyText(r.data.bodyText);
     setAudience(r.data.audienceStatus ?? "");
+    setTiers(r.data.audienceTiers ?? []);
   }
-  function startNew() { setDetail(null); setSubject(""); setBodyText(""); setAudience(""); }
+  function startNew() { setDetail(null); setSubject(""); setBodyText(""); setAudience(""); setTiers([]); }
 
   async function save() {
     setBusy(true);
-    const payload = { subject, bodyText, audienceStatus: audience || null };
+    const payload = { subject, bodyText, audienceStatus: audience || null, audienceTiers: tiers };
     const r = detail ? await api(`/api/commercial/mailings/${detail.id}`, "PUT", { ...payload, version: detail.version }) : await api<{ id: string }>("/api/commercial/mailings", "POST", payload);
     setBusy(false);
     if (!r.ok) { toast.error(r.error); return; }
@@ -88,6 +93,14 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
     toast.success(done(r.data as never));
     await loadList();
     await open(detail.id);
+  }
+
+  async function sendTest() {
+    setBusy(true);
+    const r = await api<{ sentTo: string }>("/api/commercial/mailings/test", "POST", { to: testTo, subject, bodyText, name: "Jan de Vries" });
+    setBusy(false);
+    if (r.ok) toast.success(`Testmail verstuurd naar ${r.data.sentTo}.`);
+    else toast.error(r.error);
   }
 
   const draft = !detail || detail.status === "DRAFT";
@@ -109,7 +122,7 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
                 {rows.map((r) => (
                   <li key={r.id}><button className="w-full py-2 text-left hover:underline" onClick={() => open(r.id)}>
                     <span className="font-medium">{r.subject}</span><br />
-                    <span className="text-xs text-muted-foreground">{STATUS[r.status] ?? r.status} · {formatDate(r.sentAt ?? r.createdAt)}{Object.keys(r.counts).length ? " · " + Object.entries(r.counts).map(([k, v]) => `${v} ${R_STATUS[k]?.toLowerCase() ?? k}`).join(", ") : ""}</span>
+                    <span className="text-xs text-muted-foreground">{STATUS[r.status] ?? r.status} · {formatDate(r.sentAt ?? r.createdAt)}{r.audienceTiers?.length ? " · " + r.audienceTiers.map((t) => tierLabel(t) ?? t).join(", ") : ""}{Object.keys(r.counts).length ? " · " + Object.entries(r.counts).map(([k, v]) => `${v} ${R_STATUS[k]?.toLowerCase() ?? k}`).join(", ") : ""}</span>
                   </button></li>
                 ))}
               </ul>
@@ -126,6 +139,9 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
               <select id="ml-aud" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={audience} disabled={!draft} onChange={(e) => setAudience(e.target.value)}>
                 <option value="">Alle dossiers binnen mijn bereik</option><option value="ACTIVE">Alleen actieve sponsoren</option><option value="PROSPECT">Alleen prospects</option><option value="FORMER">Alleen oud-sponsoren</option>
               </select></div>
+            <div>
+              <TierFilter label="Sponsorvorm (leeg = alle vormen)" value={tiers} onChange={setTiers} disabled={!draft} />
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" disabled={!bodyText.trim()} onClick={() => setPreviewing(true)}>Voorbeeld bekijken</Button>
               {draft && (detail ? canUpdate : canCreate) && <Button disabled={busy || !subject.trim() || !bodyText.trim()} onClick={save}>Opslaan</Button>}
@@ -135,6 +151,16 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
               )}
               {detail && canSend && failed > 0 && <Button variant="outline" disabled={busy} onClick={() => act("retry", (d: { requeued: number }) => `${d.requeued} opnieuw klaargezet; klik op Versturen.`)}>Mislukte opnieuw proberen</Button>}
             </div>
+            {canSend && (
+              <div className="rounded-md border border-border p-3">
+                <Label htmlFor="ml-test">Testmail naar</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input id="ml-test" type="email" className="min-w-56 flex-1" placeholder="naam@voorbeeld.nl" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+                  <Button variant="outline" disabled={busy || !testTo.trim() || !subject.trim() || !bodyText.trim()} onClick={sendTest}>Testmail versturen</Button>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Verstuurt het bericht zoals het nu in het scherm staat (ook zonder op te slaan) naar dit adres, met &ldquo;Jan de Vries&rdquo; als naam. Er gaat niets naar sponsoren. Maximaal 10 per uur.</p>
+              </div>
+            )}
             {detail && (
               <div>
                 <h3 className="mt-2 text-sm font-semibold">Ontvangers ({detail.recipients.length})</h3>

@@ -22,6 +22,7 @@ export const companySchema = z.object({
   industry: text,
   tags: z.array(z.string().trim().max(60)).max(30).optional(),
   sponsorCategory: text,
+  sponsorTier: z.enum(["HOOFD", "PLATINA", "GOUD", "ZILVER", "OVERIG"]).nullish(),
   source: text,
   internalNotes: z.string().max(5000).nullish(),
   ownerId: z.string().nullish(),

@@ -3,6 +3,7 @@ import { auditRecord, need, type RecordCtx } from "./ctx.server";
 import { csvSafeCell } from "./csv";
 import { companyScopeWhere } from "./scope";
 import { ApiError } from "@/lib/api-guards";
+import { SPONSOR_TIERS, tierLabel } from "./sponsor-tiers";
 
 const CONTRACT_STATUSES = ["ACTIVE", "DRAFT", "ENDED", "CANCELLED"] as const;
 const STAGES = ["LEAD", "CONTACTED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"] as const;
@@ -18,7 +19,7 @@ export async function seasonReport(ctx: RecordCtx, seasonId: string) {
   const companyWhere = companyScopeWhere(ctx.scope("companies"), ctx.viewer);
   const contracts = await prisma.commercialContract.findMany({
     where: { seasonId, archivedAt: null, company: companyWhere },
-    include: { package: { select: { name: true } } },
+    include: { package: { select: { name: true } }, company: { select: { sponsorTier: true } } },
   });
   const byStatus = CONTRACT_STATUSES.map((status) => {
     const rows = contracts.filter((c) => c.status === status);
@@ -33,8 +34,14 @@ export async function seasonReport(ctx: RecordCtx, seasonId: string) {
   const byPackage = [...groups.entries()]
     .map(([name, rows]) => ({ name, count: rows.length, totalCents: sum(ctx, rows.map((r) => r.amountCents)) }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const byTier = [...SPONSOR_TIERS.map((t) => t.key as string), "NONE"]
+    .map((key) => {
+      const rows = active.filter((c) => (c.company.sponsorTier ?? "NONE") === key);
+      return { key, name: key === "NONE" ? "Zonder vorm" : (tierLabel(key) ?? key), count: rows.length, totalCents: sum(ctx, rows.map((r) => r.amountCents)) };
+    })
+    .filter((t) => t.count > 0);
   const withoutAmount = ctx.can("amounts:read") ? active.filter((c) => c.amountCents == null).length : null;
-  return { season: { id: season.id, name: season.name }, byStatus, byPackage, activeWithoutAmount: withoutAmount };
+  return { season: { id: season.id, name: season.name }, byStatus, byPackage, byTier, activeWithoutAmount: withoutAmount };
 }
 
 export async function pipelineReport(ctx: RecordCtx) {
@@ -74,11 +81,11 @@ export async function exportContractsCsv(ctx: RecordCtx, seasonId?: string) {
   const amounts = ctx.can("amounts:read");
   const rows = await prisma.commercialContract.findMany({
     where: { archivedAt: null, ...(seasonId ? { seasonId } : {}), company: companyScopeWhere(ctx.scope("companies"), ctx.viewer) },
-    include: { company: { select: { name: true } }, season: { select: { name: true } }, package: { select: { name: true } } },
+    include: { company: { select: { name: true, sponsorTier: true } }, season: { select: { name: true } }, package: { select: { name: true } } },
     orderBy: [{ season: { name: "asc" } }, { company: { name: "asc" } }],
   });
-  const header = ["Sponsor", "Seizoen", "Pakket", "Status", "Start", "Einde", "Opzegdatum", ...(amounts ? ["Bedrag (excl. btw)"] : [])];
-  const lines = [csvLine(header), ...rows.map((c) => csvLine([c.company.name, c.season.name, c.package?.name ?? "", c.status, day(c.startsOn), day(c.endsOn), day(c.noticeUntil), ...(amounts ? [euro(c.amountCents)] : [])]))];
+  const header = ["Sponsor", "Sponsorvorm", "Seizoen", "Pakket", "Status", "Start", "Einde", "Opzegdatum", ...(amounts ? ["Bedrag (excl. btw)"] : [])];
+  const lines = [csvLine(header), ...rows.map((c) => csvLine([c.company.name, tierLabel(c.company.sponsorTier) ?? "", c.season.name, c.package?.name ?? "", c.status, day(c.startsOn), day(c.endsOn), day(c.noticeUntil), ...(amounts ? [euro(c.amountCents)] : [])]))];
   await auditRecord(ctx, { action: "export.contracts", entity: "export", entityId: seasonId ?? "alle", after: { rows: rows.length, withAmounts: amounts } });
   return finish(lines);
 }
@@ -91,7 +98,7 @@ export async function exportCompaniesCsv(ctx: RecordCtx) {
     orderBy: { name: "asc" },
   });
   // Bewust zonder interne notities, KvK/btw en factuurgegevens.
-  const lines = [csvLine(["Naam", "Handelsnaam", "Status", "Plaats", "Branche", "Categorie", "E-mail", "Telefoon", "Website"]), ...rows.map((c) => csvLine([c.name, c.tradeName, c.status, c.city, c.industry, c.sponsorCategory, c.email, c.phone, c.website]))];
+  const lines = [csvLine(["Naam", "Handelsnaam", "Status", "Plaats", "Branche", "Sponsorvorm", "Categorie", "E-mail", "Telefoon", "Website"]), ...rows.map((c) => csvLine([c.name, c.tradeName, c.status, c.city, c.industry, tierLabel(c.sponsorTier) ?? "", c.sponsorCategory, c.email, c.phone, c.website]))];
   await auditRecord(ctx, { action: "export.companies", entity: "export", entityId: "dossiers", after: { rows: rows.length } });
   return finish(lines);
 }

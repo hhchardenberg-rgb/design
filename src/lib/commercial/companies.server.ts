@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { auditRecord, need, notFound, type RecordCtx } from "./ctx.server";
 import { canSeeOwned, companyScopeWhere, normalizeNameKey } from "./scope";
+import { isSponsorTier } from "./sponsor-tiers";
 
 export const COMPANY_STATUSES = ["PROSPECT", "ACTIVE", "FORMER"] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
@@ -26,11 +27,19 @@ export interface CompanyFields {
   industry?: string | null;
   tags?: string[];
   sponsorCategory?: string | null;
+  sponsorTier?: string | null;
   source?: string | null;
   internalNotes?: string | null;
 }
 
 const clean = (v: string | null | undefined) => (v === undefined ? undefined : v === null || v.trim() === "" ? null : v.trim());
+
+function tierValue(v: string | null | undefined): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  if (!isSponsorTier(v)) throw new ApiError(400, "Onbekende sponsorvorm.");
+  return v;
+}
 
 function fieldData(f: Partial<CompanyFields>): Prisma.CommercialCompanyUncheckedUpdateInput {
   return {
@@ -53,6 +62,7 @@ function fieldData(f: Partial<CompanyFields>): Prisma.CommercialCompanyUnchecked
     industry: clean(f.industry),
     tags: f.tags?.map((t) => t.trim()).filter(Boolean),
     sponsorCategory: clean(f.sponsorCategory),
+    sponsorTier: tierValue(f.sponsorTier),
     source: clean(f.source),
     internalNotes: clean(f.internalNotes),
   };
@@ -71,10 +81,12 @@ export interface CompanyListQuery {
   ownerId?: string;
   mine?: boolean;
   tag?: string;
+  /** Alleen sponsoren met een van deze sponsorvormen; "NONE" = zonder vorm. */
+  tiers?: string[];
   /** Alleen sponsoren zonder openstaande taak ('Geen vervolgactie'). */
   noAction?: boolean;
   archived?: boolean;
-  sort?: "name" | "city" | "status" | "updatedAt";
+  sort?: "name" | "city" | "status" | "updatedAt" | "sponsorTier";
   dir?: "asc" | "desc";
   page?: number;
   pageSize?: number;
@@ -89,6 +101,9 @@ export async function listCompanies(ctx: RecordCtx, query: CompanyListQuery) {
       query.status ? { status: query.status } : {},
       query.mine ? { ownerId: ctx.userId } : query.ownerId ? { ownerId: query.ownerId } : {},
       query.tag ? { tags: { has: query.tag } } : {},
+      query.tiers?.length
+        ? { OR: [...(query.tiers.some(isSponsorTier) ? [{ sponsorTier: { in: query.tiers.filter(isSponsorTier) } }] : []), ...(query.tiers.includes("NONE") ? [{ sponsorTier: null }] : [])] }
+        : {},
       query.noAction ? { tasks: { none: { status: "OPEN" as const } } } : {},
       query.q
         ? {
@@ -112,7 +127,7 @@ export async function listCompanies(ctx: RecordCtx, query: CompanyListQuery) {
       orderBy: { [sort]: query.dir ?? "asc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
-      select: { id: true, name: true, tradeName: true, status: true, city: true, ownerId: true, tags: true, updatedAt: true },
+      select: { id: true, name: true, tradeName: true, status: true, city: true, ownerId: true, tags: true, sponsorTier: true, updatedAt: true },
     }),
   ]);
 
@@ -404,7 +419,7 @@ export async function mergeCompanies(ctx: RecordCtx, targetId: string, sourceId:
         tradeName: fill("tradeName"), street: fill("street"), postalCode: fill("postalCode"), city: fill("city"), country: fill("country"),
         website: fill("website"), email: fill("email"), phone: fill("phone"), kvkNumber: fill("kvkNumber"), vatNumber: fill("vatNumber"),
         billingName: fill("billingName"), billingEmail: fill("billingEmail"), billingAddress: fill("billingAddress"),
-        industry: fill("industry"), sponsorCategory: fill("sponsorCategory"),
+        industry: fill("industry"), sponsorCategory: fill("sponsorCategory"), sponsorTier: fill("sponsorTier"),
         tags: [...new Set([...target.tags, ...source.tags])],
         internalNotes: notes,
         version: { increment: 1 },

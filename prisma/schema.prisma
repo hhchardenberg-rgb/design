@@ -70,6 +70,11 @@ model User {
   // toegang verliezen. Wordt automatisch éénmalig gevuld (zie
   // backfillUserRoles in src/lib/user-roles.server.ts).
   roles        Role[]   @default([])
+  // Profiel: vrijwillig in te vullen door de gebruiker zelf.
+  phone        String?
+  jobTitle     String?
+  // Dagelijkse herinneringsmail van Commerciële Zaken; standaard aan.
+  notifyCommercialDigest Boolean @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -899,6 +904,8 @@ model CommercialCompany {
   industry        String?
   tags            String[]
   sponsorCategory String?
+  // Sponsorvorm: HOOFD | PLATINA | GOUD | ZILVER | OVERIG (zie src/lib/commercial/sponsor-tiers.ts).
+  sponsorTier     String?
   source          String?
   internalNotes   String?
   // Eigenaarschap bepaalt het recordbereik. Alleen te wijzigen met bereik 'alle'.
@@ -925,6 +932,7 @@ model CommercialCompany {
   @@index([kvkNumber])
   @@index([ownerId])
   @@index([teamId])
+  @@index([sponsorTier])
   @@index([archivedAt])
   @@map("commercial_companies")
 }
@@ -1222,6 +1230,8 @@ model CommercialMailing {
   bodyText       String
   // Filter op dossierstatus (PROSPECT | ACTIVE | FORMER); leeg = alle.
   audienceStatus String?
+  // Filter op sponsorvorm (HOOFD | PLATINA | GOUD | ZILVER | OVERIG); leeg = alle vormen.
+  audienceTiers  String[]  @default([])
   status         String    @default("DRAFT") // DRAFT | SENDING | SENT
   createdById    String?
   sentById       String?

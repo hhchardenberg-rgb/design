@@ -51,11 +51,19 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     items: [{ href: "/commercieel/mailings", label: "Mailings", description: "Mailings naar sponsorcontacten met afmelden.", requires: "mailings:read" }],
   },
   {
+    id: "toezicht",
+    label: "Toezicht",
+    items: [
+      { href: "/commercieel/toezicht/personen", label: "Per persoon", description: "Openstaande taken, kansen en tegenprestaties per persoon.", requires: "rights:manage_rights" },
+      { href: "/commercieel/toezicht/logboek", label: "Logboek", description: "Wie heeft wat gedaan: wijzigingen, verzendingen en downloads.", requires: "rights:manage_rights" },
+    ],
+  },
+  {
     id: "instellingen",
     label: "Instellingen",
     items: [
       { href: "/commercieel/instellingen/seizoenen", label: "Seizoenen en pakketten", description: "Seizoenen en sponsorpakketten met tegenprestaties.", requires: "contracts:read" },
-      { href: "/commercieel/instellingen/teams", label: "Teams", description: "Teams voor het recordbereik “eigen team”.", requires: "settings:read" },
+      { href: "/commercieel/instellingen/teams", label: "CZ-teams", description: "Teams binnen Commerciële Zaken, voor het recordbereik “eigen team”.", requires: "settings:read" },
       { href: "/commercieel/instellingen/facturatie", label: "Facturatie", description: "Gegevens van de vereniging, betaaltermijn en nummering.", requires: "settings:read" },
     ],
   },

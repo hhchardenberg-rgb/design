@@ -72,9 +72,20 @@ bedragen, adressen of berichttekst.
 6. **Pijplijn**: verplaats een kans door de fasen; "Winnen" maakt een concept-contract.
 7. **Mailing**: Mailings > Nieuw. Schrijf het bericht (`{{naam}}` wordt de naam van het contact), kies een
    doelgroep, "Ontvangers voorbereiden", controleer de lijst, "Versturen". Mislukte mails kun je opnieuw proberen.
+   Met "Testmail versturen" stuur je het bericht, zoals het in het scherm staat, naar een e-mailadres naar keuze (maximaal
+   10 per uur, alleen met het recht om te versturen). Er gaat niets naar sponsoren; het onderwerp begint met [TESTMAIL].
+   Mailings krijgen automatisch de HHC-opmaak: logo, een dunne oranje balk, rustige witte kaart en een afmeldregel onderaan.
 8. **Tegenprestaties**: Tegenprestaties in het menu toont per seizoen wat HHC nog moet leveren, met
    afvinken, status (gepland, bezig, vervallen) en een markering "te laat" na de einddatum.
 9. **Rapportages**: kies een seizoen; exporteren kan als je het exportrecht hebt.
+
+## Sponsorvormen
+
+Elke sponsor kan een **sponsorvorm** hebben: Hoofd, Platina, Goud, Zilver of Overig (kies hem in het dossier of bij Nieuw bedrijf).
+De vorm staat als aparte kolom in Sponsoren en Contracten, waar je er ook op filtert (meerdere vormen tegelijk, of "Zonder vorm").
+Rapportages tonen lopende contracten per sponsorvorm, de exports bevatten de vorm, en de import herkent een kolom "Sponsorvorm".
+Bij Mailings kies je welke sponsorvormen de mailing krijgen (leeg = alle vormen). Dat staat los van het vrije veld "Overige
+categorie", dat voor eigen indelingen blijft bestaan.
 
 ## 4. Beheer
 
@@ -87,10 +98,23 @@ bedragen, adressen of berichttekst.
 - **Facturatie-instellingen**: Instellingen > Facturatie: gegevens van de vereniging, btw-nummer, IBAN,
   betalingstermijn en nummering. Zolang btw-nummer, IBAN, termijn en volgnummers leeg zijn, kan geen factuur
   definitief worden gemaakt. Het briefpapier toont zelf ook een IBAN; controleer dat beide kloppen.
-- **Teams**: Instellingen > Teams; teamlidmaatschap bepaalt het bereik "eigen team" en is een rechtenwijziging.
+- **CZ-teams**: Instellingen > CZ-teams; teamlidmaatschap bepaalt het bereik "eigen team" en is een rechtenwijziging.
+  Een CZ-team wissen kan ook (rechtenbeheer vereist): dossiers en taken blijven bestaan maar horen dan bij geen team, dus wie ze
+  alleen via dat team zag, ziet ze niet meer. De naam komt daarna weer vrij.
 - **Seizoenen en pakketten**: Instellingen > Seizoenen en pakketten.
 - Wie alleen toegang heeft tot Commerciële Zaken (geen hub-/ticketingrol) wordt na het inloggen automatisch naar
   `/commercieel` gestuurd.
+
+- **Toezicht** (alleen met rechtenbeheer: hoofdadmin en Beheerder Commerciële Zaken): onder Toezicht in het menu.
+  *Per persoon* toont voor iedereen de openstaande taken (met achterstallige), open kansen, tegenprestaties onder
+  verantwoordelijkheid, dossiers als eigenaar en de laatste handelingen. *Logboek* toont wie wat deed (rechten, dossiers,
+  contracten, facturen, mailings, bestanden, exports) met filter op persoon, soort en datum. Beide zijn bewust niet
+  beperkt door het eigen recordbereik van de beheerder, en bevatten nooit bedragen.
+
+- **Profiel**: onder Profiel (rechtsboven) pas je je naam, functie en telefoonnummer aan, zet je de dagelijkse
+  herinneringsmail van Commerciële Zaken aan of uit, zie je waar je bij aangesloten bent en wijzig je je wachtwoord
+  (huidig wachtwoord vereist). Tweestapsverificatie en passkeys staan op het tabblad Beveiliging. Een gewijzigde naam is in de
+  balk bovenin pas na opnieuw inloggen zichtbaar.
 
 ## 5. Instellingen en externe afhankelijkheden (Vercel)
 
@@ -148,7 +172,7 @@ bedragen, adressen of berichttekst.
 
 ## 8. Tests
 
-`npm test` draait 57 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
+`npm test` draait 62 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
 overgeslagen. Gedekt: rechtenmodel en delegatie, bereik (eigen/team/alles) en lekken via dubbelencontrole,
 financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versiecontrole, bestanden, import en
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),

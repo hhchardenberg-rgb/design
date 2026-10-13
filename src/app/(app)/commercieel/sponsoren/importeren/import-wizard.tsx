@@ -14,13 +14,13 @@ import { parseCsv } from "@/lib/commercial/csv";
 const FIELDS: Record<string, string> = {
   name: "Bedrijfsnaam", tradeName: "Handelsnaam", status: "Status (prospect, actief, voormalig)", street: "Straat en huisnummer", postalCode: "Postcode",
   city: "Plaats", website: "Website", email: "E-mailadres", phone: "Telefoon", kvkNumber: "KvK-nummer", industry: "Branche",
-  sponsorCategory: "Sponsorcategorie", source: "Bron", tags: "Tags (gescheiden door |)", internalNotes: "Interne notitie",
+  sponsorTier: "Sponsorvorm (hoofd, platina, goud, zilver, overig)", sponsorCategory: "Sponsorcategorie", source: "Bron", tags: "Tags (gescheiden door |)", internalNotes: "Interne notitie",
 };
 // Herkent gangbare kolomkoppen automatisch; de gebruiker kan altijd corrigeren.
 const GUESS: [RegExp, string][] = [
   [/^(bedrijfs)?naam|company|bedrijf$/i, "name"], [/handels/i, "tradeName"], [/status/i, "status"], [/straat|adres|street/i, "street"], [/postcode|zip/i, "postalCode"],
   [/plaats|stad|city/i, "city"], [/web/i, "website"], [/mail/i, "email"], [/tel|phone/i, "phone"], [/kvk/i, "kvkNumber"], [/branche|industry/i, "industry"],
-  [/categorie|category/i, "sponsorCategory"], [/bron|source/i, "source"], [/tag/i, "tags"], [/notitie|opmerking|notes/i, "internalNotes"],
+  [/vorm|tier|niveau/i, "sponsorTier"], [/categorie|category/i, "sponsorCategory"], [/bron|source/i, "source"], [/tag/i, "tags"], [/notitie|opmerking|notes/i, "internalNotes"],
 ];
 
 interface Result { row: number; outcome: "ok" | "duplicate" | "invalid"; name: string; message?: string }

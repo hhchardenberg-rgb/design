@@ -1,16 +1,47 @@
 // Opbouw van een mailing-bericht. Gedeeld tussen het echte verzenden (src/lib/mail.ts) en het
 // voorbeeld in het scherm, zodat het voorbeeld altijd exact is wat ontvangers krijgen.
 // Bewust zonder server-only imports: dit draait ook in de browser.
+//
+// Opmaak: e-mailveilig (tabellen, inline stijl). Huisstijlkleur oranje (#FF6F00) alleen vol en subtiel
+// als accent: een smalle balk bovenin en een lijn onder de kop; verder zwart op wit.
+
+const ORANGE = "#ff6f00";
+const INK = "#1a1a1a";
+const MUTED = "#6b6659";
+const PAGE_BG = "#f7f6f4";
+const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 
 function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function renderMailing(bodyText: string, name: string | null, unsubscribeUrl: string): { html: string; text: string } {
+export interface RenderOptions {
+  /** Absolute URL van het HHC-logo. Zonder logo valt de kop terug op alleen de naam. */
+  logoUrl?: string;
+}
+
+export function renderMailing(bodyText: string, name: string | null, unsubscribeUrl: string, options: RenderOptions = {}): { html: string; text: string } {
   const personal = bodyText.replace(/\{\{\s*naam\s*\}\}/gi, name ?? "");
+  const paragraphs = personal
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 16px;font:15px/1.65 ${FONT};color:${INK}">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  const logo = options.logoUrl
+    ? `<td width="44" style="padding-right:14px;vertical-align:middle"><img src="${escapeHtml(options.logoUrl)}" width="35" height="45" alt="" style="display:block;border:0"></td>`
+    : "";
   const html =
-    personal.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("") +
-    `<hr><p style="font-size:12px;color:#666">Je ontvangt deze e-mail van HHC Hardenberg. <a href="${escapeHtml(unsubscribeUrl)}">Afmelden voor deze mailings</a></p>`;
-  const text = `${personal}\n\n--\nJe ontvangt deze e-mail van HHC Hardenberg. Afmelden: ${unsubscribeUrl}`;
+    `<!doctype html><html lang="nl"><body style="margin:0;padding:0;background:${PAGE_BG}">` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG}"><tr><td align="center" style="padding:24px 12px">` +
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden">` +
+    `<tr><td style="height:4px;line-height:4px;font-size:0;background:${ORANGE}">&nbsp;</td></tr>` +
+    `<tr><td style="padding:24px 32px 18px;border-bottom:1px solid #ece9e3"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${logo}` +
+    `<td style="vertical-align:middle;font:600 16px/1.3 ${FONT};color:${INK};letter-spacing:.2px">Voetbalvereniging HHC Hardenberg</td></tr></table></td></tr>` +
+    `<tr><td style="padding:28px 32px 12px">${paragraphs}</td></tr>` +
+    `<tr><td style="padding:0 32px 28px;font:14px/1.6 ${FONT};color:${INK}">Met sportieve groet,<br><strong>HHC Hardenberg</strong></td></tr>` +
+    `<tr><td style="padding:18px 32px;background:#faf9f7;border-top:1px solid #ece9e3;font:12px/1.6 ${FONT};color:${MUTED}">` +
+    `Je ontvangt deze e-mail omdat je contactpersoon bent van een sponsor of relatie van HHC Hardenberg.<br>` +
+    `<a href="${escapeHtml(unsubscribeUrl)}" style="color:${MUTED};text-decoration:underline">Afmelden voor deze mailings</a></td></tr>` +
+    `</table></td></tr></table></body></html>`;
+  const text = `${personal}\n\nMet sportieve groet,\nHHC Hardenberg\n\n--\nJe ontvangt deze e-mail omdat je contactpersoon bent van een sponsor of relatie van HHC Hardenberg. Afmelden: ${unsubscribeUrl}`;
   return { html, text };
 }

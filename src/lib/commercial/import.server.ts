@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/api-guards";
 import { createCompany, findDuplicates, COMPANY_STATUSES, type CompanyFields, type CompanyStatus } from "./companies.server";
 import { need, type RecordCtx } from "./ctx.server";
+import { parseTier } from "./sponsor-tiers";
 
 export const IMPORT_MAX_ROWS = 500;
 
@@ -17,6 +18,7 @@ export const IMPORT_FIELDS = {
   phone: "Telefoon",
   kvkNumber: "KvK-nummer",
   industry: "Branche",
+  sponsorTier: "Sponsorvorm (hoofd, platina, goud, zilver, overig)",
   sponsorCategory: "Sponsorcategorie",
   source: "Bron",
   tags: "Tags (gescheiden door |)",
@@ -41,6 +43,9 @@ function toFields(raw: Partial<Record<ImportField, string>>): CompanyFields {
   const email = v("email");
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, `Ongeldig e-mailadres “${email}”.`);
   const website = v("website");
+  const tierRaw = v("sponsorTier");
+  const sponsorTier = tierRaw ? parseTier(tierRaw) : null;
+  if (tierRaw && !sponsorTier) throw new ApiError(400, `Onbekende sponsorvorm “${tierRaw}”. Kies hoofd, platina, goud, zilver of overig.`);
   return {
     name: (raw.name ?? "").trim(),
     tradeName: v("tradeName"),
@@ -54,6 +59,7 @@ function toFields(raw: Partial<Record<ImportField, string>>): CompanyFields {
     kvkNumber: v("kvkNumber"),
     industry: v("industry"),
     sponsorCategory: v("sponsorCategory"),
+    sponsorTier,
     source: v("source") ?? "Import",
     tags: (raw.tags ?? "").split("|").map((t) => t.trim()).filter(Boolean).slice(0, 30),
     internalNotes: v("internalNotes"),

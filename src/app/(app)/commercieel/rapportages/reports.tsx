@@ -7,7 +7,7 @@ import { api, formatEuro } from "@/lib/commercial/client";
 
 interface Season { id: string; name: string }
 interface Report {
-  season: { season: Season; byStatus: { status: string; count: number; totalCents: number | null }[]; byPackage: { name: string; count: number; totalCents: number | null }[]; activeWithoutAmount: number | null };
+  season: { season: Season; byStatus: { status: string; count: number; totalCents: number | null }[]; byPackage: { name: string; count: number; totalCents: number | null }[]; byTier: { key: string; name: string; count: number; totalCents: number | null }[]; activeWithoutAmount: number | null };
   pipeline: { stages: { stage: string; count: number; expectedCents: number | null }[] } | null;
 }
 
@@ -71,6 +71,16 @@ export function Reports({ canExport, canCompanies, canContracts }: { canExport: 
               {report.season.byPackage.length === 0 ? <p className="text-sm text-muted-foreground">Geen lopende contracten in dit seizoen.</p> : (
                 <table className="w-full text-sm"><tbody className="divide-y divide-border">
                   {report.season.byPackage.map((p) => <tr key={p.name}><td className="py-1.5">{p.name}</td><td className="py-1.5 text-right">{p.count}</td>{amountsShown && <td className="py-1.5 text-right">{formatEuro(p.totalCents)}</td>}</tr>)}
+                </tbody></table>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Lopende contracten per sponsorvorm</CardTitle></CardHeader>
+            <CardContent>
+              {report.season.byTier.length === 0 ? <p className="text-sm text-muted-foreground">Geen lopende contracten in dit seizoen.</p> : (
+                <table className="w-full text-sm"><tbody className="divide-y divide-border">
+                  {report.season.byTier.map((t) => <tr key={t.key}><td className="py-1.5">{t.name}</td><td className="py-1.5 text-right">{t.count}</td>{amountsShown && <td className="py-1.5 text-right">{formatEuro(t.totalCents)}</td>}</tr>)}
                 </tbody></table>
               )}
             </CardContent>

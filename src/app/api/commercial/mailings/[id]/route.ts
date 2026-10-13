@@ -5,7 +5,7 @@ import { archiveMailing, getMailing, updateMailing } from "@/lib/commercial/mail
 export const dynamic = "force-dynamic";
 type P = { params: Promise<{ id: string }> };
 
-const schema = z.object({ subject: z.string(), bodyText: z.string(), audienceStatus: z.string().nullable().optional(), version: z.number().int() });
+const schema = z.object({ subject: z.string(), bodyText: z.string(), audienceStatus: z.string().nullable().optional(), audienceTiers: z.array(z.string()).max(10).optional(), version: z.number().int() });
 
 export async function GET(_req: Request, { params }: P) {
   const { id } = await params;
