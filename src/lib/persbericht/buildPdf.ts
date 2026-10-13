@@ -23,6 +23,7 @@ import {
   BODY_SIZE_PT,
   RULE_TO_TITLE_GAP_PT,
 } from "./layout";
+import { formatDay } from "@/lib/date-format";
 
 export interface PersberichtData {
   title: string;
@@ -40,9 +41,7 @@ async function loadFile(relPath: string): Promise<Buffer> {
 }
 
 function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" })
-    .format(date)
-    .replace(/\//g, "-");
+  return formatDay(date);
 }
 
 function normalizeLine(text: string): string {

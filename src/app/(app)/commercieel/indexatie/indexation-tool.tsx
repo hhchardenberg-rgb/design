@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, formatEuro } from "@/lib/commercial/client";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
-interface Season { id: string; name: string; status: string }
+interface Season { id: string; name: string; startsOn: string; endsOn: string; status: string }
 interface Item { contractId: string; companyId: string; companyName: string; previousCents: number | null; currentCents: number | null; newCents: number | null }
 interface Run { id: string; seasonName: string; basisPoints: number; contracts: number; appliedAt: string; appliedBy: string | null }
 
@@ -58,7 +59,7 @@ export function IndexationTool({ canApply }: { canApply: boolean }) {
         <CardContent className="flex flex-wrap items-end gap-3 pt-5">
           <div><Label htmlFor="ix-season">Seizoen van de verlengingen</Label>
             <select id="ix-season" className="h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setPreview(null); }}>
-              <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
             </select></div>
           <div><Label htmlFor="ix-pct">Percentage</Label><Input id="ix-pct" inputMode="decimal" className="w-24" value={percent} onChange={(e) => { setPercent(e.target.value); setPreview(null); }} /></div>
           <div><Label htmlFor="ix-round">Afronden op</Label>
@@ -74,7 +75,7 @@ export function IndexationTool({ canApply }: { canApply: boolean }) {
           <CardContent className="space-y-3">
             {preview.items.length === 0 ? <p className="text-sm text-muted-foreground">Geen concept-verlengingen om te indexeren in dit seizoen.</p> : (
               <table className="w-full text-sm">
-                <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="py-1">Sponsor</th><th className="py-1 text-right">Vorig seizoen</th><th className="py-1 text-right">Nu</th><th className="py-1 text-right">Na indexatie</th></tr></thead>
+                <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="py-1">Sponsor</th><th className="py-1 text-right">Afgelopen seizoen</th><th className="py-1 text-right">Nu</th><th className="py-1 text-right">Na indexatie</th></tr></thead>
                 <tbody className="divide-y divide-border">
                   {preview.items.map((i) => (
                     <tr key={i.contractId}><td className="py-1.5"><Link className="underline" href={`/commercieel/sponsoren/${i.companyId}`}>{i.companyName}</Link></td>

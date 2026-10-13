@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input, Label } from "@/components/ui/input";
 import { useToast } from "@/components/toast";
 import { api } from "@/lib/commercial/client";
+import { formatDay } from "@/lib/date-format";
 
 interface Profile {
   name: string;
@@ -121,7 +122,7 @@ export function ProfileForm() {
             {profile.roles.length === 0 ? <span className="text-muted-foreground">Nog geen onderdelen.</span> : profile.roles.map((r) => <Badge key={r} variant="outline">{r}</Badge>)}
             {profile.commercial.member && <Badge variant="outline">Commerciële Zaken{profile.commercial.roleName ? `: ${profile.commercial.roleName}` : ""}</Badge>}
           </div>
-          <p className="text-muted-foreground">Account sinds {new Intl.DateTimeFormat("nl-NL", { dateStyle: "long" }).format(new Date(profile.memberSince))}.</p>
+          <p className="text-muted-foreground">Account sinds {formatDay(profile.memberSince)}.</p>
         </CardContent>
       </Card>
 

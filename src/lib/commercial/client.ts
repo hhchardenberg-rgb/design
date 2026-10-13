@@ -1,3 +1,4 @@
+import { formatDay, formatDayTime } from "@/lib/date-format";
 // Kleine fetch-hulp voor de commerciële schermen. Toont de foutmelding van de server
 // letterlijk (die is bedoeld voor gebruikers) en meldt nooit succes bij een mislukte aanvraag.
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; status: number };
@@ -19,19 +20,9 @@ export async function api<T = unknown>(url: string, method = "GET", body?: unkno
   }
 }
 
-/** Datum als dd/mm/yyyy (Nederlandse tijd), desgewenst met " hh:mm". */
+/** Altijd dd/mm/jjjj (met tijd: dd/mm/jjjj uu:mm), zie src/lib/date-format.ts. */
 export function formatDate(iso: string | null | undefined, withTime = false): string {
-  if (!iso) return "–";
-  const parts = new Intl.DateTimeFormat("nl-NL", {
-    timeZone: "Europe/Amsterdam",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" as const } : {}),
-  }).formatToParts(new Date(iso));
-  const v = (t: Intl.DateTimeFormatPartTypes) => parts.find((x) => x.type === t)?.value ?? "";
-  const day = `${v("day")}/${v("month")}/${v("year")}`;
-  return withTime ? `${day} ${v("hour")}:${v("minute")}` : day;
+  return withTime ? formatDayTime(iso) : formatDay(iso);
 }
 
 /** Waarde voor <input type="datetime-local"> in Nederlandse tijd. */

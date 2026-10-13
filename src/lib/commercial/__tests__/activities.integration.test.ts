@@ -30,6 +30,11 @@ before(async () => {
   ctxMod = await import("../ctx.server");
   co = await import("../companies.server");
   act = await import("../activities.server");
+  await db.commercialIndexation.deleteMany();
+  await db.commercialOpportunity.deleteMany();
+  await db.commercialCounterpart.deleteMany();
+  await db.commercialContract.deleteMany();
+  await db.commercialFile.deleteMany();
   await db.commercialTask.deleteMany();
   await db.commercialActivity.deleteMany();
   await db.commercialContact.deleteMany();

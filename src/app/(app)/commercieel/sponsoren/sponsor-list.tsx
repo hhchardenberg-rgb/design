@@ -11,6 +11,7 @@ import { Input, Label } from "@/components/ui/input";
 import { useToast } from "@/components/toast";
 import { api, formatDate } from "@/lib/commercial/client";
 import { TierBadge, TierFilter, TierSelect } from "@/components/commercial/sponsor-tier";
+import { contactsExportHref } from "@/lib/commercial/sponsor-tiers";
 
 interface Row {
   id: string;
@@ -65,7 +66,7 @@ function loadSaved(): { name: string; filters: Filters }[] {
   }
 }
 
-export function SponsorList({ canCreate }: { canCreate: boolean }) {
+export function SponsorList({ canCreate, canExportContacts = false }: { canCreate: boolean; canExportContacts?: boolean }) {
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [sort, setSort] = useState<Sort>("name");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
@@ -182,6 +183,11 @@ export function SponsorList({ canCreate }: { canCreate: boolean }) {
         </div>
         <TierFilter allowNone value={filters.tiers} onChange={(tiers) => apply({ ...filters, tiers })} />
         <Button variant="outline" size="sm" onClick={saveCurrent}>Selectie opslaan</Button>
+        {canExportContacts && (
+          <a className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted" href={contactsExportHref(filters.tiers)} title="Alle bedrijven met contactpersonen, gefilterd op de gekozen sponsorvorm(en)">
+            Contactpersonen exporteren (.xlsx)
+          </a>
+        )}
       </div>
 
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

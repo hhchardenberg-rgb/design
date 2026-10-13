@@ -344,7 +344,7 @@ export default function AdminAgendaPage() {
                       {row.highlighted && <Badge variant="primary">Uitgelicht</Badge>}
                     </div>
                     <p className="mt-0.5 text-sm text-muted-foreground">
-                      {format(zoned(row.start), "EEEE d MMMM yyyy", { locale: nl })}
+                      {format(zoned(row.start), "EEEE dd/MM/yyyy", { locale: nl })}
                       {!row.isFullDay && ` · ${format(zoned(row.start), "HH:mm", { locale: nl })}`}
                       {row.location ? ` · ${row.location}` : ""}
                     </p>
