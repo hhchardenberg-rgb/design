@@ -131,6 +131,19 @@ test("contracten: momentopname, bedragenrechten, statusregels, verlenging, berei
   assert.equal((await ct.listCounterparts(cm, id)).length, 3);
   await rejects(ct.updateCounterpart(cl, cp1.id, { status: "PLANNED" }), 403);
 
+  // Planning over contracten heen: te leveren, te laat, afgevinkt; buiten bereik niets.
+  const plan = await ct.planCounterparts(cm, {});
+  assert.ok(plan.rows.length >= 2 && plan.rows.every((x) => x.status === "PLANNED" || x.status === "IN_PROGRESS"));
+  assert.ok(plan.rows.some((x) => x.title.startsWith("Extra: banner") && x.overdue)); // 15-09-2026 ligt in het verleden
+  assert.equal((await ct.planCounterparts(cm, { status: "DELIVERED" })).rows.length, 1);
+  assert.equal((await ct.planCounterparts(cm, { overdue: true })).rows.every((x) => x.overdue), true);
+  assert.equal((await ct.planCounterparts(cown, {})).rows.length, 0);
+  assert.equal((await ct.planCounterparts(cown, {})).counts.DELIVERED, 0);
+  await rejects(ct.planCounterparts(cm, { status: "NOPE" }), 400);
+  const dash = await (await import("../dashboard.server")).loadDashboard(cm);
+  assert.ok(dash.counterparts && dash.counterparts.open >= 2 && dash.counterparts.overdue >= 1);
+  assert.ok(dash.contracts && dash.contracts.total >= 0);
+
   // Verlenging: nieuw concept, pakket opnieuw vastgelegd, niet twee keer.
   const renewed = await ct.renewContract(cm, id, { seasonId: s2, startsOn: "2027-07-01", endsOn: "2028-06-30" });
   const r = await ct.getContract(cm, renewed);

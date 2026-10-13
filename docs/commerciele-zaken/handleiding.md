@@ -61,6 +61,8 @@ bedragen, adressen of berichttekst.
 
 ## 3. Dagelijks gebruik (voor de sponsorcommissie)
 
+0. **Startpagina**: bovenaan staat een overzicht met je open taken, aflopende contracten (90 dagen), openstaande facturen,
+   de pijplijn en de tegenprestaties. Je ziet alleen blokken waar je recht op hebt, binnen je eigen bereik; bedragen alleen met leesrecht.
 1. **Sponsoren**: zoek of maak een dossier. Het systeem waarschuwt bij een mogelijk dubbel dossier.
 2. **Contact vastleggen**: tab Historie, "Contactmoment toevoegen"; zet meteen een vervolgtaak.
 3. **Contract**: tab Contracten. Kies seizoen en pakket, vul bedrag (excl. btw) en data in, zet het op lopend.
@@ -70,7 +72,9 @@ bedragen, adressen of berichttekst.
 6. **Pijplijn**: verplaats een kans door de fasen; "Winnen" maakt een concept-contract.
 7. **Mailing**: Mailings > Nieuw. Schrijf het bericht (`{{naam}}` wordt de naam van het contact), kies een
    doelgroep, "Ontvangers voorbereiden", controleer de lijst, "Versturen". Mislukte mails kun je opnieuw proberen.
-8. **Rapportages**: kies een seizoen; exporteren kan als je het exportrecht hebt.
+8. **Tegenprestaties**: Tegenprestaties in het menu toont per seizoen wat HHC nog moet leveren, met
+   afvinken, status (gepland, bezig, vervallen) en een markering "te laat" na de einddatum.
+9. **Rapportages**: kies een seizoen; exporteren kan als je het exportrecht hebt.
 
 ## 4. Beheer
 
