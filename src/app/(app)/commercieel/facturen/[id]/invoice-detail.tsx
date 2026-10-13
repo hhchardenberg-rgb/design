@@ -19,6 +19,7 @@ interface Doc {
   creditedCents: number | null; paidCents: number | null; outstandingCents: number | null;
   payments: { id: string; amountCents: number; paidOn: string; note: string | null; voided: boolean }[];
 }
+interface SendInfo { subject: string; bodyText: string; contacts: { name: string; email: string }[]; deliveries: { id: string; toEmail: string; status: string; error: string | null; createdAt: string }[] }
 interface LineDraft { description: string; quantity: string; price: string; vat: string }
 
 const VAT_OPTIONS = [["", "Kies…"], ["0", "0%"], ["900", "9%"], ["2100", "21%"]];
@@ -33,6 +34,8 @@ export function InvoiceDetail({ id, permissions }: { id: string; permissions: st
   const [lines, setLines] = useState<LineDraft[]>([]);
   const [head, setHead] = useState({ buyerName: "", buyerAddress: "", buyerVatNumber: "", reference: "", deliveryText: "" });
   const [busy, setBusy] = useState(false);
+  const [mail, setMail] = useState<SendInfo | null>(null);
+  const [mailForm, setMailForm] = useState({ to: "", subject: "", bodyText: "" });
   const [pay, setPay] = useState({ amount: "", paidOn: today(), note: "" });
 
   const apply = useCallback((d: Doc) => {
@@ -47,6 +50,15 @@ export function InvoiceDetail({ id, permissions }: { id: string; permissions: st
   useEffect(() => {
     void api<Doc>(`/api/commercial/invoices/${id}`).then((r) => (r.ok ? apply(r.data) : toast.error(r.error)));
   }, [id, apply, toast]);
+  const sendable = !!doc && doc.status === "ISSUED" && can(doc.kind === "CREDIT_NOTE" ? "credit_notes:send" : "invoices:send");
+  useEffect(() => {
+    if (!sendable) return;
+    void api<SendInfo>(`/api/commercial/invoices/${id}/send`).then((r) => {
+      if (!r.ok) return;
+      setMail(r.data);
+      setMailForm((f) => ({ to: f.to || r.data.contacts[0]?.email || "", subject: r.data.subject, bodyText: r.data.bodyText }));
+    });
+  }, [id, sendable]);
 
   if (!doc) return <p className="text-sm text-muted-foreground">Laden…</p>;
   const draft = doc.status === "DRAFT";
@@ -99,6 +111,13 @@ export function InvoiceDetail({ id, permissions }: { id: string; permissions: st
     if (await run(async () => api(`/api/commercial/payments/${pid}`, "DELETE") as never, "Betaling ongeldig gemaakt.")) await load();
   };
 
+  const sendMail = async () => {
+    if (!window.confirm(`De ${label} nu per e-mail versturen naar ${mailForm.to}?`)) return;
+    if (await run(async () => api(`/api/commercial/invoices/${id}/send`, "POST", mailForm) as never, "De e-mail is verstuurd.")) {
+      const r = await api<SendInfo>(`/api/commercial/invoices/${id}/send`);
+      if (r.ok) setMail(r.data);
+    }
+  };
   const setLine = (i: number, patch: Partial<LineDraft>) => setLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
   return (
@@ -166,7 +185,27 @@ export function InvoiceDetail({ id, permissions }: { id: string; permissions: st
         {!draft && (credit ? can("credit_notes:download") : can("invoices:download")) && <a className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm" href={`/api/commercial/invoices/${id}/pdf`}>Pdf downloaden</a>}
         {!draft && !credit && can("credit_notes:create") && <Button variant="outline" disabled={busy} onClick={makeCredit}>Creditnota maken</Button>}
       </div>
-      {!draft && !credit && <p className="text-xs text-muted-foreground">Het systeem verstuurt de factuur nog niet per e-mail: download de pdf en verstuur hem zelf.</p>}
+      {mail && (
+        <Card>
+          <CardHeader><CardTitle>Versturen per e-mail</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-xs text-muted-foreground">De pdf gaat als bijlage mee. Controleer het adres goed: een verstuurde mail kan niet worden teruggehaald.</p>
+            <div>
+              <Label htmlFor="m-to">Aan</Label>
+              <Input id="m-to" type="email" list="m-contacts" value={mailForm.to} onChange={(e) => setMailForm({ ...mailForm, to: e.target.value })} />
+              <datalist id="m-contacts">{mail.contacts.map((c) => <option key={c.email} value={c.email}>{c.name}</option>)}</datalist>
+            </div>
+            <div><Label htmlFor="m-sub">Onderwerp</Label><Input id="m-sub" value={mailForm.subject} onChange={(e) => setMailForm({ ...mailForm, subject: e.target.value })} /></div>
+            <div><Label htmlFor="m-body">Bericht</Label><textarea id="m-body" rows={7} className="mt-1 block w-full rounded-md border border-border bg-surface p-2 text-sm" value={mailForm.bodyText} onChange={(e) => setMailForm({ ...mailForm, bodyText: e.target.value })} /></div>
+            <Button disabled={busy || !mailForm.to} onClick={sendMail}>Versturen</Button>
+            {mail.deliveries.length > 0 && (
+              <ul className="divide-y divide-border">
+                {mail.deliveries.map((d) => <li key={d.id} className="py-1.5">{formatDate(d.createdAt, true)} · {d.toEmail} · {d.status === "SENT" ? "verstuurd" : "mislukt"}</li>)}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {!draft && !credit && doc.paidCents != null && (
         <Card>

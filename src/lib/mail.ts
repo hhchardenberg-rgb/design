@@ -97,6 +97,26 @@ export async function sendMailingEmail(mail: { to: string; name: string | null; 
   return { providerMessageId: data?.id ?? null };
 }
 
+/**
+ * Een factuur of creditnota per e-mail, met de pdf als bijlage. Dit is een zakelijk bericht aan één
+ * ontvanger (geen mailing), dus zonder afmeldlink.
+ */
+export async function sendInvoiceEmail(mail: { to: string; subject: string; bodyText: string; filename: string; pdf: Buffer; replyTo?: string }): Promise<{ providerMessageId: string | null }> {
+  const resend = getClient();
+  const html = mail.bodyText.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: mail.to,
+    subject: mail.subject,
+    html,
+    text: mail.bodyText,
+    replyTo: mail.replyTo,
+    attachments: [{ filename: mail.filename, content: mail.pdf }],
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+  return { providerMessageId: data?.id ?? null };
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

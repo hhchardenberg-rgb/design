@@ -35,7 +35,7 @@ before(async () => {
   ct = await import("../contracts.server");
   iv = await import("../invoicing.server");
   pdf = await import("../invoice-pdf");
-  for (const t of ["commercialPayment", "commercialInvoiceLine", "commercialInvoice", "commercialInvoiceSettings", "commercialMailEvent", "commercialUnsubscribe", "commercialMailingRecipient", "commercialMailing", "commercialReminderLog", "commercialIndexation", "commercialOpportunity", "commercialCounterpart", "commercialContract", "commercialPackageItem", "commercialPackage", "commercialSeason", "commercialFile", "commercialTask", "commercialActivity", "commercialContact", "commercialCompany", "commercialTeam", "commercialAuditEvent", "commercialMembership", "commercialRole"] as const) {
+  for (const t of ["commercialPayment", "commercialInvoiceDelivery", "commercialInvoiceLine", "commercialInvoice", "commercialInvoiceSettings", "commercialMailEvent", "commercialUnsubscribe", "commercialMailingRecipient", "commercialMailing", "commercialReminderLog", "commercialIndexation", "commercialOpportunity", "commercialCounterpart", "commercialContract", "commercialPackageItem", "commercialPackage", "commercialSeason", "commercialFile", "commercialTask", "commercialActivity", "commercialContact", "commercialCompany", "commercialTeam", "commercialAuditEvent", "commercialMembership", "commercialRole"] as const) {
     await (db[t] as unknown as { deleteMany: () => Promise<unknown> }).deleteMany();
   }
   await db.user.deleteMany({ where: { email: { endsWith: "@inv.test" } } });
@@ -123,6 +123,24 @@ test("facturatie: geblokkeerd tot gegevens compleet, nummering, onveranderlijk, 
   });
   assert.equal(bytes.subarray(0, 4).toString(), "%PDF");
   await rejects(iv.documentForPdf(cr, id), 403);
+
+  // Versturen per e-mail: eigen recht, alleen definitief, mislukking wordt gelogd en niet als succes gemeld.
+  const sent: { to: string; filename: string; head: string }[] = [];
+  const ok: import("../invoicing.server").InvoiceSender = async (m) => { sent.push({ to: m.to, filename: m.filename, head: m.pdf.subarray(0, 4).toString() }); return { providerMessageId: "msg1" }; };
+  const fail: import("../invoicing.server").InvoiceSender = async () => { throw new Error("Resend weigerde de e-mail"); };
+  const defaults = await iv.getSendDefaults(cf, id);
+  assert.ok(defaults.subject.includes(`Factuur ${issued.number}`));
+  const mail = { to: "inkoop@smit.test", subject: defaults.subject, bodyText: defaults.bodyText };
+  await rejects(iv.sendDocument(cr, id, mail, ok), 403);
+  await rejects(iv.sendDocument(cf, id, { ...mail, to: "geen-adres" }, ok), 400);
+  const draftId = await iv.createInvoice(cf, company.id, { buyerName: "X" });
+  await rejects(iv.sendDocument(cf, draftId, mail, ok), 409);
+  await rejects(iv.sendDocument(cown, id, mail, ok), 404); // buiten bereik
+  await rejects(iv.sendDocument(cf, id, mail, fail), 502);
+  await iv.sendDocument(cf, id, mail, ok);
+  assert.deepEqual(sent, [{ to: "inkoop@smit.test", filename: `${issued.number}.pdf`, head: "%PDF" }]);
+  assert.deepEqual((await iv.getSendDefaults(cf, id)).deliveries.map((d) => d.status).sort(), ["FAILED", "SENT"]);
+  await iv.discardDraft(cf, draftId);
 
   // Betalingen: bedrag, openstaand, ongeldig maken.
   await rejects(iv.addPayment(cr, id, { amountCents: 100, paidOn: "2026-10-20" }), 403);

@@ -1322,8 +1322,9 @@ model CommercialInvoice {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  lines    CommercialInvoiceLine[]
-  payments CommercialPayment[]
+  lines      CommercialInvoiceLine[]
+  payments   CommercialPayment[]
+  deliveries CommercialInvoiceDelivery[]
 
   @@index([companyId])
   @@index([creditedInvoiceId])
@@ -1362,4 +1363,21 @@ model CommercialPayment {
 
   @@index([invoiceId])
   @@map("commercial_payments")
+}
+
+// Logboek van per e-mail verstuurde facturen en creditnota's (ook mislukte pogingen).
+model CommercialInvoiceDelivery {
+  id                String            @id @default(cuid())
+  invoiceId         String
+  invoice           CommercialInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  toEmail           String
+  subject           String
+  status            String // SENT | FAILED
+  error             String?
+  providerMessageId String?
+  sentById          String?
+  createdAt         DateTime          @default(now())
+
+  @@index([invoiceId])
+  @@map("commercial_invoice_deliveries")
 }

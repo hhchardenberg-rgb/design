@@ -134,9 +134,9 @@ function cleanLines(lines: LineInput[]) {
 const INCLUDE = { lines: { orderBy: { position: "asc" } }, payments: { orderBy: { paidOn: "asc" } } } as const;
 type Doc = Prisma.CommercialInvoiceGetPayload<{ include: typeof INCLUDE }>;
 
-const permFor = (kind: string, action: "read" | "create" | "download" | "approve") => (kind === "CREDIT_NOTE" ? (`credit_notes:${action}` as const) : (`invoices:${action}` as const));
+const permFor = (kind: string, action: "read" | "create" | "download" | "approve" | "send") => (kind === "CREDIT_NOTE" ? (`credit_notes:${action}` as const) : (`invoices:${action}` as const));
 
-async function loadDoc(ctx: RecordCtx, id: string, action: "read" | "create" | "download" | "approve" = "read"): Promise<Doc> {
+async function loadDoc(ctx: RecordCtx, id: string, action: "read" | "create" | "download" | "approve" | "send" = "read"): Promise<Doc> {
   const d = await prisma.commercialInvoice.findUnique({ where: { id }, include: INCLUDE });
   if (!d) throw new ApiError(404, "Document niet gevonden.");
   need(ctx, permFor(d.kind, action));
@@ -372,4 +372,54 @@ export async function documentForPdf(ctx: RecordCtx, id: string) {
   const orig = d.creditedInvoiceId ? await prisma.commercialInvoice.findUnique({ where: { id: d.creditedInvoiceId }, select: { number: true } }) : null;
   await auditRecord(ctx, { action: "invoice.download", entity: "invoice", entityId: id });
   return { doc: d, creditedNumber: orig?.number ?? null };
+}
+
+// ---- Versturen per e-mail ----
+
+export type InvoiceSender = (mail: { to: string; subject: string; bodyText: string; filename: string; pdf: Buffer; replyTo?: string }) => Promise<{ providerMessageId: string | null }>;
+
+const EMAIL_RE = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
+
+/** Voorstel voor onderwerp en tekst van de mail; de gebruiker kan beide aanpassen vóór het versturen. */
+export async function getSendDefaults(ctx: RecordCtx, id: string) {
+  const d = await loadDoc(ctx, id, "send");
+  if (d.status !== "ISSUED" || !d.number) throw new ApiError(409, "Alleen een definitief document kan worden verstuurd.");
+  const supplier = (d.supplierSnapshot ?? {}) as Record<string, string | null>;
+  const name = supplier.legalName ?? "HHC Hardenberg";
+  const credit = d.kind === "CREDIT_NOTE";
+  const subject = `${credit ? "Creditnota" : "Factuur"} ${d.number} van ${name}`;
+  const lines = credit
+    ? [`Beste ${d.buyerName},`, `Hierbij ontvangt u creditnota ${d.number}. De creditnota vindt u als pdf in de bijlage.`]
+    : [`Beste ${d.buyerName},`, `Hierbij ontvangt u factuur ${d.number}${d.dueOn ? `, te betalen vóór ${new Intl.DateTimeFormat("nl-NL", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).format(d.dueOn)}` : ""}. De factuur vindt u als pdf in de bijlage.`];
+  const bodyText = `${lines.join("\n\n")}\n\nMet vriendelijke groet,\n${name}`;
+  const contacts = ctx.can("contacts:read")
+    ? (await prisma.commercialContact.findMany({ where: { companyId: d.companyId, archivedAt: null, email: { not: null } }, select: { name: true, email: true }, orderBy: { name: "asc" } })).map((c) => ({ name: c.name, email: c.email! }))
+    : [];
+  const deliveries = (await prisma.commercialInvoiceDelivery.findMany({ where: { invoiceId: id }, orderBy: { createdAt: "desc" }, take: 20 })).map((x) => ({
+    id: x.id, toEmail: x.toEmail, status: x.status, error: x.error, createdAt: x.createdAt,
+  }));
+  return { subject, bodyText, contacts, deliveries };
+}
+
+export async function sendDocument(ctx: RecordCtx, id: string, input: { to: string; subject: string; bodyText: string }, sender: InvoiceSender) {
+  const d = await loadDoc(ctx, id, "send");
+  if (d.status !== "ISSUED" || !d.number) throw new ApiError(409, "Alleen een definitief document kan worden verstuurd.");
+  const to = input.to.trim();
+  const subject = input.subject.trim();
+  const bodyText = input.bodyText.trim();
+  if (!EMAIL_RE.test(to) || to.length > 200) throw new ApiError(400, "Vul één geldig e-mailadres in.");
+  if (!subject || subject.length > 200) throw new ApiError(400, "Geef een onderwerp (maximaal 200 tekens).");
+  if (!bodyText || bodyText.length > 5000) throw new ApiError(400, "Geef een berichttekst (maximaal 5000 tekens).");
+  const orig = d.creditedInvoiceId ? await prisma.commercialInvoice.findUnique({ where: { id: d.creditedInvoiceId }, select: { number: true } }) : null;
+  const { renderDocumentPdf } = await import("./invoice-render");
+  const pdf = await renderDocumentPdf(d, orig?.number ?? null);
+  try {
+    const r = await sender({ to, subject, bodyText, filename: `${d.number.replace(/[^A-Za-z0-9._-]/g, "_")}.pdf`, pdf });
+    await prisma.commercialInvoiceDelivery.create({ data: { invoiceId: id, toEmail: to, subject, status: "SENT", providerMessageId: r.providerMessageId, sentById: ctx.userId } });
+    await auditRecord(ctx, { action: "invoice.send", entity: "invoice", entityId: id });
+  } catch (e) {
+    const message = e instanceof Error ? e.message.slice(0, 300) : "Onbekende fout";
+    await prisma.commercialInvoiceDelivery.create({ data: { invoiceId: id, toEmail: to, subject, status: "FAILED", error: message, sentById: ctx.userId } });
+    throw new ApiError(502, "Het versturen is niet gelukt. Er is niets verstuurd; probeer het later opnieuw of download de pdf.");
+  }
 }
