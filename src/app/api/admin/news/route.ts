@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { processAndStoreImage } from "@/lib/uploadImage";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const posts = await prisma.newsPost.findMany({
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
       include: { author: { select: { name: true } } },
@@ -18,7 +18,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireHubAdmin();
     const form = await req.formData();
     const title = String(form.get("title") ?? "").trim();
     const body = String(form.get("body") ?? "").trim();

@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
+import { visibleNavGroups } from "@/lib/commercial/navigation";
+import { CommercialSidebar } from "@/components/commercial/commercial-sidebar";
 
 export const dynamic = "force-dynamic";
 
@@ -31,5 +33,10 @@ export default async function CommercialLayout({ children }: { children: React.R
       </div>
     );
   }
-  return <>{children}</>;
+  return (
+    <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
+      <CommercialSidebar groups={visibleNavGroups(access.can)} />
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
 }

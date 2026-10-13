@@ -34,7 +34,8 @@ export async function buildRecordCtx(user: { id: string; name?: string | null; e
     label: user.name || user.email || user.id,
     viewer: { userId: user.id, teamIds: teams.map((t) => t.teamId) },
     can: access.can,
-    scope: (area) => scopes[area],
+    // Een hoofdadmin ziet alle dossiers en taken.
+    scope: (area) => (access.isPlatformAdmin ? "ALL" : scopes[area]),
   };
 }
 

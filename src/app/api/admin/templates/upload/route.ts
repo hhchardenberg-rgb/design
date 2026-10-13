@@ -5,7 +5,7 @@ import { getStorage, buildKey } from "@/lib/storage";
 import { importPsd } from "@/lib/psd/parse";
 import { slugify } from "@/lib/psd/naming";
 import { loadAssetBuffer } from "@/lib/render/loadAsset";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import type { TemplateSchemaJson } from "@/lib/validations/template";
 
 export const runtime = "nodejs";
@@ -35,7 +35,7 @@ interface UploadInput {
  */
 export async function POST(req: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireHubAdmin();
     const input = await parseInput(req);
 
     const result = await importPsd(input.buffer);

@@ -91,7 +91,7 @@ export function FilesTab({ companyId, can }: { companyId: string; can: (p: Permi
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <Label htmlFor="file-cat">Categorie</Label>
-                <select id="file-cat" className="mt-1 h-10 rounded-md border border-border bg-surface px-2 text-sm" value={category} onChange={(e) => setCategory(e.target.value)}>
+                <select id="file-cat" className="h-10 rounded-md border border-border bg-surface px-2 text-sm" value={category} onChange={(e) => setCategory(e.target.value)}>
                   {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>

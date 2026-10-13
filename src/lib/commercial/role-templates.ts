@@ -58,6 +58,8 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       perm("invoices", "send"),
       perm("invoices", "approve"),
       perm("credit_notes", "download"),
+      perm("credit_notes", "send"),
+      perm("credit_notes", "approve"),
     ],
   },
   {

@@ -7,7 +7,7 @@
 // waarde aan de Prisma `Role`-enum toevoegen, en (indien de rol een eigen
 // afgeschermd gedeelte beschermt) een sectie toevoegen in middleware.ts.
 
-export type AppRole = "ADMIN" | "HUB" | "TICKETING";
+export type AppRole = "ADMIN" | "HUB" | "TICKETING" | "HUB_ADMIN" | "TICKETING_ADMIN";
 
 export interface RoleDefinition {
   value: AppRole;
@@ -15,12 +15,22 @@ export interface RoleDefinition {
   description: string;
 }
 
+// Opzet: drie onderdelen (Communicatie, Ticketing, Commerciële Zaken), één beheer.
+//  - Gebruiker: ziet alleen de onderdelen waar die bij is aangesloten.
+//  - Beheerder per onderdeel (HUB_ADMIN, TICKETING_ADMIN, en "Beheerder Commerciële Zaken" binnen die sectie):
+//    beheert de inhoud en de gebruikers van alleen dat onderdeel.
+//  - Hoofdadmin (ADMIN): ziet en beheert alles, ook Commerciële Zaken.
 // Volgorde bepaalt de weergavevolgorde in de checkbox-lijst bij gebruikersbeheer.
 export const ASSIGNABLE_ROLES: RoleDefinition[] = [
   {
     value: "HUB",
-    label: "Communicatie Hub",
+    label: "Communicatie",
     description: "Toegang tot de communicatie-hub: designtool, agenda, nieuws, kennisbank en meer.",
+  },
+  {
+    value: "HUB_ADMIN",
+    label: "Communicatiebeheerder",
+    description: "Beheert de inhoud en de gebruikers van Communicatie (en heeft er zelf toegang toe).",
   },
   {
     value: "TICKETING",
@@ -28,21 +38,44 @@ export const ASSIGNABLE_ROLES: RoleDefinition[] = [
     description: "Toegang tot het afgeschermde Ticketing-gedeelte met handleidingen en procedures.",
   },
   {
+    value: "TICKETING_ADMIN",
+    label: "Ticketingbeheerder",
+    description: "Beheert de inhoud en de gebruikers van Ticketing (en heeft er zelf toegang toe).",
+  },
+  {
     value: "ADMIN",
-    label: "Beheerder",
-    description: "Volledige toegang tot het beheergedeelte (/admin).",
+    label: "Hoofdadmin",
+    description: "Ziet en beheert alles: alle onderdelen, inclusief Commerciële Zaken, en alle gebruikers.",
   },
 ];
 
+/** Welke rol "inbegrepen" is in een andere: een beheerder van een onderdeel heeft ook toegang tot dat onderdeel. */
+const IMPLIED_BY: Partial<Record<AppRole, AppRole[]>> = {
+  HUB: ["HUB_ADMIN"],
+  TICKETING: ["TICKETING_ADMIN"],
+};
+
 /**
- * Beheerders kunnen altijd alles zien: wie de rol ADMIN heeft, voldoet
- * hiermee automatisch aan elke andere rol-check (HUB, TICKETING, en
- * toekomstige rollen) — ook als die rol niet los is aangevinkt.
+ * Hoofdadmins kunnen altijd alles zien: wie de rol ADMIN heeft, voldoet
+ * hiermee automatisch aan elke andere rol-check. Een beheerder van een
+ * onderdeel voldoet ook aan de gewone rol van dat onderdeel.
  */
 export function hasRole(roles: AppRole[] | undefined | null, role: AppRole): boolean {
   if (!roles) return false;
   if (roles.includes("ADMIN")) return true;
-  return roles.includes(role);
+  if (roles.includes(role)) return true;
+  return (IMPLIED_BY[role] ?? []).some((r) => roles.includes(r));
+}
+
+/** Hoofdadmin, of beheerder van precies dit onderdeel. */
+export function isSectionAdmin(roles: AppRole[] | undefined | null, section: "hub" | "ticketing"): boolean {
+  if (!roles) return false;
+  return roles.includes("ADMIN") || roles.includes(section === "hub" ? "HUB_ADMIN" : "TICKETING_ADMIN");
+}
+
+/** Mag deze gebruiker het beheergedeelte (/admin) in, in welke vorm dan ook? Commerciële beheerders worden apart bepaald. */
+export function hasAnyAdminRole(roles: AppRole[] | undefined | null): boolean {
+  return !!roles && (roles.includes("ADMIN") || roles.includes("HUB_ADMIN") || roles.includes("TICKETING_ADMIN"));
 }
 
 /**
@@ -62,6 +95,6 @@ export function effectiveRoles(user: { role: string; roles: string[] }): AppRole
 export function resolveHomePath(roles: AppRole[] | undefined | null): string {
   if (hasRole(roles, "HUB")) return "/hub";
   if (hasRole(roles, "TICKETING")) return "/ticketing";
-  if (hasRole(roles, "ADMIN")) return "/admin";
+  if (hasAnyAdminRole(roles)) return "/admin";
   return "/geen-toegang";
 }

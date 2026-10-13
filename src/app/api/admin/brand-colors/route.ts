@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const colors = await prisma.brandColor.findMany({ orderBy: { sortOrder: "asc" } });
     return NextResponse.json({ colors });
   } catch (error) {
@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const body = await req.json();
     const color = await prisma.brandColor.create({
       data: {

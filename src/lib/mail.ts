@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { unsubscribeParams } from "@/lib/commercial/mail-security";
+import { renderMailing } from "@/lib/commercial/mail-render";
 
 // Zelfde manier van URL-opbouw als src/lib/webauthn/rp.ts: afgeleid van
 // NEXTAUTH_URL (server-geconfigureerd), niet van request-headers.
@@ -80,11 +81,7 @@ export async function sendMailingEmail(mail: { to: string; name: string | null; 
   const resend = getClient();
   const { e, t } = unsubscribeParams(mail.to);
   const unsubscribeUrl = `${APP_URL}/afmelden?e=${e}&t=${t}`;
-  const personal = mail.bodyText.replace(/\{\{\s*naam\s*\}\}/gi, mail.name ?? "");
-  const html =
-    personal.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("") +
-    `<hr><p style="font-size:12px;color:#666">Je ontvangt deze e-mail van HHC Hardenberg. <a href="${unsubscribeUrl}">Afmelden voor deze mailings</a></p>`;
-  const text = `${personal}\n\n--\nJe ontvangt deze e-mail van HHC Hardenberg. Afmelden: ${unsubscribeUrl}`;
+  const { html, text } = renderMailing(mail.bodyText, mail.name, unsubscribeUrl);
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: mail.to,
@@ -92,6 +89,26 @@ export async function sendMailingEmail(mail: { to: string; name: string | null; 
     html,
     text,
     headers: { "List-Unsubscribe": `<${unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+  return { providerMessageId: data?.id ?? null };
+}
+
+/**
+ * Een factuur of creditnota per e-mail, met de pdf als bijlage. Dit is een zakelijk bericht aan één
+ * ontvanger (geen mailing), dus zonder afmeldlink.
+ */
+export async function sendInvoiceEmail(mail: { to: string; subject: string; bodyText: string; filename: string; pdf: Buffer; replyTo?: string }): Promise<{ providerMessageId: string | null }> {
+  const resend = getClient();
+  const html = mail.bodyText.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: mail.to,
+    subject: mail.subject,
+    html,
+    text: mail.bodyText,
+    replyTo: mail.replyTo,
+    attachments: [{ filename: mail.filename, content: mail.pdf }],
   });
   if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
   return { providerMessageId: data?.id ?? null };

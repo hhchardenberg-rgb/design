@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 
 export async function GET(req: Request) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const teamId = new URL(req.url).searchParams.get("teamId") ?? undefined;
     const players = await prisma.player.findMany({
       where: teamId ? { teamId } : undefined,
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const body = await req.json();
     const player = await prisma.player.create({
       data: {

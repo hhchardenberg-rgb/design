@@ -1,6 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
-import { ApiError, requireAdmin } from "@/lib/api-guards";
+import { ApiError, requireHubAdmin } from "@/lib/api-guards";
 
 export const runtime = "nodejs";
 
@@ -22,7 +22,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       onBeforeGenerateToken: async () => {
-        await requireAdmin();
+        await requireHubAdmin();
         // Browsers rapporteren voor .psd-bestanden zeer uiteenlopende (of
         // helemaal geen) content-types; niet beperken op contenttype om
         // dat geen bron van onnodige upload-fouten te laten zijn.
@@ -47,7 +47,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // — dat werkt alleen als de store via het dashboard (Storage-tab) ook
     // echt aan dit project gekoppeld is, niet als BLOB_STORE_ID handmatig
     // is overgetypt.
-    // requireAdmin() gooit een ApiError met een al veilige, voor de
+    // requireHubAdmin() gooit een ApiError met een al veilige, voor de
     // gebruiker bedoelde melding (bv. "Alleen voor beheerders.") — die mag
     // gewoon terug. Alles anders (bv. een @vercel/blob-configuratiefout)
     // kan interne details bevatten (zie de log hieronder) en krijgt daarom

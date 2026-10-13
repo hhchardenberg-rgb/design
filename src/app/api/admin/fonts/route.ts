@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { getStorage, buildKey } from "@/lib/storage";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 
 const FORMATS: Record<string, string> = {
   woff2: "woff2",
@@ -18,7 +18,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const fonts = await prisma.font.findMany({ orderBy: { name: "asc" } });
     return NextResponse.json({ fonts });
   } catch (error) {
@@ -28,7 +28,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const form = await req.formData();
     const file = form.get("file");
     const name = String(form.get("name") ?? "").trim();

@@ -49,15 +49,24 @@ test("end-to-end rechtenbeheer", { skip }, async () => {
   const u3 = await mkUser("u3");
   const role = async (key: string) => (await db.commercialRole.findUniqueOrThrow({ where: { key } })).id;
 
-  // Platformbeheerder zonder lidmaatschap: geen enkele commerciële bevoegdheid.
-  assert.equal((await authz.loadCommercialAccess(admin.id)).isMember, false);
-  assert.equal((await authz.loadCommercialAccess(admin.id)).allowed.size, 0);
+  // Hoofdadmin: automatisch volledige toegang, zonder lidmaatschap.
+  const adminAccess = await authz.loadCommercialAccess(admin.id);
+  assert.equal(adminAccess.isMember, true);
+  assert.ok(adminAccess.can("amounts:read") && adminAccess.can("rights:manage_rights") && adminAccess.isPlatformAdmin);
+  await rejects(svc.grantMembership(await actorOf(admin), admin.id, null), 409); // heeft al alles
 
-  // Alleen een platformbeheerder kan toegang geven.
+  // Zonder rechtenbeheer kan niemand toegang geven; een hoofdadmin wel.
   await rejects(svc.grantMembership(await actorOf(u1), u2.id, null), 403);
   await svc.grantMembership(await actorOf(admin), u1.id, await role("beheerder"));
   await rejects(svc.grantMembership(await actorOf(admin), u1.id, null), 409);
   assert.ok((await authz.loadCommercialAccess(u1.id)).can("rights:manage_rights"));
+
+  // Een beheerder van Commerciële Zaken (rechtenbeheer) mag ook toegang geven en intrekken, binnen de eigen grens.
+  const u4 = await mkUser("u4");
+  await svc.grantMembership(await actorOf(u1), u4.id, await role("alleen-lezen"));
+  assert.equal((await authz.loadCommercialAccess(u4.id)).isMember, true);
+  await svc.revokeMembership(await actorOf(u1), u4.id);
+  assert.equal((await authz.loadCommercialAccess(u4.id)).isMember, false);
 
   // De beheerder deelt een rol uit; een gewone rol kan geen rechten beheren.
   await svc.grantMembership(await actorOf(admin), u2.id, null);
@@ -90,10 +99,8 @@ test("end-to-end rechtenbeheer", { skip }, async () => {
   await rejects(svc.setMemberPermissions(await actorOf(u3), u2.id, [...noCompanies, "invoices:read", "invoices:approve"]), 403);
   await rejects(svc.setMemberRole(await actorOf(u3), u2.id, await role("financieel-medewerker")), 403);
 
-  // Laatste rechtenbeheerder blijft behouden (u1 en u3 beheren rechten).
+  // Een hoofdadmin telt altijd als rechtenbeheerder: toegang kan dus nooit "zonder beheerder" raken.
   await svc.revokeMembership(await actorOf(admin), u3.id);
-  await rejects(svc.revokeMembership(await actorOf(admin), u1.id), 409);
-  await rejects(svc.setMemberRole(await actorOf(admin), u1.id, null), 403); // platformbeheer is geen rechtenbeheer
 
   // Een rol aanpassen die het laatste rechtenbeheer weghaalt, wordt geweigerd.
   const boss = await role("beheerder");

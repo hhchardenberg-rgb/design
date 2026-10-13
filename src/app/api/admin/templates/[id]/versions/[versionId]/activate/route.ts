@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 
 /**
  * Zet een eerdere (of nieuwe) versie terug als actieve versie voor nieuwe
@@ -12,7 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; versionId: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const { id, versionId } = await params;
 
     await prisma.templateVersion.update({

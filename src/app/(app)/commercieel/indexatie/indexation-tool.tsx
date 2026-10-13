@@ -57,12 +57,12 @@ export function IndexationTool({ canApply }: { canApply: boolean }) {
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 pt-5">
           <div><Label htmlFor="ix-season">Seizoen van de verlengingen</Label>
-            <select id="ix-season" className="mt-1 h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setPreview(null); }}>
+            <select id="ix-season" className="h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setPreview(null); }}>
               <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select></div>
           <div><Label htmlFor="ix-pct">Percentage</Label><Input id="ix-pct" inputMode="decimal" className="w-24" value={percent} onChange={(e) => { setPercent(e.target.value); setPreview(null); }} /></div>
           <div><Label htmlFor="ix-round">Afronden op</Label>
-            <select id="ix-round" className="mt-1 h-10 rounded-md border border-border bg-surface px-2 text-sm" value={rounding} onChange={(e) => { setRounding(Number(e.target.value)); setPreview(null); }}>
+            <select id="ix-round" className="h-10 rounded-md border border-border bg-surface px-2 text-sm" value={rounding} onChange={(e) => { setRounding(Number(e.target.value)); setPreview(null); }}>
               <option value={1}>Eurocent</option><option value={100}>Hele euro&apos;s</option><option value={500}>5 euro</option><option value={1000}>10 euro</option>
             </select></div>
           <Button disabled={!valid || busy} onClick={() => run(false)}>Voorbeeld tonen</Button>

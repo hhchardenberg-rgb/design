@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { templateFieldInputSchema } from "@/lib/validations/template";
 import { z } from "zod";
 
@@ -16,7 +16,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; versionId: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const { versionId } = await params;
     const version = await prisma.templateVersion.findUniqueOrThrow({
       where: { id: versionId },
@@ -33,7 +33,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; versionId: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const { id, versionId } = await params;
     const body = patchSchema.parse(await req.json());
 

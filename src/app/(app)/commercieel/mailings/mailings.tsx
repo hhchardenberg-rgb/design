@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate } from "@/lib/commercial/client";
+import { renderMailing } from "@/lib/commercial/mail-render";
 
 interface Row { id: string; subject: string; status: string; sentAt: string | null; createdAt: string; counts: Record<string, number> }
 interface Recipient { id: string; email: string; name: string | null; status: string; error: string | null }
@@ -13,6 +14,32 @@ interface Detail { id: string; subject: string; bodyText: string; audienceStatus
 
 const STATUS: Record<string, string> = { DRAFT: "Concept", SENDING: "Wordt verstuurd", SENT: "Verstuurd" };
 const R_STATUS: Record<string, string> = { PENDING: "Wacht", SENDING: "Bezig", SENT: "Verstuurd", DELIVERED: "Afgeleverd", BOUNCED: "Gebounced", COMPLAINED: "Klacht", FAILED: "Mislukt", SKIPPED: "Overgeslagen" };
+
+/** Voorbeeld van de mail in een pop-up, opgebouwd met dezelfde functie als bij het echte verzenden. */
+function PreviewDialog({ subject, bodyText, name, onClose }: { subject: string; bodyText: string; name: string | null; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const { html } = renderMailing(bodyText, name, "#");
+  const doc = `<!doctype html><meta charset="utf-8"><base target="_blank"><body style="font:15px/1.5 -apple-system,Segoe UI,Arial,sans-serif;color:#222;margin:16px">${html}</body>`;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="ml-prev-title" className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg border border-border bg-surface shadow-xl">
+        <div className="flex items-start justify-between gap-3 border-b border-border p-4">
+          <div className="min-w-0">
+            <h2 id="ml-prev-title" className="text-lg font-semibold">Voorbeeld van de e-mail</h2>
+            <p className="text-sm"><span className="text-muted-foreground">Onderwerp:</span> {subject || "(nog leeg)"}</p>
+            <p className="text-xs text-muted-foreground">Voorbeeld voor {name ?? "een ontvanger"}. De afmeldlink werkt pas in de echte mail.</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} autoFocus>Sluiten</Button>
+        </div>
+        <iframe title="Voorbeeld van de e-mail" sandbox="" srcDoc={doc} className="min-h-80 w-full flex-1 rounded-b-lg bg-white" />
+      </div>
+    </div>
+  );
+}
 
 export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean; canUpdate: boolean; canSend: boolean }) {
   const toast = useStableToast();
@@ -22,6 +49,7 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
   const [bodyText, setBodyText] = useState("");
   const [audience, setAudience] = useState("");
   const [busy, setBusy] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const loadList = useCallback(async () => {
     const r = await api<{ mailings: Row[] }>("/api/commercial/mailings");
@@ -95,10 +123,11 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
             <div><Label htmlFor="ml-body">Bericht</Label>
               <textarea id="ml-body" rows={9} className="mt-1 w-full rounded-md border border-border bg-surface p-2 text-sm" value={bodyText} disabled={!draft} onChange={(e) => setBodyText(e.target.value)} /></div>
             <div><Label htmlFor="ml-aud">Doelgroep</Label>
-              <select id="ml-aud" className="mt-1 block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={audience} disabled={!draft} onChange={(e) => setAudience(e.target.value)}>
+              <select id="ml-aud" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={audience} disabled={!draft} onChange={(e) => setAudience(e.target.value)}>
                 <option value="">Alle dossiers binnen mijn bereik</option><option value="ACTIVE">Alleen actieve sponsoren</option><option value="PROSPECT">Alleen prospects</option><option value="FORMER">Alleen oud-sponsoren</option>
               </select></div>
             <div className="flex flex-wrap gap-2">
+              <Button variant="outline" disabled={!bodyText.trim()} onClick={() => setPreviewing(true)}>Voorbeeld bekijken</Button>
               {draft && (detail ? canUpdate : canCreate) && <Button disabled={busy || !subject.trim() || !bodyText.trim()} onClick={save}>Opslaan</Button>}
               {detail && detail.status === "DRAFT" && canUpdate && <Button variant="outline" disabled={busy} onClick={() => act("prepare", (d: { recipients: number }) => `${d.recipients} ontvanger(s) vastgelegd.`)}>Ontvangers voorbereiden</Button>}
               {detail && detail.status !== "SENT" && canSend && pending > 0 && (
@@ -119,6 +148,7 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
           </CardContent>
         </Card>
       </div>
+      {previewing && <PreviewDialog subject={subject} bodyText={bodyText} name={detail?.recipients.find((r) => r.name)?.name ?? "Jan de Vries"} onClose={() => setPreviewing(false)} />}
     </div>
   );
 }

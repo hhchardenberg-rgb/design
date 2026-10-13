@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 import { processAndStoreImage } from "@/lib/uploadImage";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const { id } = await params;
     const form = await req.formData();
 
@@ -36,7 +36,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const { id } = await params;
     await prisma.contact.delete({ where: { id } });
     return NextResponse.json({ ok: true });

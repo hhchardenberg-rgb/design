@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const matches = await prisma.match.findMany({
       orderBy: { date: "desc" },
       include: { team: true, opponent: true },
@@ -18,7 +18,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const body = await req.json();
     const match = await prisma.match.create({
       data: {

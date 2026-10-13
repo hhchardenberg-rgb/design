@@ -18,7 +18,7 @@ interface Season { id: string; name: string; startsOn: string; endsOn: string; s
 const OPEN = ["LEAD", "CONTACTED", "PROPOSAL", "NEGOTIATION"] as const;
 const LABEL: Record<string, string> = { LEAD: "Nieuwe kans", CONTACTED: "In gesprek", PROPOSAL: "Voorstel gedaan", NEGOTIATION: "Onderhandeling", WON: "Gewonnen", LOST: "Verloren" };
 
-export function PipelineBoard({ canCreate, canUpdate, canArchive, canContract, canAmount }: { canCreate: boolean; canUpdate: boolean; canArchive: boolean; canContract: boolean; canAmount: boolean }) {
+export function PipelineBoard({ canCreate, canUpdate, canArchive, canContract, canAmount, canCreateCompany }: { canCreate: boolean; canUpdate: boolean; canArchive: boolean; canContract: boolean; canAmount: boolean; canCreateCompany: boolean }) {
   const toast = useStableToast();
   const [data, setData] = useState<{ items: Opp[]; totalExpectedCents: number | null } | null>(null);
   const [mine, setMine] = useState(false);
@@ -73,7 +73,7 @@ export function PipelineBoard({ canCreate, canUpdate, canArchive, canContract, c
         </div>
         {canCreate && <Button onClick={() => setCreating((v) => !v)}>Nieuwe kans</Button>}
       </div>
-      {creating && <NewOpportunity canAmount={canAmount} onDone={async () => { setCreating(false); await load(); }} onCancel={() => setCreating(false)} />}
+      {creating && <NewOpportunity canAmount={canAmount} canCreateCompany={canCreateCompany} onDone={async () => { setCreating(false); await load(); }} onCancel={() => setCreating(false)} />}
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-hhc-orange" checked={mine} onChange={(e) => setMine(e.target.checked)} /> Alleen mijn kansen</label>
         <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-hhc-orange" checked={closed} onChange={(e) => setClosed(e.target.checked)} /> Ook gewonnen en verloren</label>
@@ -123,17 +123,32 @@ export function PipelineBoard({ canCreate, canUpdate, canArchive, canContract, c
   );
 }
 
-function NewOpportunity({ canAmount, onDone, onCancel }: { canAmount: boolean; onDone: () => Promise<void>; onCancel: () => void }) {
+function NewOpportunity({ canAmount, canCreateCompany, onDone, onCancel }: { canAmount: boolean; canCreateCompany: boolean; onDone: () => Promise<void>; onCancel: () => void }) {
   const toast = useStableToast();
   const [q, setQ] = useState("");
-  const [hits, setHits] = useState<{ id: string; name: string; city: string | null }[]>([]);
+  const [hits, setHits] = useState<{ id: string; name: string; city: string | null }[] | null>(null);
   const [company, setCompany] = useState<{ id: string; name: string } | null>(null);
   const [f, setF] = useState({ title: "", amount: "", close: "" });
+  const [busy, setBusy] = useState(false);
 
-  async function search(e: React.FormEvent) {
-    e.preventDefault();
-    const r = await api<{ rows: { id: string; name: string; city: string | null }[] }>(`/api/commercial/companies?q=${encodeURIComponent(q)}&pageSize=8`);
-    if (r.ok) setHits(r.data.rows); else toast.error(r.error);
+  // Zoekt terwijl je typt; een lege lijst wordt ook als zodanig getoond.
+  useEffect(() => {
+    if (q.trim().length < 2) return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      void api<{ rows: { id: string; name: string; city: string | null }[] }>(`/api/commercial/companies?q=${encodeURIComponent(q.trim())}&pageSize=8`).then((r) => {
+        if (cancelled) return;
+        if (r.ok) setHits(r.data.rows); else toast.error(r.error);
+      });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [q, toast]);
+
+  async function createCompany() {
+    setBusy(true);
+    const r = await api<{ id: string }>("/api/commercial/companies", "POST", { name: q.trim() });
+    setBusy(false);
+    if (r.ok) { setCompany({ id: r.data.id, name: q.trim() }); toast.success("Dossier aangemaakt. Vul de rest later aan bij Sponsoren."); } else toast.error(r.error);
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -142,27 +157,40 @@ function NewOpportunity({ canAmount, onDone, onCancel }: { canAmount: boolean; o
     if (amount === null) { toast.error("Vul een geldig bedrag in, bijvoorbeeld 2500,00."); return; }
     const body: Record<string, unknown> = { title: f.title, expectedCloseOn: f.close || null };
     if (canAmount && amount !== undefined) body.expectedAmountCents = amount;
+    setBusy(true);
     const r = await api(`/api/commercial/companies/${company.id}/opportunities`, "POST", body);
+    setBusy(false);
     if (r.ok) { toast.success("Kans toegevoegd."); await onDone(); } else toast.error(r.error);
   }
+  const searching = q.trim().length >= 2;
+  const shown = searching ? hits : null;
   return (
     <Card>
       <CardContent className="space-y-3 pt-5">
         {!company ? (
           <>
-            <form onSubmit={search} className="flex flex-wrap items-end gap-3">
-              <div className="min-w-48 flex-1"><Label htmlFor="o-q">Zoek het bedrijf (bestaat het nog niet? Maak eerst een dossier aan)</Label><Input id="o-q" required value={q} onChange={(e) => setQ(e.target.value)} /></div>
-              <Button type="submit" variant="outline">Zoeken</Button><Button type="button" variant="ghost" onClick={onCancel}>Annuleren</Button>
-            </form>
-            <ul className="divide-y divide-border text-sm">{hits.map((h) => <li key={h.id} className="flex items-center justify-between py-2"><span>{h.name}{h.city ? ` · ${h.city}` : ""}</span><Button size="sm" onClick={() => setCompany({ id: h.id, name: h.name })}>Kies</Button></li>)}</ul>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-48 flex-1"><Label htmlFor="o-q">Voor welk bedrijf is de kans?</Label><Input id="o-q" autoFocus placeholder="Typ de naam van het bedrijf" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+              <Button type="button" variant="ghost" onClick={onCancel}>Annuleren</Button>
+            </div>
+            {shown && (
+              <ul className="divide-y divide-border text-sm">
+                {shown.map((h) => <li key={h.id} className="flex items-center justify-between py-2"><span>{h.name}{h.city ? ` · ${h.city}` : ""}</span><Button size="sm" onClick={() => setCompany({ id: h.id, name: h.name })}>Kies</Button></li>)}
+              </ul>
+            )}
+            {shown && shown.length === 0 && <p className="text-sm text-muted-foreground">Geen dossier gevonden met deze naam.</p>}
+            {searching && canCreateCompany && (
+              <Button type="button" variant="outline" disabled={busy} onClick={createCompany}>Nieuw dossier “{q.trim()}” aanmaken</Button>
+            )}
+            {searching && !canCreateCompany && shown && shown.length === 0 && <p className="text-xs text-muted-foreground">Je mag zelf geen dossiers aanmaken. Vraag een collega, of kies een bestaand dossier.</p>}
           </>
         ) : (
           <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
             <p className="text-sm sm:col-span-3">Bedrijf: <strong>{company.name}</strong> <button type="button" className="underline" onClick={() => setCompany(null)}>wijzigen</button></p>
-            <div><Label htmlFor="o-title">Titel</Label><Input id="o-title" required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+            <div><Label htmlFor="o-title">Titel</Label><Input id="o-title" required autoFocus placeholder="Bijvoorbeeld: Bordsponsor 2026/2027" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             {canAmount && <div><Label htmlFor="o-amount">Verwachte waarde (excl. btw)</Label><Input id="o-amount" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>}
             <div><Label htmlFor="o-close">Verwacht afsluiten</Label><Input id="o-close" type="date" value={f.close} onChange={(e) => setF({ ...f, close: e.target.value })} /></div>
-            <div className="flex gap-2 sm:col-span-3"><Button type="submit">Toevoegen</Button><Button type="button" variant="ghost" onClick={onCancel}>Annuleren</Button></div>
+            <div className="flex gap-2 sm:col-span-3"><Button type="submit" disabled={busy}>Toevoegen</Button><Button type="button" variant="ghost" onClick={onCancel}>Annuleren</Button></div>
           </form>
         )}
       </CardContent>

@@ -95,7 +95,7 @@ export function ImportWizard() {
               {rows[0].map((h, i) => (
                 <div key={i}>
                   <Label htmlFor={`col-${i}`}>Kolom “{h || `kolom ${i + 1}`}” <span className="text-xs text-muted-foreground">(bv. {rows[1][i] || "leeg"})</span></Label>
-                  <select id={`col-${i}`} className="mt-1 h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={mapping[i] ?? ""} onChange={(e) => setMapping((m) => ({ ...m, [i]: e.target.value }))}>
+                  <select id={`col-${i}`} className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={mapping[i] ?? ""} onChange={(e) => setMapping((m) => ({ ...m, [i]: e.target.value }))}>
                     <option value="">Niet importeren</option>
                     {Object.entries(FIELDS).map(([k, v]) => <option key={k} value={k} disabled={Object.entries(mapping).some(([j, f]) => f === k && Number(j) !== i)}>{v}</option>)}
                   </select>

@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
-import { hasRole, resolveHomePath, type AppRole } from "@/lib/roles";
+import { hasRole, isSectionAdmin, resolveHomePath, type AppRole } from "@/lib/roles";
 
 // Gebruikt bewust de lichte, edge-safe config (geen Prisma/bcrypt) zodat
 // de Edge Function-bundel binnen Vercel's grootte-limiet blijft. De
@@ -40,10 +40,13 @@ const LOGIN_ONLY_PREFIXES = ["/geen-toegang", "/account", "/commercieel"];
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAdminRoute = pathname.startsWith("/admin");
-  // Ticketing-content beheren (/admin/ticketing) vereist behalve ADMIN ook
-  // expliciet de rol TICKETING — anders zou een beheerder zonder die rol via
-  // het beheergedeelte alsnog Ticketing-inhoud kunnen zien/bewerken.
+  // Eén beheer, drie onderdelen: Ticketing-content (/admin/ticketing) is voor de
+  // ticketingbeheerder, de overige inhoud voor de communicatiebeheerder, en de
+  // hoofdadmin mag overal. Het overzicht (/admin) en gebruikersbeheer (/admin/users)
+  // staan ook open voor beheerders van Commerciële Zaken, wier rechten uit de
+  // database komen; die controle gebeurt server-side op de pagina en in de API.
   const isTicketingAdminRoute = pathname.startsWith("/admin/ticketing");
+  const isSharedAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/users");
   const isHubRoute = HUB_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isTicketingRoute = TICKETING_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isLoginOnlyRoute = LOGIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -62,8 +65,10 @@ export default auth((req) => {
   const has = (role: AppRole) => hasRole(roles, role);
   const deny = () => NextResponse.redirect(new URL(resolveHomePath(roles), req.nextUrl.origin));
 
-  if (isAdminRoute && !has("ADMIN")) return deny();
-  if (isTicketingAdminRoute && !has("TICKETING")) return deny();
+  if (isAdminRoute && !isSharedAdminRoute) {
+    const allowed = isTicketingAdminRoute ? isSectionAdmin(roles, "ticketing") : isSectionAdmin(roles, "hub");
+    if (!allowed) return deny();
+  }
   if (isHubRoute && !has("HUB")) return deny();
   if (isTicketingRoute && !has("TICKETING")) return deny();
 

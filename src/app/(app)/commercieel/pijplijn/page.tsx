@@ -10,5 +10,5 @@ export default async function PipelinePage() {
   const a = await pageAccess("opportunities:read");
   if (!a.allowed) return <NoAccess what="de pijplijn" />;
   const has = (p: string) => a.permissions.some((x) => x === p);
-  return <PipelineBoard canCreate={has("opportunities:create")} canUpdate={has("opportunities:update")} canArchive={has("opportunities:archive")} canContract={has("contracts:create")} canAmount={has("amounts:update")} />;
+  return <PipelineBoard canCreate={has("opportunities:create")} canUpdate={has("opportunities:update")} canArchive={has("opportunities:archive")} canContract={has("contracts:create")} canAmount={has("amounts:update")} canCreateCompany={has("companies:create")} />;
 }

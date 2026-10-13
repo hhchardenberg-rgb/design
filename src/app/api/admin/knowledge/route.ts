@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const articles = await prisma.knowledgeArticle.findMany({ orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { title: "asc" }] });
     return NextResponse.json({ articles });
   } catch (error) {
@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const body = await req.json();
     if (!body.title) throw new ApiError(400, "Titel is verplicht.");
 
