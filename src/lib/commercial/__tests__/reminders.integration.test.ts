@@ -70,7 +70,7 @@ test("herinneringen: eenmalig, alleen voor wie mag, geen bedragen, herstel bij m
 
   const sent: Awaited<Parameters<typeof rm.runReminders>[1] extends (d: infer D) => unknown ? D : never>[] = [];
   const first = await rm.runReminders(now, async (d) => { sent.push(d); });
-  assert.deepEqual(first, { recipients: 1, tasks: 1, notices: 1, failed: 0 });
+  assert.deepEqual(first, { recipients: 1, tasks: 1, notices: 1, contacts: 0, failed: 0 });
   assert.equal(sent.length, 1);
   assert.equal(sent[0].email, mgr.email);
   assert.equal(sent[0].tasks[0].title, "Offerte nabellen");
@@ -78,7 +78,7 @@ test("herinneringen: eenmalig, alleen voor wie mag, geen bedragen, herstel bij m
   assert.ok(!JSON.stringify(sent).includes("987654") && !JSON.stringify(sent).includes("9876"));
 
   // Tweede run: niets nieuws.
-  assert.deepEqual(await rm.runReminders(now, async () => assert.fail("mag niet opnieuw mailen")), { recipients: 0, tasks: 0, notices: 0, failed: 0 });
+  assert.deepEqual(await rm.runReminders(now, async () => assert.fail("mag niet opnieuw mailen")), { recipients: 0, tasks: 0, notices: 0, contacts: 0, failed: 0 });
 
   // Volgende drempel (nog 5 dagen is dezelfde drempel 7; 14 dagen eerder was een andere) en mislukte verzending wordt opnieuw geprobeerd.
   await db.commercialReminderLog.deleteMany();
@@ -90,5 +90,5 @@ test("herinneringen: eenmalig, alleen voor wie mag, geen bedragen, herstel bij m
   // Zelf uitgezet in het profiel: geen herinneringsmail meer.
   await db.commercialReminderLog.deleteMany();
   await db.user.update({ where: { id: mgr.id }, data: { notifyCommercialDigest: false } });
-  assert.deepEqual(await rm.runReminders(now, async () => assert.fail("mag niet mailen")), { recipients: 0, tasks: 0, notices: 0, failed: 0 });
+  assert.deepEqual(await rm.runReminders(now, async () => assert.fail("mag niet mailen")), { recipients: 0, tasks: 0, notices: 0, contacts: 0, failed: 0 });
 });

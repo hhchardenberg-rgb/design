@@ -25,6 +25,7 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     items: [
       { href: "/commercieel/sponsoren", label: "Sponsoren", description: "Dossiers, contactpersonen, historie en bestanden.", requires: "companies:read" },
       { href: "/commercieel/pijplijn", label: "Pijplijn", description: "Acquisitiekansen van eerste contact tot ondertekening.", requires: "opportunities:read" },
+      { href: "/commercieel/contactmomenten", label: "Contactmomenten", description: "Sponsoren die te lang niet gesproken zijn, met instelbare termijnen.", requires: "history:read" },
       { href: "/commercieel/taken", label: "Taken", description: "Afspraken en opvolging, met herinneringen per e-mail.", requires: "tasks:read" },
     ],
   },
@@ -42,6 +43,7 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     label: "Financiën",
     items: [
       { href: "/commercieel/facturen", label: "Facturen", description: "Facturen, creditnota's en betalingen.", requires: "invoices:read" },
+      { href: "/commercieel/doelen", label: "Doelen en prognose", description: "Jaardoel per sponsorvorm, wat er nog ontbreekt en de prognose uit de pijplijn.", requires: "reports:read" },
       { href: "/commercieel/rapportages", label: "Rapportages", description: "Inkomsten per seizoen en pijplijnstand, met export.", requires: "reports:read" },
     ],
   },

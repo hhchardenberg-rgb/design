@@ -87,6 +87,24 @@ Rapportages tonen lopende contracten per sponsorvorm, de exports bevatten de vor
 Bij Mailings kies je welke sponsorvormen de mailing krijgen (leeg = alle vormen). Dat staat los van het vrije veld "Overige
 categorie", dat voor eigen indelingen blijft bestaan.
 
+## Doelen en prognose
+
+Menu Financiën → **Doelen en prognose**. Kies een seizoen: je ziet per sponsorvorm (en in totaal) het doel, wat al loopt, wat de pijplijn gewogen nog oplevert, wat er nog nodig is en het tekort na de prognose.
+
+- **Doelen instellen** kan met "Instellingen beheren" én bedragenrecht; een leeg veld verwijdert het doel. Het logboek bewaart welk doel is gezet of gewijzigd, zonder het bedrag.
+- **Loopt** = lopende contracten met een bedrag (excl. btw). Concepten staan eronder en tellen niet mee.
+- **Pijplijn (gewogen)**: open kansen met een verwachte sluitdatum binnen het seizoen, gewogen naar fase: Lead 10%, Gesproken 25%, Voorstel 50%, Onderhandeling 75%. Dit zijn werkafspraken, geen metingen (staat ook op het scherm; aanpassen kan op één plek in `src/lib/commercial/forecast.ts`). Kansen zonder verwachte datum of zonder bedrag tellen niet mee en worden apart gemeld.
+- Zonder bedragenrecht zie je alleen aantallen. Met een beperkt bereik ("alleen eigen" of "eigen team") zie je wel cijfers maar geen "nog nodig" en voortgang, omdat het doel voor de hele vereniging geldt.
+
+## Herinneringen aan contactmomenten
+
+Menu Relaties → **Contactmomenten**. Per sponsorvorm (en voor sponsoren zonder vorm) stel je in na hoeveel dagen zonder contactmoment een sponsor gemeld wordt. Leeg laten = geen herinnering; er is geen standaardtermijn.
+
+- Alleen sponsoren met status "Actief" tellen mee. Een vastgelegd contactmoment in het verleden telt; een geplande afspraak niet. Staat er een afspraak in de toekomst gepland, dan wordt de sponsor niet gemeld.
+- Sponsoren zonder enig contactmoment worden gemeten vanaf het aanmaken van het dossier.
+- De eigenaar van het dossier krijgt het in de dagelijkse herinneringsmail (zelfde cron als taken en opzegdata; uit te zetten in het eigen profiel), eenmalig per sponsor en daarna bij aanhoudende stilte opnieuw na elke 30 dagen. De mail bevat geen bedragen.
+- Het dashboard toont een kaart "Contactmoment nodig" met jouw sponsoren. Termijnen wijzigen vraagt "Instellingen beheren" en wordt gelogd.
+
 ## 4. Beheer
 
 - **Toegang en rechten**: alles staat bij Beheer > Gebruikers en rechten (hoofdadmin; beheerders per onderdeel zien alleen hun eigen onderdeel). In de kaart van een
@@ -172,7 +190,7 @@ categorie", dat voor eigen indelingen blijft bestaan.
 
 ## 8. Tests
 
-`npm test` draait 62 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
+`npm test` draait 66 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
 overgeslagen. Gedekt: rechtenmodel en delegatie, bereik (eigen/team/alles) en lekken via dubbelencontrole,
 financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versiecontrole, bestanden, import en
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),

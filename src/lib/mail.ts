@@ -54,11 +54,12 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
 export async function sendCommercialDigestEmail(
   to: string,
   name: string,
-  digest: { tasks: { title: string; companyName: string | null; dueOn: string }[]; notices: { companyName: string; noticeOn: string; daysLeft: number }[] },
+  digest: { tasks: { title: string; companyName: string | null; dueOn: string }[]; notices: { companyName: string; noticeOn: string; daysLeft: number }[]; contacts: { companyName: string; lastContactOn: string | null; daysSince: number }[] },
 ): Promise<void> {
   const resend = getClient();
   const taskRows = digest.tasks.map((t) => `<li>${escapeHtml(t.title)}${t.companyName ? ` (${escapeHtml(t.companyName)})` : ""}, uiterlijk ${escapeHtml(t.dueOn)}</li>`).join("");
   const noticeRows = digest.notices.map((n) => `<li>${escapeHtml(n.companyName)}: opzegdatum ${escapeHtml(n.noticeOn)} (nog ${n.daysLeft} dag${n.daysLeft === 1 ? "" : "en"})</li>`).join("");
+  const contactRows = digest.contacts.map((c) => `<li>${escapeHtml(c.companyName)}: ${c.lastContactOn ? `laatste contact op ${escapeHtml(c.lastContactOn)} (${c.daysSince} dagen geleden)` : "nog geen contactmoment vastgelegd"}</li>`).join("");
   const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
@@ -67,6 +68,7 @@ export async function sendCommercialDigestEmail(
       <p>Hoi ${escapeHtml(name)},</p>
       ${taskRows ? `<p>Deze taken vragen je aandacht:</p><ul>${taskRows}</ul>` : ""}
       ${noticeRows ? `<p>Deze opzegdata komen eraan:</p><ul>${noticeRows}</ul>` : ""}
+      ${contactRows ? `<p>Met deze sponsoren is al een tijd geen contact geweest:</p><ul>${contactRows}</ul>` : ""}
       <p><a href="${APP_URL}/commercieel/taken">Open Commerciële Zaken</a></p>
     `,
   });

@@ -44,5 +44,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "team.create": "CZ-team aangemaakt",
   "team.members": "Leden van CZ-team gewijzigd",
   "team.delete": "CZ-team gewist",
+  "goal.update": "Doelen gewijzigd",
+  "contact_rules.update": "Termijnen voor contactmomenten gewijzigd",
   read: "Gegevens ingezien",
 };
