@@ -33,6 +33,7 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     label: "Afspraken",
     items: [
       { href: "/commercieel/contracten", label: "Contracten", description: "Contracten per seizoen met tegenprestaties.", requires: "contracts:read" },
+      { href: "/commercieel/tegenprestaties", label: "Tegenprestaties", description: "Wat HHC dit seizoen nog moet leveren, met afvinken.", requires: "counterparts:read" },
       { href: "/commercieel/indexatie", label: "Indexatie", description: "Verlengingen met een aangepast bedrag.", requires: "amounts:read" },
     ],
   },

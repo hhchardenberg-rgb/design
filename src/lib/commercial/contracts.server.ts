@@ -305,6 +305,51 @@ export async function listCounterparts(ctx: RecordCtx, contractId: string) {
   return rows.map((r) => ({ id: r.id, title: r.title, description: r.description, quantity: r.quantity, status: r.status, dueOn: iso(r.dueOn), deliveredAt: r.deliveredAt, notes: r.notes }));
 }
 
+export interface CounterpartPlanQuery {
+  seasonId?: string;
+  /** Een status, of "OPEN" (gepland of bezig, standaard) of "ALL". */
+  status?: string;
+  overdue?: boolean;
+}
+
+/** Planning over alle contracten heen: wat moet HHC nog leveren, binnen het dossierbereik van de gebruiker. */
+export async function planCounterparts(ctx: RecordCtx, q: CounterpartPlanQuery) {
+  need(ctx, "counterparts:read");
+  need(ctx, "contracts:read");
+  const status = q.status ?? "OPEN";
+  if (status !== "OPEN" && status !== "ALL" && !(COUNTERPART_STATUSES as readonly string[]).includes(status)) throw new ApiError(400, "Onbekende status.");
+  const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
+  const contract: Prisma.CommercialContractWhereInput = {
+    archivedAt: null,
+    status: { not: "CANCELLED" },
+    company: companyScopeWhere(ctx.scope("companies"), ctx.viewer),
+    ...(q.seasonId ? { seasonId: q.seasonId } : {}),
+  };
+  const where: Prisma.CommercialCounterpartWhereInput = {
+    contract,
+    ...(status === "OPEN" ? { status: { in: ["PLANNED", "IN_PROGRESS"] } } : status === "ALL" ? {} : { status }),
+    ...(q.overdue ? { status: { in: ["PLANNED", "IN_PROGRESS"] }, dueOn: { lt: today } } : {}),
+  };
+  const [rows, grouped] = await Promise.all([
+    prisma.commercialCounterpart.findMany({
+      where,
+      include: { contract: { select: { id: true, companyId: true, season: { select: { name: true } }, company: { select: { name: true } } } } },
+      orderBy: [{ dueOn: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+      take: 500,
+    }),
+    prisma.commercialCounterpart.groupBy({ by: ["status"], where: { contract }, _count: { _all: true } }),
+  ]);
+  const counts = Object.fromEntries(COUNTERPART_STATUSES.map((st) => [st, grouped.find((g) => g.status === st)?._count._all ?? 0]));
+  return {
+    counts,
+    rows: rows.map((r) => ({
+      id: r.id, title: r.title, description: r.description, quantity: r.quantity, status: r.status, dueOn: iso(r.dueOn), deliveredAt: r.deliveredAt, notes: r.notes,
+      contractId: r.contract.id, companyId: r.contract.companyId, companyName: r.contract.company.name, seasonName: r.contract.season.name,
+      overdue: (r.status === "PLANNED" || r.status === "IN_PROGRESS") && !!r.dueOn && r.dueOn < today,
+    })),
+  };
+}
+
 export async function addCounterpart(ctx: RecordCtx, contractId: string, input: { title: string; description?: string | null; quantity?: number; dueOn?: string | null }) {
   need(ctx, "counterparts:create");
   const c = await visibleContract(ctx, contractId);
