@@ -152,3 +152,33 @@ test("mailing: doelgroep, bereik, afmelden, eenmalig versturen, fouten en webhoo
   const events = JSON.stringify(await db.commercialAuditEvent.findMany({ where: { action: { startsWith: "mailing." } } }));
   assert.ok(!events.includes("smit.nl") && !events.includes("Hallo"));
 });
+
+test("testmail: eigen adres, rechten, niets naar ontvangers, beperkt per uur", { skip }, async () => {
+  const role = async (key: string) => (await db.commercialRole.findUniqueOrThrow({ where: { key } })).id;
+  const admin = await svc.buildActor({ ...(await mkUser("tadm")), roles: ["ADMIN", "HUB"] });
+  const [boss, reader] = [await mkUser("tboss"), await mkUser("tread")];
+  await svc.grantMembership(admin, boss.id, await role("beheerder"));
+  await svc.grantMembership(admin, reader.id, await role("alleen-lezen"));
+  const cb = await ctxMod.buildRecordCtx(boss);
+  const cr = await ctxMod.buildRecordCtx(reader);
+
+  const sent: Array<{ to: string; subject: string; bodyText: string; name: string | null }> = [];
+  const send = async (m: { to: string; name: string | null; subject: string; bodyText: string }) => { sent.push(m); return { providerMessageId: "t1" }; };
+
+  await rejects(ml.sendTestMail(cr, { to: "ik@club.nl", subject: "S", bodyText: "B" }, send), 403);
+  await rejects(ml.sendTestMail(cb, { to: "geen-adres", subject: "S", bodyText: "B" }, send), 400);
+  await rejects(ml.sendTestMail(cb, { to: "ik@club.nl", subject: " ", bodyText: "B" }, send), 400);
+  assert.equal(sent.length, 0);
+
+  const out = await ml.sendTestMail(cb, { to: " Ik@Club.nl ", subject: "Seizoenstart", bodyText: "Hallo {{naam}}", name: "Jan" }, send);
+  assert.equal(out.sentTo, "ik@club.nl");
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, "ik@club.nl");
+  assert.ok(sent[0].subject.startsWith("[TESTMAIL] "));
+  assert.ok(sent[0].bodyText.includes("testmail") && sent[0].bodyText.includes("Hallo {{naam}}"));
+
+  // Een mislukte verzending wordt netjes gemeld (502) en telt mee voor de limiet.
+  await rejects(ml.sendTestMail(cb, { to: "ik@club.nl", subject: "S", bodyText: "B" }, async () => { throw new Error("kapot"); }), 502);
+  for (let i = 0; i < ml.MAX_TEST_MAILS_PER_HOUR - 2; i++) await ml.sendTestMail(cb, { to: "ik@club.nl", subject: "S", bodyText: "B" }, send);
+  await rejects(ml.sendTestMail(cb, { to: "ik@club.nl", subject: "S", bodyText: "B" }, send), 429);
+});

@@ -72,6 +72,8 @@ bedragen, adressen of berichttekst.
 6. **Pijplijn**: verplaats een kans door de fasen; "Winnen" maakt een concept-contract.
 7. **Mailing**: Mailings > Nieuw. Schrijf het bericht (`{{naam}}` wordt de naam van het contact), kies een
    doelgroep, "Ontvangers voorbereiden", controleer de lijst, "Versturen". Mislukte mails kun je opnieuw proberen.
+   Met "Testmail versturen" stuur je het bericht, zoals het in het scherm staat, naar een e-mailadres naar keuze (maximaal
+   10 per uur, alleen met het recht om te versturen). Er gaat niets naar sponsoren; het onderwerp begint met [TESTMAIL].
 8. **Tegenprestaties**: Tegenprestaties in het menu toont per seizoen wat HHC nog moet leveren, met
    afvinken, status (gepland, bezig, vervallen) en een markering "te laat" na de einddatum.
 9. **Rapportages**: kies een seizoen; exporteren kan als je het exportrecht hebt.
@@ -148,7 +150,7 @@ bedragen, adressen of berichttekst.
 
 ## 8. Tests
 
-`npm test` draait 57 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
+`npm test` draait 58 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
 overgeslagen. Gedekt: rechtenmodel en delegatie, bereik (eigen/team/alles) en lekken via dubbelencontrole,
 financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versiecontrole, bestanden, import en
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),

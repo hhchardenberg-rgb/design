@@ -50,6 +50,7 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
   const [audience, setAudience] = useState("");
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [testTo, setTestTo] = useState("");
 
   const loadList = useCallback(async () => {
     const r = await api<{ mailings: Row[] }>("/api/commercial/mailings");
@@ -88,6 +89,14 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
     toast.success(done(r.data as never));
     await loadList();
     await open(detail.id);
+  }
+
+  async function sendTest() {
+    setBusy(true);
+    const r = await api<{ sentTo: string }>("/api/commercial/mailings/test", "POST", { to: testTo, subject, bodyText, name: "Jan de Vries" });
+    setBusy(false);
+    if (r.ok) toast.success(`Testmail verstuurd naar ${r.data.sentTo}.`);
+    else toast.error(r.error);
   }
 
   const draft = !detail || detail.status === "DRAFT";
@@ -135,6 +144,16 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
               )}
               {detail && canSend && failed > 0 && <Button variant="outline" disabled={busy} onClick={() => act("retry", (d: { requeued: number }) => `${d.requeued} opnieuw klaargezet; klik op Versturen.`)}>Mislukte opnieuw proberen</Button>}
             </div>
+            {canSend && (
+              <div className="rounded-md border border-border p-3">
+                <Label htmlFor="ml-test">Testmail naar</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input id="ml-test" type="email" className="min-w-56 flex-1" placeholder="naam@voorbeeld.nl" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+                  <Button variant="outline" disabled={busy || !testTo.trim() || !subject.trim() || !bodyText.trim()} onClick={sendTest}>Testmail versturen</Button>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Verstuurt het bericht zoals het nu in het scherm staat (ook zonder op te slaan) naar dit adres, met &ldquo;Jan de Vries&rdquo; als naam. Er gaat niets naar sponsoren. Maximaal 10 per uur.</p>
+              </div>
+            )}
             {detail && (
               <div>
                 <h3 className="mt-2 text-sm font-semibold">Ontvangers ({detail.recipients.length})</h3>

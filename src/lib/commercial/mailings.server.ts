@@ -151,6 +151,30 @@ export async function sendMailing(ctx: RecordCtx, id: string, send: MailSender) 
   return result;
 }
 
+export const MAX_TEST_MAILS_PER_HOUR = 10;
+
+/**
+ * Testmail van een (nog niet opgeslagen) bericht naar één zelfgekozen adres. Gaat niet naar ontvangers,
+ * raakt geen mailing en kijkt niet in het afmeldregister (je mailt jezelf of een collega). Beperkt per
+ * gebruiker per uur, zodat het geen manier wordt om willekeurige mail vanaf het verenigingsadres te sturen.
+ */
+export async function sendTestMail(ctx: RecordCtx, input: { to: string; subject: string; bodyText: string; name?: string | null }, send: MailSender) {
+  need(ctx, "mailings:send");
+  const to = normalizeEmail(input.to ?? "");
+  if (!to || !EMAIL.test(to) || to.length > 254) throw new ApiError(400, "Geef een geldig e-mailadres op.");
+  const { subject, bodyText } = clean({ subject: input.subject, bodyText: input.bodyText });
+  const recent = await prisma.commercialAuditEvent.count({ where: { actorId: ctx.userId, action: "mailing.test", createdAt: { gte: new Date(Date.now() - 3_600_000) } } });
+  if (recent >= MAX_TEST_MAILS_PER_HOUR) throw new ApiError(429, `Je hebt het maximum van ${MAX_TEST_MAILS_PER_HOUR} testmails per uur bereikt. Probeer het later opnieuw.`);
+  // Het eerst vastleggen telt ook bij een mislukte verzending mee.
+  await auditRecord(ctx, { action: "mailing.test", entity: "mailing", entityId: "test" });
+  try {
+    await send({ to, name: input.name?.trim() || null, subject: `[TESTMAIL] ${subject}`, bodyText: `Dit is een testmail. Hij is niet naar sponsoren gestuurd.\n\n${bodyText}` });
+  } catch (e) {
+    throw new ApiError(502, `De testmail kon niet worden verstuurd: ${e instanceof Error ? e.message : "onbekende fout"}`);
+  }
+  return { sentTo: to };
+}
+
 /** Zet een mislukte ontvanger terug op 'open' zodat een nieuwe verzendronde het opnieuw probeert. */
 export async function retryFailed(ctx: RecordCtx, id: string) {
   need(ctx, "mailings:send");
