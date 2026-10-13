@@ -1199,3 +1199,15 @@ model CommercialIndexation {
   @@index([seasonId])
   @@map("commercial_indexations")
 }
+
+/// Welke herinneringen al verstuurd zijn; voorkomt dubbele mails bij herhaalde cron-runs.
+model CommercialReminderLog {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String // TASK_DUE | NOTICE
+  refId     String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, refId])
+  @@map("commercial_reminder_logs")
+}
