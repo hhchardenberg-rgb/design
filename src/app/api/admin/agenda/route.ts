@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { getMergedAgendaEvents } from "@/lib/agenda";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     // Toont het samengevoegde overzicht (live ICS-feed + handmatige/uitgelichte
     // agendapunten) — precies dezelfde data als /kalender, zodat een beheerder
     // in één lijst kan uitlichten, toelichten en handmatige items beheren.
@@ -21,7 +21,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const body = await req.json();
 
     if (body.source === "ICS") {

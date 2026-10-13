@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 import { slugify } from "@/lib/psd/naming";
 
 /**
@@ -10,7 +10,7 @@ import { slugify } from "@/lib/psd/naming";
  */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireHubAdmin();
     const { id } = await params;
 
     const source = await prisma.template.findUniqueOrThrow({

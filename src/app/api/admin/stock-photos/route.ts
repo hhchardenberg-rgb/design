@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { processAndStoreImage } from "@/lib/uploadImage";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const photos = await prisma.stockPhoto.findMany({ orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }] });
     return NextResponse.json({ photos });
   } catch (error) {
@@ -15,7 +15,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const form = await req.formData();
     const file = form.get("file");
     const title = String(form.get("title") ?? "").trim();

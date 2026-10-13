@@ -21,14 +21,16 @@ function RoleCheckboxes({
   value,
   onChange,
   idPrefix,
+  options = ASSIGNABLE_ROLES,
 }: {
   value: AppRole[];
   onChange: (roles: AppRole[]) => void;
   idPrefix: string;
+  options?: typeof ASSIGNABLE_ROLES;
 }) {
   return (
     <div className="flex flex-wrap gap-3">
-      {ASSIGNABLE_ROLES.map((role) => {
+      {options.map((role) => {
         const id = `${idPrefix}-${role.value}`;
         return (
           <label key={role.value} htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-sm">
@@ -47,6 +49,12 @@ function RoleCheckboxes({
   );
 }
 
+interface Manager {
+  full: boolean;
+  sections: ("hub" | "ticketing")[];
+  commercial: boolean;
+}
+
 interface UserRow {
   id: string;
   name: string;
@@ -58,6 +66,7 @@ interface UserRow {
 export default function AdminUsersPage() {
   const { data: session } = useSession();
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [manager, setManager] = useState<Manager>({ full: true, sections: [], commercial: false });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,6 +88,7 @@ export default function AdminUsersPage() {
     const res = await fetch("/api/admin/users");
     const data = await res.json();
     setUsers(data.users ?? []);
+    if (data.manager) setManager(data.manager);
   }
 
   useEffect(() => {
@@ -199,18 +209,27 @@ export default function AdminUsersPage() {
     await load();
   }
 
+  // De hoofdadmin stelt alles in; een beheerder van een onderdeel alleen wie bij dat onderdeel hoort.
+  const editableRoles = manager.full
+    ? ASSIGNABLE_ROLES
+    : ASSIGNABLE_ROLES.filter((r) => (manager.sections.includes("hub") && r.value === "HUB") || (manager.sections.includes("ticketing") && r.value === "TICKETING"));
+  const shownRoles = manager.full
+    ? ASSIGNABLE_ROLES
+    : ASSIGNABLE_ROLES.filter((r) => (manager.sections.includes("hub") && (r.value === "HUB" || r.value === "HUB_ADMIN")) || (manager.sections.includes("ticketing") && (r.value === "TICKETING" || r.value === "TICKETING_ADMIN")));
+
   return (
     <CommercialAccessProvider>
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold">Gebruikers en rechten</h1>
         <p className="mt-1 text-muted-foreground">
-          Beheer wie kan inloggen op de HHC Hardenberg Hub en welke onderdelen ze mogen gebruiken. Een gebruiker
-          kan meerdere rollen tegelijk hebben. Staat Commerciële Zaken aan, dan regel je de toegang en de rechten
-          daarbinnen per gebruiker op deze pagina.
+          {manager.full
+            ? "Beheer wie kan inloggen op de HHC Hardenberg Hub en welke onderdelen ze mogen gebruiken: Communicatie, Ticketing en Commerciële Zaken. Een gebruiker kan bij meerdere onderdelen horen en van meerdere onderdelen beheerder zijn. Een hoofdadmin ziet en beheert alles."
+            : "Bepaal wie toegang heeft tot jouw onderdeel. Accounts en wachtwoorden beheert een hoofdadmin."}
         </p>
       </div>
 
+      {manager.full && (
       <Card>
         <CardContent className="p-6">
           <form onSubmit={createUser} className="flex flex-col gap-3">
@@ -268,6 +287,7 @@ export default function AdminUsersPage() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <div className="flex flex-col gap-2">
         {users.map((u) => (
@@ -301,16 +321,18 @@ export default function AdminUsersPage() {
                     <p className="flex items-center gap-2 font-medium">
                       {u.name}
                       {u.id === session?.user?.id && <span className="text-xs font-normal text-muted-foreground">(jij)</span>}
-                      <button
-                        type="button"
-                        className="text-xs font-normal text-hhc-orange-dark hover:underline"
-                        onClick={() => {
-                          setEditNameId(u.id);
-                          setEditNameValue(u.name);
-                        }}
-                      >
-                        wijzigen
-                      </button>
+                      {manager.full && (
+                        <button
+                          type="button"
+                          className="text-xs font-normal text-hhc-orange-dark hover:underline"
+                          onClick={() => {
+                            setEditNameId(u.id);
+                            setEditNameValue(u.name);
+                          }}
+                        >
+                          wijzigen
+                        </button>
+                      )}
                     </p>
                   )}
                   {editEmailId === u.id ? (
@@ -339,19 +361,22 @@ export default function AdminUsersPage() {
                   ) : (
                     <p className="flex items-center gap-2 text-xs text-muted-foreground">
                       {u.email}
-                      <button
-                        type="button"
-                        className="text-hhc-orange-dark hover:underline"
-                        onClick={() => {
-                          setEditEmailId(u.id);
-                          setEditEmailValue(u.email);
-                        }}
-                      >
-                        wijzigen
-                      </button>
+                      {manager.full && (
+                        <button
+                          type="button"
+                          className="text-hhc-orange-dark hover:underline"
+                          onClick={() => {
+                            setEditEmailId(u.id);
+                            setEditEmailValue(u.email);
+                          }}
+                        >
+                          wijzigen
+                        </button>
+                      )}
                     </p>
                   )}
                 </div>
+                {manager.full && (
                 <div className="flex flex-wrap items-center gap-2">
                   {resetId === u.id ? (
                     <div className="flex items-center gap-1">
@@ -408,12 +433,13 @@ export default function AdminUsersPage() {
                     Verwijderen
                   </Button>
                 </div>
+                )}
               </div>
 
               <div className={cn("flex flex-col gap-2 border-t border-border pt-3", editRolesId !== u.id && "sm:flex-row sm:items-center")}>
                 {editRolesId === u.id ? (
                   <div className="flex flex-col gap-2">
-                    <RoleCheckboxes value={editRolesValue} onChange={setEditRolesValue} idPrefix={u.id} />
+                    <RoleCheckboxes value={editRolesValue} onChange={setEditRolesValue} idPrefix={u.id} options={editableRoles} />
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => submitRoles(u.id)}>
                         Opslaan
@@ -427,22 +453,24 @@ export default function AdminUsersPage() {
                   <>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {u.roles.length === 0 && <Badge variant="outline">Geen rollen</Badge>}
-                      {ASSIGNABLE_ROLES.filter((r) => u.roles.includes(r.value)).map((r) => (
+                      {shownRoles.filter((r) => u.roles.includes(r.value)).map((r) => (
                         <Badge key={r.value} variant={r.value === "ADMIN" ? "primary" : "default"}>
                           {r.label}
                         </Badge>
                       ))}
                     </div>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-hhc-orange-dark hover:underline"
-                      onClick={() => {
-                        setEditRolesId(u.id);
-                        setEditRolesValue(u.roles);
-                      }}
-                    >
-                      rollen wijzigen
-                    </button>
+                    {editableRoles.length > 0 && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-hhc-orange-dark hover:underline"
+                        onClick={() => {
+                          setEditRolesId(u.id);
+                          setEditRolesValue(u.roles);
+                        }}
+                      >
+                        {manager.full ? "rollen wijzigen" : "toegang wijzigen"}
+                      </button>
+                    )}
                   </>
                 )}
               </div>

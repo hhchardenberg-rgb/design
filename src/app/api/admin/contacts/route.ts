@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { processAndStoreImage } from "@/lib/uploadImage";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const contacts = await prisma.contact.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
     return NextResponse.json({ contacts });
   } catch (error) {
@@ -15,7 +15,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const form = await req.formData();
     const name = String(form.get("name") ?? "").trim();
     const role = String(form.get("role") ?? "").trim();

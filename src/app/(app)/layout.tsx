@@ -11,12 +11,12 @@ export const dynamic = "force-dynamic";
 // Of Commerciële Zaken in het menu verschijnt wordt hier server-side bepaald
 // (flag + lidmaatschap uit de database), niet uit het JWT.
 async function commercialState(): Promise<CommercialShellState> {
-  if (!isCommercialEnabled()) return { member: false };
+  if (!isCommercialEnabled()) return { member: false, admin: false };
   const session = await auth();
   const user = session?.user;
-  if (!user) return { member: false };
+  if (!user) return { member: false, admin: false };
   const access = await loadCommercialAccess(user.id);
-  return { member: access.isMember };
+  return { member: access.isMember, admin: access.can("rights:manage_rights") };
 }
 
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {

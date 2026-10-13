@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
-import { hasRole, type AppRole } from "@/lib/roles";
+import { hasRole, isSectionAdmin, type AppRole } from "@/lib/roles";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -22,21 +22,24 @@ export async function requireRole(role: AppRole) {
   return user;
 }
 
+/** Alleen de hoofdadmin: accounts, wachtwoorden en alles wat onderdeel-overstijgend is. */
 export async function requireAdmin() {
   const user = await requireUser();
-  if (!hasRole(user.roles, "ADMIN")) throw new ApiError(403, "Alleen voor beheerders.");
+  if (!hasRole(user.roles, "ADMIN")) throw new ApiError(403, "Alleen voor hoofdadmins.");
   return user;
 }
 
-/**
- * Voor het beheren van Ticketing-content (/admin/ticketing en de
- * bijbehorende API's): vereist zowel ADMIN als TICKETING, zodat een
- * beheerder zonder de Ticketing-rol geen Ticketing-inhoud kan bekijken of
- * wijzigen via het beheergedeelte.
- */
+/** Beheer van de inhoud van Communicatie: hoofdadmin of communicatiebeheerder. */
+export async function requireHubAdmin() {
+  const user = await requireUser();
+  if (!isSectionAdmin(user.roles, "hub")) throw new ApiError(403, "Alleen voor beheerders van Communicatie.");
+  return user;
+}
+
+/** Beheer van de inhoud van Ticketing: hoofdadmin of ticketingbeheerder. */
 export async function requireTicketingAdmin() {
-  const user = await requireAdmin();
-  if (!hasRole(user.roles, "TICKETING")) throw new ApiError(403, "Alleen voor beheerders met de rol Ticketing.");
+  const user = await requireUser();
+  if (!isSectionAdmin(user.roles, "ticketing")) throw new ApiError(403, "Alleen voor beheerders van Ticketing.");
   return user;
 }
 

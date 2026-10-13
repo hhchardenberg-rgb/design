@@ -25,8 +25,15 @@ Beschermde sectie van de HHC Hub voor de sponsorcommissie. Alles hieronder is ge
 
 ## 2. Rechten
 
-**Toegang tot de sectie** is los van de platformrol. Een platformbeheerder (ADMIN) heeft *geen* impliciete toegang;
-die geeft toegang aan personen via Beheer > Gebruikers en rechten (blok "Commerciële Zaken" in de kaart van de gebruiker). Bestaande gebruikers krijgen niets automatisch.
+**De site heeft drie onderdelen**: Communicatie, Ticketing en Commerciële Zaken. Gebruikers zien alleen de onderdelen
+waarbij ze zijn aangesloten. Er is één beheer (Beheer), met drie soorten beheerders:
+
+- **Hoofdadmin** (ADMIN): ziet en beheert alles, ook Commerciële Zaken inclusief bedragen, zonder aparte toegang.
+- **Beheerder per onderdeel**: Communicatiebeheerder en Ticketingbeheerder (platformrollen) en Beheerder Commerciële Zaken
+  (rol met rechtenbeheer). Zo iemand beheert alleen dat onderdeel. Iemand kan beheerder van meerdere onderdelen zijn.
+- **Gebruiker**: aangesloten bij één of meer onderdelen, zonder beheer.
+
+Toegang tot Commerciële Zaken geef je via Beheer > Gebruikers en rechten (blok "Commerciële Zaken" in de kaart van de gebruiker).
 
 Een bevoegdheid heet `onderdeel:actie` (bijvoorbeeld `contracts:update`, `amounts:read`, `mailings:send`).
 Er is bewust geen "verwijderen": dossiers worden gearchiveerd.
@@ -67,11 +74,11 @@ bedragen, adressen of berichttekst.
 
 ## 4. Beheer
 
-- **Toegang en rechten**: alles staat bij Beheer > Gebruikers en rechten (alleen ADMIN). In de kaart van een
+- **Toegang en rechten**: alles staat bij Beheer > Gebruikers en rechten (hoofdadmin; beheerders per onderdeel zien alleen hun eigen onderdeel). In de kaart van een
   gebruiker zit het blok "Commerciële Zaken": toegang geven of intrekken met een startrol, en daarna "Rechten
   instellen" voor rol, bereik en afwijkingen. Onderaan de pagina beheer je de rollen en zie je de laatste
-  wijzigingen. Rechten instellen en rollen beheren kan alleen een ADMIN die zelf ook een rol met rechtenbeheer in
-  Commerciële Zaken heeft (bijvoorbeeld "Beheerder Commerciële Zaken"); toegang geven en intrekken kan elke ADMIN.
+  wijzigingen. Rechten instellen, toegang geven en rollen beheren kan een hoofdadmin of een Beheerder Commerciële Zaken, binnen de eigen
+  bevoegdheden.
   De oude pagina's Beheer > Commerciële Zaken en Instellingen > Rechten verwijzen hierheen.
 - **Facturatie-instellingen**: Instellingen > Facturatie: gegevens van de vereniging, btw-nummer, IBAN,
   betalingstermijn en nummering. Zolang btw-nummer, IBAN, termijn en volgnummers leeg zijn, kan geen factuur
@@ -108,7 +115,7 @@ bedragen, adressen of berichttekst.
 **Activeren (aanbevolen volgorde)**
 1. Zet `CRON_SECRET` en (voor mailings) `RESEND_WEBHOOK_SECRET`; verifieer het mailingdomein in Resend.
 2. Zet `COMMERCIAL_ENABLED=true` in Vercel (productie) en deploy opnieuw.
-3. Geef als platformbeheerder jezelf of een aanspreekpunt toegang (Beheer > Gebruikers en rechten) met rol "Beheerder".
+3. Geef als hoofdadmin een aanspreekpunt toegang (Beheer > Gebruikers en rechten) met rol "Beheerder".
 4. Laat die persoon teams, seizoenen, pakketten en de overige rollen instellen en de sponsorcommissie uitnodigen.
 5. Importeer bestaande sponsoren (Sponsoren > Importeren) en controleer het voorbeeld voor je bevestigt.
 
@@ -137,7 +144,7 @@ bedragen, adressen of berichttekst.
 
 ## 8. Tests
 
-`npm test` draait 52 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
+`npm test` draait 57 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
 overgeslagen. Gedekt: rechtenmodel en delegatie, bereik (eigen/team/alles) en lekken via dubbelencontrole,
 financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versiecontrole, bestanden, import en
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),

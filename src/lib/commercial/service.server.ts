@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { allowedSet, evaluate } from "./evaluate";
 import { checkAssignRole, checkEditRole, checkGrant, checkMembershipChange, checkRestrict, type Actor, type Decision } from "./delegation";
-import { findInconsistencies, isPermission, type Permission } from "./permissions";
+import { ALL_PERMISSIONS, findInconsistencies, isPermission, type Permission } from "./permissions";
 import { loadCommercialAccess, ensureSystemRoles } from "./authz.server";
 import { summarize } from "./explain";
 import { DEFAULT_SCOPE, SCOPED_AREAS, scopeWithinLimit, type Scope, type ScopedArea } from "./scope";
 import { loadScopes } from "./ctx.server";
+import { effectiveRoles } from "@/lib/roles";
 
 // Alle schrijfacties op toegang en rechten lopen via dit bestand: eerst de
 // delegatieregels, dan de wijziging én de auditregel in één transactie.
@@ -18,12 +19,13 @@ export interface ServiceActor extends Actor {
 
 export async function buildActor(user: { id: string; name?: string | null; email?: string | null; roles: string[] }): Promise<ServiceActor> {
   const access = await loadCommercialAccess(user.id);
+  // Alleen de expliciete ADMIN-rol (hoofdadmin) telt als platformbeheer en heeft alle bevoegdheden.
+  const isPlatformAdmin = user.roles.includes("ADMIN");
   return {
     userId: user.id,
     label: user.name || user.email || user.id,
-    // Bewust géén hasRole(): alleen de expliciete ADMIN-rol telt als platformbeheer.
-    isPlatformAdmin: user.roles.includes("ADMIN"),
-    effective: access.allowed,
+    isPlatformAdmin,
+    effective: isPlatformAdmin ? new Set(ALL_PERMISSIONS) : access.allowed,
   };
 }
 
@@ -86,7 +88,8 @@ async function countRightsManagers(
     const eff = effectiveOf(candidate);
     if (eff.has("rights:manage_rights")) count++;
   }
-  return count;
+  // Hoofdadmins hebben altijd rechtenbeheer, dus er blijft nooit niemand over zolang er een is.
+  return count + (await tx.user.count({ where: { roles: { has: "ADMIN" } } }));
 }
 
 function assertConsistent(perms: readonly Permission[]) {
@@ -105,9 +108,13 @@ function assertKnown(perms: readonly string[]): Permission[] {
 export async function grantMembership(actor: ServiceActor, userId: string, roleId: string | null) {
   enforce(checkMembershipChange(actor, "grant"));
   await ensureSystemRoles();
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, roles: true } });
   if (!user) throw new ApiError(404, "Gebruiker niet gevonden.");
-  if (roleId && !(await prisma.commercialRole.findUnique({ where: { id: roleId } }))) throw new ApiError(404, "Rol niet gevonden.");
+  if (effectiveRoles(user).includes("ADMIN")) throw new ApiError(409, "Een hoofdadmin heeft automatisch volledige toegang tot Commerciële Zaken.");
+  const role = roleId ? await prisma.commercialRole.findUnique({ where: { id: roleId } }) : null;
+  if (roleId && !role) throw new ApiError(404, "Rol niet gevonden.");
+  // Een rol meegeven is een toekenning: binnen de eigen grens blijven.
+  if (role) enforce(checkAssignRole(actor, userId, role.permissions.filter(isPermission)));
   return prisma.$transaction(async (tx) => {
     if (await tx.commercialMembership.findUnique({ where: { userId } })) {
       throw new ApiError(409, "Deze gebruiker heeft al toegang tot Commerciële Zaken.");

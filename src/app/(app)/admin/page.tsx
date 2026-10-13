@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { adminModuleGroups } from "@/lib/admin-modules";
+import { visibleAdminGroups } from "@/lib/admin-modules";
 import { auth } from "@/lib/auth";
-import { hasRole } from "@/lib/roles";
+import { loadCommercialAccess } from "@/lib/commercial/authz.server";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
+import { hasAnyAdminRole } from "@/lib/roles";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Beheer" };
 
 export default async function AdminOverviewPage() {
   const session = await auth();
   const roles = session?.user?.roles ?? [];
-  const visibleGroups = adminModuleGroups
-    .map((group) => ({
-      ...group,
-      modules: group.modules.filter((mod) => !mod.requiredRole || hasRole(roles, mod.requiredRole)),
-    }))
-    .filter((group) => group.modules.length > 0);
+  if (!session?.user) redirect("/login?callbackUrl=/admin");
+  const commercialAdmin = isCommercialEnabled() && (await loadCommercialAccess(session.user.id)).can("rights:manage_rights");
+  if (!hasAnyAdminRole(roles) && !commercialAdmin) redirect("/geen-toegang");
+  const visibleGroups = visibleAdminGroups(roles, commercialAdmin);
 
   return (
     <div className="flex flex-col gap-8">

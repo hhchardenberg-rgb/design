@@ -11,7 +11,7 @@ import { findInconsistencies, isPermission, type Permission } from "@/lib/commer
 import { ACTION_NAMES, Matrix, send, toSet, type Member, type Overview, type Role } from "@/components/commercial/rights-parts";
 import { ACTIONS, AREAS, type Action, type AreaKey } from "@/lib/commercial/permissions";
 
-interface AccessUser { id: string; hasAccess: boolean; roleId: string | null }
+interface AccessUser { id: string; hasAccess: boolean; roleId: string | null; isAdmin: boolean }
 interface AccessRole { id: string; key: string; name: string }
 
 interface State {
@@ -75,6 +75,16 @@ export function UserCommercialPanel({ userId, userName, isSelf }: { userId: stri
   if (!ctx || !ctx.loaded || !ctx.enabled) return null;
   const user = ctx.users.get(userId);
   if (!user) return null;
+  if (user.isAdmin) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+        <Briefcase className="h-4 w-4 text-muted-foreground" aria-hidden />
+        <span className="text-sm font-medium">Commerciële Zaken</span>
+        <Badge variant="success">Volledige toegang</Badge>
+        <span className="text-xs text-muted-foreground">Een hoofdadmin ziet en beheert automatisch alles.</span>
+      </div>
+    );
+  }
   const member = ctx.rights?.members.find((m) => m.userId === userId) ?? null;
   const rights = ctx.rights;
   const grantable = new Set(rights?.grantable ?? []);

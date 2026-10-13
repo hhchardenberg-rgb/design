@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { GroupedNavMenu, type NavMenuGroup } from "@/components/grouped-nav-menu";
 import { SectionSwitcher, type SectionLink } from "@/components/section-switcher";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
-import { adminModuleGroups } from "@/lib/admin-modules";
+import { visibleAdminGroups } from "@/lib/admin-modules";
 import { ticketingModules } from "@/lib/ticketing-modules";
-import { hasRole, resolveHomePath, type AppRole } from "@/lib/roles";
+import { hasAnyAdminRole, hasRole, resolveHomePath, type AppRole } from "@/lib/roles";
 
 // Sub-navigatie bínnen het designtool-onderdeel — apart van het apps-menu,
 // zodat je niet elke keer een dropdown hoeft te openen om van "Nieuwe
@@ -48,12 +48,13 @@ const ticketingMenuGroups: NavMenuGroup[] = [
 const SECTION_DEFINITIONS: { key: string; role: AppRole; label: string; href: string }[] = [
   { key: "hub", role: "HUB", label: "Communicatie", href: "/hub" },
   { key: "ticketing", role: "TICKETING", label: "Ticketing", href: "/ticketing" },
-  { key: "admin", role: "ADMIN", label: "Beheer", href: "/admin" },
 ];
 
 export interface CommercialShellState {
   /** Heeft de gebruiker toegang tot de sectie (server-side bepaald, flag + lidmaatschap). */
   member: boolean;
+  /** Beheerder van Commerciële Zaken (rechtenbeheer) of hoofdadmin: mag naar Beheer. */
+  admin: boolean;
 }
 
 export function AppShell({ children, commercial }: { children: React.ReactNode; commercial: CommercialShellState }) {
@@ -70,15 +71,11 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
     (pathname?.startsWith("/dashboard") || pathname?.startsWith("/templates") || pathname?.startsWith("/designs"));
   const nav = isAdminSection || isTicketingSection ? [] : isDesigntoolSection ? designtoolNav : [];
 
-  const adminMenuGroups: NavMenuGroup[] = adminModuleGroups
-    .map((g) => ({
-      id: g.id,
-      label: g.label,
-      items: g.modules
-        .filter((m) => !m.requiredRole || hasRole(roles, m.requiredRole))
-        .map((m) => ({ title: m.title, href: m.href, icon: m.icon })),
-    }))
-    .filter((g) => g.items.length > 0);
+  const adminMenuGroups: NavMenuGroup[] = visibleAdminGroups(roles, commercial.admin).map((g) => ({
+    id: g.id,
+    label: g.label,
+    items: g.modules.map((m) => ({ title: m.title, href: m.href, icon: m.icon })),
+  }));
 
   const isAccountSection = pathname?.startsWith("/account");
   const activeSectionKey = isAccountSection
@@ -91,8 +88,10 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
           ? "commercial"
           : "hub";
   const sections: SectionLink[] = SECTION_DEFINITIONS.filter((s) => hasRole(roles, s.role));
-  // Commerciële Zaken staat los van de rollen: alleen leden zien deze sectie.
-  if (commercial.member) sections.splice(Math.min(2, sections.length), 0, { key: "commercial", label: "Commerciële Zaken", href: "/commercieel" });
+  // Commerciële Zaken: alleen leden (en hoofdadmins) zien deze sectie.
+  if (commercial.member) sections.push({ key: "commercial", label: "Commerciële Zaken", href: "/commercieel" });
+  // Eén beheer voor iedereen met beheerrechten, ongeacht het onderdeel.
+  if (hasAnyAdminRole(roles) || commercial.admin) sections.push({ key: "admin", label: "Beheer", href: "/admin" });
   const sectionLinks: SectionLink[] = [
     ...(sections.length > 1 ? sections : []),
     { key: "account", label: "Accountbeveiliging", href: "/account/security" },

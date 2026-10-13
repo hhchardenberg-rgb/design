@@ -2,16 +2,20 @@ import { prisma } from "@/lib/prisma";
 import { ApiError, requireUser } from "@/lib/api-guards";
 import { allowedSet, evaluate, type EffectivePermission } from "./evaluate";
 import { isCommercialEnabled } from "./flag";
-import { isPermission, type Permission } from "./permissions";
+import { ALL_PERMISSIONS, isPermission, type Permission } from "./permissions";
+import { effectiveRoles } from "@/lib/roles";
 import { ROLE_TEMPLATES } from "./role-templates";
 
-// Server-side autorisatie voor Commerciële Zaken. Bewust NIET gebaseerd op
-// `hasRole()` of `User.roles`: ADMIN heeft hier geen toegang zonder expliciet
-// lidmaatschap. Rechten worden bij elk verzoek uit de database berekend,
-// niet uit het JWT, zodat intrekken direct effect heeft.
+// Server-side autorisatie voor Commerciële Zaken. Een hoofdadmin (rol ADMIN) heeft automatisch
+// volledige toegang; voor ieder ander is een lidmaatschap met een rol nodig. Een beheerder
+// van alleen een ander onderdeel (Communicatie, Ticketing) heeft hier geen toegang. Rechten
+// worden bij elk verzoek uit de database berekend, niet uit het JWT, zodat intrekken direct
+// effect heeft.
 
 export interface CommercialAccess {
   userId: string;
+  /** Hoofdadmin: automatisch volledige toegang, ongeacht lidmaatschap. */
+  isPlatformAdmin: boolean;
   isMember: boolean;
   effective: Map<Permission, EffectivePermission>;
   allowed: ReadonlySet<Permission>;
@@ -19,10 +23,16 @@ export interface CommercialAccess {
 }
 
 export async function loadCommercialAccess(userId: string): Promise<CommercialAccess> {
-  const membership = await prisma.commercialMembership.findUnique({
-    where: { userId },
-    include: { role: true, overrides: true },
-  });
+  const [membership, user] = await Promise.all([
+    prisma.commercialMembership.findUnique({ where: { userId }, include: { role: true, overrides: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { role: true, roles: true } }),
+  ]);
+  const isPlatformAdmin = !!user && effectiveRoles(user).includes("ADMIN");
+  if (isPlatformAdmin) {
+    const effective = evaluate({ hasSectionAccess: true, rolePermissions: ALL_PERMISSIONS, overrides: [] });
+    const allowed = allowedSet(effective);
+    return { userId, isPlatformAdmin, isMember: true, effective, allowed, can: (p) => allowed.has(p) };
+  }
 
   const effective = evaluate({
     hasSectionAccess: !!membership,
@@ -32,7 +42,7 @@ export async function loadCommercialAccess(userId: string): Promise<CommercialAc
       .map((o) => ({ permission: o.permission as Permission, effect: o.effect })),
   });
   const allowed = allowedSet(effective);
-  return { userId, isMember: !!membership, effective, allowed, can: (p) => allowed.has(p) };
+  return { userId, isPlatformAdmin: false, isMember: !!membership, effective, allowed, can: (p) => allowed.has(p) };
 }
 
 /**

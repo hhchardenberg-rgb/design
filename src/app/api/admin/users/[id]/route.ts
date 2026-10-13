@@ -3,10 +3,11 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireUserManager, SECTION_ADMIN_ROLE, SECTION_BASE_ROLE } from "@/lib/user-managers.server";
 import { normalizeEmail } from "@/lib/utils";
 import { effectiveRoles, hasRole, type AppRole } from "@/lib/roles";
 
-const APP_ROLES = ["ADMIN", "HUB", "TICKETING"] as const;
+const APP_ROLES = ["ADMIN", "HUB", "TICKETING", "HUB_ADMIN", "TICKETING_ADMIN"] as const;
 
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
@@ -50,9 +51,35 @@ async function assertNotLastAdmin(userId: string, action: string, nextRoles: App
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    const manager = await requireUserManager();
     const { id } = await params;
     const body = updateUserSchema.parse(await req.json());
+
+    // Een beheerder van een onderdeel mag alleen bepalen wie bij dat onderdeel hoort: de gewone rol van
+    // het eigen onderdeel aan- of uitzetten. Accounts, wachtwoorden en alle andere rollen zijn voor de hoofdadmin.
+    if (!manager.full) {
+      if (body.name !== undefined || body.email !== undefined || body.password !== undefined || body.roles === undefined) {
+        throw new ApiError(403, "Je kunt hier alleen de toegang tot je eigen onderdeel wijzigen.");
+      }
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true, roles: true } });
+      if (!target) throw new ApiError(404, "Gebruiker niet gevonden.");
+      const current = effectiveRoles(target);
+      if (hasRole(current, "ADMIN") && current.includes("ADMIN")) throw new ApiError(403, "Hoofdadmins hebben altijd toegang; dat regelt een hoofdadmin.");
+      let next = [...current];
+      for (const section of manager.sections) {
+        const base = SECTION_BASE_ROLE[section];
+        const adminRole = SECTION_ADMIN_ROLE[section];
+        if (current.includes(adminRole)) continue; // beheerders van dit onderdeel wijst de hoofdadmin aan
+        const want = body.roles.includes(base);
+        next = next.filter((r) => r !== base);
+        if (want) next.push(base);
+      }
+      // Alles wat deze beheerder niet mag wijzigen, blijft zoals het was.
+      const managedByMe = new Set<AppRole>(manager.sections.flatMap((s) => [SECTION_BASE_ROLE[s]]));
+      for (const r of body.roles) if (!managedByMe.has(r) && !current.includes(r)) throw new ApiError(403, "Je kunt alleen de toegang tot je eigen onderdeel wijzigen.");
+      const updated = await prisma.user.update({ where: { id }, data: { roles: next }, select: { id: true, name: true, email: true, roles: true, createdAt: true } });
+      return NextResponse.json({ user: updated });
+    }
 
     await assertNotLastAdmin(id, "degraderen naar gebruiker", body.roles);
 

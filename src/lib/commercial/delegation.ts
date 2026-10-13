@@ -4,8 +4,9 @@
 // hier beslissen.
 //
 // Uitgangspunten:
-//  - Sectietoegang (lidmaatschap) geven of intrekken kan alleen een
-//    platformbeheerder; dat geeft op zichzelf geen inhoudelijke rechten.
+//  - Sectietoegang (lidmaatschap) geven of intrekken kan een hoofdadmin of een
+//    beheerder van Commerciële Zaken (rechtenbeheer); een rol toewijzen blijft
+//    binnen de eigen grens.
 //  - Rechten van anderen aanpassen vereist 'rights:manage_rights'.
 //  - Je kunt je eigen rechten niet aanpassen.
 //  - Je kunt alleen bevoegdheden toekennen die je zelf effectief hebt.
@@ -70,7 +71,7 @@ export function checkMembershipChange(
   kind: "grant" | "revoke",
   opts: { targetIsLastRightsManager?: boolean } = {},
 ): Decision {
-  if (!actor.isPlatformAdmin) return no("Alleen een platformbeheerder kan toegang tot Commerciële Zaken geven of intrekken.");
+  if (!actor.isPlatformAdmin && !canManageRights(actor)) return no("Alleen een hoofdadmin of beheerder van Commerciële Zaken kan toegang geven of intrekken.");
   if (kind === "revoke" && opts.targetIsLastRightsManager) {
     return no("Dit is het laatste lid dat rechten kan beheren. Wijs eerst iemand anders aan.");
   }

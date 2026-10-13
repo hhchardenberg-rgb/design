@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const { id } = await params;
     const template = await prisma.template.findUniqueOrThrow({
       where: { id },
@@ -23,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    await requireHubAdmin();
     const { id } = await params;
     // Een template met een actieve versie moet die koppeling eerst verliezen,
     // anders blokkeert de Template.activeVersionId-koppeling zelf. Ontwerpen

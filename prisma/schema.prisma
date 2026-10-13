@@ -23,6 +23,9 @@ enum Role {
   ADMIN
   HUB
   TICKETING
+  // Beheerder van één onderdeel: beheert de inhoud en de gebruikers van alleen dat onderdeel.
+  HUB_ADMIN
+  TICKETING_ADMIN
 }
 
 // Houdt inlogpogingen bij (geslaagd én mislukt) zodat login() in

@@ -3,10 +3,11 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireUserManager, visibleRoles } from "@/lib/user-managers.server";
 import { normalizeEmail } from "@/lib/utils";
 import { backfillUserRoles } from "@/lib/user-roles.server";
 
-const APP_ROLES = ["ADMIN", "HUB", "TICKETING"] as const;
+const APP_ROLES = ["ADMIN", "HUB", "TICKETING", "HUB_ADMIN", "TICKETING_ADMIN"] as const;
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Naam is verplicht."),
@@ -17,7 +18,7 @@ const createUserSchema = z.object({
 
 export async function GET() {
   try {
-    await requireAdmin();
+    const manager = await requireUserManager();
     // Zorgt dat gebruikers die nog op het legacy `role`-veld draaien (roles
     // is dan leeg) hier automatisch gemigreerd worden, zodat het scherm
     // altijd een correcte, expliciete rollenset laat zien.
@@ -26,7 +27,12 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true, email: true, roles: true, createdAt: true },
     });
-    return NextResponse.json({ users });
+    // Een beheerder van een onderdeel ziet alleen wie er is en welke rollen binnen zijn eigen onderdeel gelden.
+    const shown = visibleRoles(manager);
+    return NextResponse.json({
+      manager: { full: manager.full, sections: manager.sections, commercial: manager.commercial },
+      users: manager.full ? users : users.map((u) => ({ ...u, roles: u.roles.filter((r) => (shown as string[]).includes(r)) })),
+    });
   } catch (error) {
     return apiErrorResponse(error);
   }

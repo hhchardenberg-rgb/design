@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { hasRole, resolveHomePath } from "@/lib/roles";
+import { isSectionAdmin, resolveHomePath } from "@/lib/roles";
 
 /**
  * Extra, server-side controle bovenop middleware.ts voor het beheren van
@@ -13,7 +13,7 @@ export default async function AdminTicketingLayout({ children }: { children: Rea
   if (!session?.user) redirect("/login?callbackUrl=/admin/ticketing");
 
   const roles = session.user.roles ?? [];
-  if (!hasRole(roles, "ADMIN") || !hasRole(roles, "TICKETING")) redirect(resolveHomePath(roles));
+  if (!isSectionAdmin(roles, "ticketing")) redirect(resolveHomePath(roles));
 
   return <>{children}</>;
 }
