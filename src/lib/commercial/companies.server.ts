@@ -395,6 +395,9 @@ export async function mergeCompanies(ctx: RecordCtx, targetId: string, sourceId:
     ]);
     await tx.commercialCounterpart.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } });
     await tx.commercialOpportunity.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } });
+    // Facturen houden hun eigen afnemersgegevens (momentopname); alleen de koppeling verhuist.
+    await tx.commercialInvoice.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } });
+    await tx.commercialMailingRecipient.updateMany({ where: { companyId: sourceId }, data: { companyId: targetId } });
     await tx.commercialCompany.update({
       where: { id: targetId },
       data: {

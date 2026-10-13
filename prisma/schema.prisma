@@ -1274,3 +1274,92 @@ model CommercialMailEvent {
 
   @@map("commercial_mail_events")
 }
+
+/// Gegevens van HHC voor op facturen. Eén rij (id "singleton"); alles is te wijzigen in de instellingen.
+/// Facturen kunnen pas definitief worden als de verplichte velden zijn ingevuld.
+model CommercialInvoiceSettings {
+  id                String   @id
+  legalName         String?
+  street            String?
+  postalCode        String?
+  city              String?
+  kvkNumber         String?
+  vatNumber         String?
+  iban              String?
+  paymentTermDays   Int?
+  invoicePrefix     String?
+  nextInvoiceNumber Int?
+  creditPrefix      String?
+  nextCreditNumber  Int?
+  version           Int      @default(1)
+  updatedById       String?
+  updatedAt         DateTime @updatedAt
+
+  @@map("commercial_invoice_settings")
+}
+
+/// Factuur of creditnota. Een nummer en de afzendergegevens (momentopname) komen pas bij definitief maken.
+model CommercialInvoice {
+  id                String    @id @default(cuid())
+  kind              String    @default("INVOICE") // INVOICE | CREDIT_NOTE
+  status            String    @default("DRAFT") // DRAFT | ISSUED
+  companyId         String
+  contractId        String?
+  creditedInvoiceId String?
+  number            String?   @unique
+  issuedOn          DateTime? @db.Date
+  dueOn             DateTime? @db.Date
+  // Leveringsdatum of -periode in woorden, bv. "seizoen 2026/2027".
+  deliveryText      String?
+  buyerName         String
+  buyerAddress      String?
+  buyerVatNumber    String?
+  reference         String?
+  supplierSnapshot  Json?
+  issuedById        String?
+  version           Int       @default(1)
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  lines    CommercialInvoiceLine[]
+  payments CommercialPayment[]
+
+  @@index([companyId])
+  @@index([creditedInvoiceId])
+  @@index([status, kind])
+  @@map("commercial_invoices")
+}
+
+model CommercialInvoiceLine {
+  id          String            @id @default(cuid())
+  invoiceId   String
+  invoice     CommercialInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position    Int
+  description String
+  quantity    Int               @default(1)
+  // Eenheidsprijs in eurocenten, exclusief btw.
+  unitCents   Int
+  // Btw-tarief in basispunten (2100 = 21%); wordt per regel bewust gekozen.
+  vatRateBp   Int?
+
+  @@index([invoiceId])
+  @@map("commercial_invoice_lines")
+}
+
+model CommercialPayment {
+  id          String            @id @default(cuid())
+  invoiceId   String
+  invoice     CommercialInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  amountCents Int
+  paidOn      DateTime          @db.Date
+  note        String?
+  // Een foute betaling wordt ongeldig gemaakt (blijft zichtbaar), niet verwijderd.
+  voidedAt    DateTime?
+  voidedById  String?
+  createdById String?
+  createdAt   DateTime          @default(now())
+
+  @@index([invoiceId])
+  @@map("commercial_payments")
+}
