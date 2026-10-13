@@ -51,6 +51,14 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     items: [{ href: "/commercieel/mailings", label: "Mailings", description: "Mailings naar sponsorcontacten met afmelden.", requires: "mailings:read" }],
   },
   {
+    id: "toezicht",
+    label: "Toezicht",
+    items: [
+      { href: "/commercieel/toezicht/personen", label: "Per persoon", description: "Openstaande taken, kansen en tegenprestaties per persoon.", requires: "rights:manage_rights" },
+      { href: "/commercieel/toezicht/logboek", label: "Logboek", description: "Wie heeft wat gedaan: wijzigingen, verzendingen en downloads.", requires: "rights:manage_rights" },
+    ],
+  },
+  {
     id: "instellingen",
     label: "Instellingen",
     items: [
