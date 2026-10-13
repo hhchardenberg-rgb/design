@@ -94,7 +94,7 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
   if (hasAnyAdminRole(roles) || commercial.admin) sections.push({ key: "admin", label: "Beheer", href: "/admin" });
   const sectionLinks: SectionLink[] = [
     ...(sections.length > 1 ? sections : []),
-    { key: "account", label: "Accountbeveiliging", href: "/account/security" },
+    { key: "account", label: "Profiel", href: "/account/profiel" },
   ];
   const homeHref = resolveHomePath(roles);
 

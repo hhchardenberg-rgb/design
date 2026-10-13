@@ -71,8 +71,9 @@ export async function runReminders(now: Date, send: DigestSender): Promise<RunRe
   for (const p of pending) byUser.set(p.userId, [...(byUser.get(p.userId) ?? []), p]);
 
   for (const [userId, items] of byUser) {
-    const [access, user] = await Promise.all([loadCommercialAccess(userId), prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } })]);
+    const [access, user] = await Promise.all([loadCommercialAccess(userId), prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, notifyCommercialDigest: true } })]);
     if (!user?.email || !access.isMember) continue;
+    if (!user.notifyCommercialDigest) continue; // zelf uitgezet in het profiel
     const allowed = items.filter((i) => (i.kind === "TASK_DUE" ? access.can("tasks:read") : access.can("contracts:read") && access.can("companies:read")));
     if (allowed.length === 0) continue;
 

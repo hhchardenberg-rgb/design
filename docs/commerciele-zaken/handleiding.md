@@ -101,6 +101,11 @@ bedragen, adressen of berichttekst.
   contracten, facturen, mailings, bestanden, exports) met filter op persoon, soort en datum. Beide zijn bewust niet
   beperkt door het eigen recordbereik van de beheerder, en bevatten nooit bedragen.
 
+- **Profiel**: onder Profiel (rechtsboven) pas je je naam, functie en telefoonnummer aan, zet je de dagelijkse
+  herinneringsmail van Commerciële Zaken aan of uit, zie je waar je bij aangesloten bent en wijzig je je wachtwoord
+  (huidig wachtwoord vereist). Tweestapsverificatie en passkeys staan op het tabblad Beveiliging. Een gewijzigde naam is in de
+  balk bovenin pas na opnieuw inloggen zichtbaar.
+
 ## 5. Instellingen en externe afhankelijkheden (Vercel)
 
 | Variabele | Doel | Nodig voor |
@@ -157,7 +162,7 @@ bedragen, adressen of berichttekst.
 
 ## 8. Tests
 
-`npm test` draait 59 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
+`npm test` draait 60 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
 overgeslagen. Gedekt: rechtenmodel en delegatie, bereik (eigen/team/alles) en lekken via dubbelencontrole,
 financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versiecontrole, bestanden, import en
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),

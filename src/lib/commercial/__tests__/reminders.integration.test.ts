@@ -86,4 +86,9 @@ test("herinneringen: eenmalig, alleen voor wie mag, geen bedragen, herstel bij m
   assert.equal(failed.failed, 1);
   assert.equal(await db.commercialReminderLog.count(), 0);
   assert.equal((await rm.runReminders(now, async () => {})).recipients, 1);
+
+  // Zelf uitgezet in het profiel: geen herinneringsmail meer.
+  await db.commercialReminderLog.deleteMany();
+  await db.user.update({ where: { id: mgr.id }, data: { notifyCommercialDigest: false } });
+  assert.deepEqual(await rm.runReminders(now, async () => assert.fail("mag niet mailen")), { recipients: 0, tasks: 0, notices: 0, failed: 0 });
 });

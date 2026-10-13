@@ -1,0 +1,75 @@
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+import { ApiError } from "@/lib/api-guards";
+import { ASSIGNABLE_ROLES, effectiveRoles } from "@/lib/roles";
+import { loadCommercialAccess } from "@/lib/commercial/authz.server";
+
+export interface ProfileInput {
+  name?: string;
+  phone?: string | null;
+  jobTitle?: string | null;
+  notifyCommercialDigest?: boolean;
+}
+
+const optional = (v: string | null | undefined, max: number, what: string): string | null | undefined => {
+  if (v === undefined) return undefined;
+  const t = (v ?? "").trim();
+  if (t.length > max) throw new ApiError(400, `${what} mag maximaal ${max} tekens zijn.`);
+  return t || null;
+};
+
+/** Eigen profiel: gegevens, voorkeuren en een leesbaar overzicht van de onderdelen waar je bij hoort. */
+export async function getProfile(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, role: true, roles: true, phone: true, jobTitle: true, notifyCommercialDigest: true, createdAt: true, totpCredential: { select: { id: true } }, webauthnCredentials: { select: { id: true } } },
+  });
+  if (!user) throw new ApiError(404, "Account niet gevonden.");
+  const roles = effectiveRoles(user);
+  const access = await loadCommercialAccess(userId).catch(() => null);
+  const membership = access?.isMember ? await prisma.commercialMembership.findUnique({ where: { userId }, select: { role: { select: { name: true } } } }) : null;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    jobTitle: user.jobTitle,
+    notifyCommercialDigest: user.notifyCommercialDigest,
+    memberSince: user.createdAt.toISOString(),
+    roles: roles.map((r) => ASSIGNABLE_ROLES.find((d) => d.value === r)?.label ?? r),
+    commercial: access?.isMember ? { member: true, roleName: roles.includes("ADMIN") ? "Volledige toegang (hoofdadmin)" : (membership?.role?.name ?? null) } : { member: false, roleName: null },
+    security: { totp: !!user.totpCredential, passkeys: user.webauthnCredentials.length },
+  };
+}
+
+export async function updateProfile(userId: string, input: ProfileInput) {
+  const data: { name?: string; phone?: string | null; jobTitle?: string | null; notifyCommercialDigest?: boolean } = {};
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) throw new ApiError(400, "Naam is verplicht.");
+    if (name.length > 100) throw new ApiError(400, "Naam mag maximaal 100 tekens zijn.");
+    data.name = name;
+  }
+  const phone = optional(input.phone, 30, "Telefoonnummer");
+  if (phone !== undefined) {
+    if (phone && !/^[0-9+()\-\s]{6,30}$/.test(phone)) throw new ApiError(400, "Gebruik alleen cijfers, spaties en + ( ) - in het telefoonnummer.");
+    data.phone = phone;
+  }
+  const jobTitle = optional(input.jobTitle, 80, "Functie");
+  if (jobTitle !== undefined) data.jobTitle = jobTitle;
+  if (input.notifyCommercialDigest !== undefined) data.notifyCommercialDigest = !!input.notifyCommercialDigest;
+  if (Object.keys(data).length === 0) throw new ApiError(400, "Er is niets om op te slaan.");
+  await prisma.user.update({ where: { id: userId }, data });
+}
+
+/** Wachtwoord wijzigen vereist het huidige wachtwoord; het nieuwe moet verschillen. */
+export async function changePassword(userId: string, current: string, next: string) {
+  if (!current) throw new ApiError(400, "Vul je huidige wachtwoord in.");
+  if (typeof next !== "string" || next.length < 8) throw new ApiError(400, "Wachtwoord moet minimaal 8 tekens zijn.");
+  if (next.length > 200) throw new ApiError(400, "Wachtwoord is te lang.");
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  if (!user) throw new ApiError(404, "Account niet gevonden.");
+  if (!(await bcrypt.compare(current, user.passwordHash))) throw new ApiError(403, "Je huidige wachtwoord klopt niet.");
+  if (current === next) throw new ApiError(400, "Kies een ander wachtwoord dan je huidige.");
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(next, 12) } });
+}
