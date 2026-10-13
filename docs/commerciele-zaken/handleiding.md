@@ -90,7 +90,9 @@ bedragen, adressen of berichttekst.
 - **Facturatie-instellingen**: Instellingen > Facturatie: gegevens van de vereniging, btw-nummer, IBAN,
   betalingstermijn en nummering. Zolang btw-nummer, IBAN, termijn en volgnummers leeg zijn, kan geen factuur
   definitief worden gemaakt. Het briefpapier toont zelf ook een IBAN; controleer dat beide kloppen.
-- **Teams**: Instellingen > Teams; teamlidmaatschap bepaalt het bereik "eigen team" en is een rechtenwijziging.
+- **CZ-teams**: Instellingen > CZ-teams; teamlidmaatschap bepaalt het bereik "eigen team" en is een rechtenwijziging.
+  Een CZ-team wissen kan ook (rechtenbeheer vereist): dossiers en taken blijven bestaan maar horen dan bij geen team, dus wie ze
+  alleen via dat team zag, ziet ze niet meer. De naam komt daarna weer vrij.
 - **Seizoenen en pakketten**: Instellingen > Seizoenen en pakketten.
 - Wie alleen toegang heeft tot Commerciële Zaken (geen hub-/ticketingrol) wordt na het inloggen automatisch naar
   `/commercieel` gestuurd.

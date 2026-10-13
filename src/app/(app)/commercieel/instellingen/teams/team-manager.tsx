@@ -8,7 +8,7 @@ import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api } from "@/lib/commercial/client";
 
 interface Data {
-  teams: { id: string; name: string; memberIds: string[] }[];
+  teams: { id: string; name: string; memberIds: string[]; companyCount: number; taskCount: number }[];
   candidates: { id: string; name: string }[];
 }
 
@@ -40,7 +40,18 @@ export function TeamManager({ canManage, canCreate }: { canManage: boolean; canC
   async function save(teamId: string) {
     const r = await api(`/api/commercial/teams/${teamId}/members`, "PUT", { userIds: draft[teamId] ?? [] });
     if (r.ok) {
-      toast.success("Team opgeslagen.");
+      toast.success("CZ-team opgeslagen.");
+      await load();
+    } else toast.error(r.error);
+  }
+
+  async function remove(t: Data["teams"][number]) {
+    const n = [t.companyCount ? `${t.companyCount} dossier(s)` : null, t.taskCount ? `${t.taskCount} taak/taken` : null].filter(Boolean).join(" en ");
+    const warning = n ? `\n\n${n} blijven bestaan maar horen daarna bij geen enkel team. Wie alleen via dit team toegang had, ziet ze dan niet meer.` : "";
+    if (!window.confirm(`CZ-team "${t.name}" wissen?${warning}\n\nDit kan niet ongedaan worden gemaakt.`)) return;
+    const r = await api(`/api/commercial/teams/${t.id}`, "DELETE");
+    if (r.ok) {
+      toast.success("CZ-team gewist.");
       await load();
     } else toast.error(r.error);
   }
@@ -49,21 +60,21 @@ export function TeamManager({ canManage, canCreate }: { canManage: boolean; canC
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Teams</h1>
-        <p className="text-sm text-muted-foreground">Teams bepalen wat iemand met het bereik “Eigen team” ziet. Teamleden wijzigen is een rechtenwijziging en vereist rechtenbeheer.</p>
+        <h1 className="text-2xl font-bold">CZ-teams</h1>
+        <p className="text-sm text-muted-foreground">CZ-teams (teams binnen Commerciële Zaken) bepalen wat iemand met het bereik “Eigen team” ziet. Teamleden wijzigen is een rechtenwijziging en vereist rechtenbeheer.</p>
       </div>
       {canCreate && (
         <form onSubmit={create} className="flex flex-wrap items-end gap-3">
-          <div className="min-w-48"><Label htmlFor="team-name">Nieuw team</Label><Input id="team-name" required value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="min-w-48"><Label htmlFor="team-name">Nieuw CZ-team</Label><Input id="team-name" required value={name} onChange={(e) => setName(e.target.value)} /></div>
           <Button type="submit">Aanmaken</Button>
         </form>
       )}
-      {data.teams.length === 0 && <p className="text-sm text-muted-foreground">Er zijn nog geen teams.</p>}
+      {data.teams.length === 0 && <p className="text-sm text-muted-foreground">Er zijn nog geen CZ-teams.</p>}
       {data.teams.map((t) => (
         <Card key={t.id}>
           <CardHeader>
             <CardTitle>{t.name}</CardTitle>
-            <CardDescription>{(draft[t.id] ?? []).length} lid/leden</CardDescription>
+            <CardDescription>{(draft[t.id] ?? []).length} lid/leden · {t.companyCount} dossier(s) · {t.taskCount} taak/taken</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-1.5 sm:grid-cols-2">
@@ -75,7 +86,12 @@ export function TeamManager({ canManage, canCreate }: { canManage: boolean; canC
                 </label>
               ))}
             </div>
-            {canManage && <Button size="sm" onClick={() => save(t.id)}>Opslaan</Button>}
+            {canManage && (
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => save(t.id)}>Opslaan</Button>
+                <Button size="sm" variant="outline" onClick={() => remove(t)}>Team wissen</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       ))}

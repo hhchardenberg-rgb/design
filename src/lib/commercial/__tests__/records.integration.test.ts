@@ -118,6 +118,19 @@ test("recordbereik, eigenaarschap, concurrency en bevoegdheden", { skip }, async
   await rejects(co.getCompany(cc2, x.id), 404);
   await svc.setMemberScopes(mgrActor, a.id, { companies: "OWN" });
 
+  // CZ-team wissen: alleen met teaminstellingen én rechtenbeheer; dossiers blijven, maar verliezen hun team.
+  await rejects(tm.deleteTeam(cc2, team.id), 403);
+  assert.equal((await tm.listTeams(cm)).teams.find((t) => t.id === team.id)!.companyCount, 1);
+  await rejects(tm.deleteTeam(cm, "bestaat-niet"), 404);
+  assert.deepEqual(await tm.deleteTeam(cm, team.id), { companies: 1, tasks: 0 });
+  assert.equal((await tm.listTeams(cm)).teams.some((t) => t.id === team.id), false);
+  assert.equal((await db.commercialCompany.findUniqueOrThrow({ where: { id: teamCo.id } })).teamId, null);
+  assert.equal(await db.commercialTeamMember.count({ where: { teamId: team.id } }), 0);
+  await rejects(co.getCompany(cc2, teamCo.id), 404); // c zag het alleen via het team
+  assert.ok((await db.commercialAuditEvent.findMany({ where: { action: "team.delete" } })).length === 1);
+  // De naam komt weer vrij.
+  await tm.createTeam(cm, "Acquisitie");
+
   // Bevoegdheden zijn onafhankelijk van bereik: alleen-lezen kan niets schrijven.
   await rejects(co.createCompany(cro, { name: "Nee" }), 403);
   await rejects(tk.createTask(cro, { title: "Nee" }), 403);

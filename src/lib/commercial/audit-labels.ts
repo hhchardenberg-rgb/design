@@ -41,7 +41,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "file.archive": "Bestand gearchiveerd",
   "export.companies": "Export van dossiers",
   "export.contracts": "Export van contracten",
-  "team.create": "Team aangemaakt",
-  "team.members": "Teamleden gewijzigd",
+  "team.create": "CZ-team aangemaakt",
+  "team.members": "Leden van CZ-team gewijzigd",
+  "team.delete": "CZ-team gewist",
   read: "Gegevens ingezien",
 };
