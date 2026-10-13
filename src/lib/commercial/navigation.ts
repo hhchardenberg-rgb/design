@@ -10,6 +10,8 @@ export interface CommercialNavItem {
   description: string;
   /** Alleen tonen met deze bevoegdheid; ontbreekt = voor elk lid. */
   requires?: Permission;
+  /** Alleen tonen als deze functie aan staat (bv. het nieuws van Commerciële Zaken). */
+  feature?: "news";
 }
 
 export interface CommercialNavGroup {
@@ -50,7 +52,10 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
   {
     id: "communicatie",
     label: "Communicatie",
-    items: [{ href: "/commercieel/mailings", label: "Mailings", description: "Mailings naar sponsorcontacten met afmelden.", requires: "mailings:read" }],
+    items: [
+      { href: "/commercieel/nieuws", label: "Nieuws", description: "Het laatste nieuws binnen Commerciële Zaken.", feature: "news" },
+      { href: "/commercieel/mailings", label: "Mailings", description: "Mailings naar sponsorcontacten met afmelden.", requires: "mailings:read" },
+    ],
   },
   {
     id: "toezicht",
@@ -71,7 +76,10 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
   },
 ];
 
-/** De groepen en onderdelen waar dit lid bij mag, zonder lege groepen. */
-export function visibleNavGroups(can: (p: Permission) => boolean): CommercialNavGroup[] {
-  return COMMERCIAL_NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !i.requires || can(i.requires)) })).filter((g) => g.items.length > 0);
+/** De groepen en onderdelen waar dit lid bij mag, zonder lege groepen. Functies die uit staan vallen weg. */
+export function visibleNavGroups(can: (p: Permission) => boolean, features: { news?: boolean } = {}): CommercialNavGroup[] {
+  return COMMERCIAL_NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => (!i.requires || can(i.requires)) && (!i.feature || !!features[i.feature])),
+  })).filter((g) => g.items.length > 0);
 }

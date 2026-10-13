@@ -2,6 +2,7 @@ import { AppShell, type CommercialShellState } from "@/components/app-shell";
 import { auth } from "@/lib/auth";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
+import { loadNewsEnabled } from "@/lib/news.server";
 
 // Alle pagina's hier vereisen een ingelogde gebruiker en actuele
 // databasedata (templates, wedstrijden, ontwerpen) en mogen dus nooit
@@ -20,5 +21,10 @@ async function commercialState(): Promise<CommercialShellState> {
 }
 
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell commercial={await commercialState()}>{children}</AppShell>;
+  const [commercial, news] = await Promise.all([commercialState(), loadNewsEnabled()]);
+  return (
+    <AppShell commercial={commercial} news={{ hub: news.hub, ticketing: news.ticketing }}>
+      {children}
+    </AppShell>
+  );
 }

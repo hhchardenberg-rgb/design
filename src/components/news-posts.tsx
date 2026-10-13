@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
-import { nl } from "date-fns/locale";
 import { Newspaper, Pin, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +65,7 @@ export function NewsPosts({ posts, variant }: { posts: NewsPostView[]; variant: 
                 <CardContent className="flex flex-1 flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <PostBadges post={post} />
-                    <span className="text-xs text-muted-foreground">{format(post.createdAt, "d MMM", { locale: nl })}</span>
+                    <span className="text-xs text-muted-foreground">{format(post.createdAt, "dd/MM/yyyy")}</span>
                   </div>
                   <p className="font-semibold leading-snug">{post.title}</p>
                   <p className="line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
@@ -90,7 +89,7 @@ export function NewsPosts({ posts, variant }: { posts: NewsPostView[]; variant: 
                   </div>
                   <p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">{post.body}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(post.createdAt, "dd/MM/yyyy", { locale: nl })}
+                    {format(post.createdAt, "dd/MM/yyyy")}
                     {post.authorName ? ` · ${post.authorName}` : ""}
                     <span className="ml-2 font-medium text-hhc-orange-dark group-hover:underline">Lees meer</span>
                   </p>
@@ -135,7 +134,7 @@ export function NewsPosts({ posts, variant }: { posts: NewsPostView[]; variant: 
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                {format(selected.createdAt, "dd/MM/yyyy", { locale: nl })}
+                {format(selected.createdAt, "dd/MM/yyyy")}
                 {selected.authorName ? ` · ${selected.authorName}` : ""}
               </p>
               <p className="whitespace-pre-wrap text-sm">{selected.body}</p>

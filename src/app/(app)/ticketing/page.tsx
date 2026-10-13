@@ -4,10 +4,16 @@ import { ExternalLink } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ticketingModules, ticketingQuickLinks } from "@/lib/ticketing-modules";
+import { NewsPosts } from "@/components/news-posts";
+import { isNewsEnabled, listNewsPosts } from "@/lib/news.server";
 
 export const metadata: Metadata = { title: "Ticketing" };
 
-export default function TicketingPage() {
+export default async function TicketingPage() {
+  const newsEnabled = await isNewsEnabled("ticketing");
+  const newsPosts = newsEnabled ? await listNewsPosts("ticketing", 3) : [];
+  const modules = ticketingModules.filter((m) => m.id !== "nieuws" || newsEnabled);
+
   return (
     <div className="flex flex-col gap-8">
       <section className="rounded-xl bg-hhc-black p-8 text-hhc-white">
@@ -43,8 +49,20 @@ export default function TicketingPage() {
         </Card>
       </section>
 
+      {newsPosts.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Nieuws</h2>
+            <Link href="/ticketing/nieuws" className="text-sm font-medium text-hhc-orange-dark hover:underline">
+              Alle berichten
+            </Link>
+          </div>
+          <NewsPosts variant="dashboard" posts={newsPosts} />
+        </section>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {ticketingModules.map((mod) => {
+        {modules.map((mod) => {
           const Icon = mod.icon;
           const card = (
             <Card className={mod.status === "available" ? "h-full transition-all hover:-translate-y-0.5 hover:shadow-md" : "h-full opacity-60"}>
