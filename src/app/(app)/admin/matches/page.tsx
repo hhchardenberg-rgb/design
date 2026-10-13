@@ -154,8 +154,8 @@ export default function AdminMatchesPage() {
 
       <div className="flex flex-col gap-2">
         {matches.map((m) => (
-          <div key={m.id} className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm">
-            <div>
+          <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm">
+            <div className="min-w-0">
               <span className="font-medium">
                 {m.isHome ? m.team.name : m.opponent.name} – {m.isHome ? m.opponent.name : m.team.name}
               </span>
@@ -163,7 +163,7 @@ export default function AdminMatchesPage() {
                 {format(new Date(m.date), "dd/MM/yyyy, HH:mm", { locale: nl })}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               <Badge variant="outline">{m.status}</Badge>
               <Button size="sm" variant="ghost" onClick={() => remove(m.id)}>
                 Verwijderen
