@@ -9,6 +9,7 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
 import type { Permission } from "@/lib/commercial/permissions";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
 interface Contract {
   id: string; seasonId: string; seasonName: string; packageId: string | null; packageName: string | null; status: string;
@@ -82,7 +83,7 @@ function NewContract({ companyId, seasons, packages, canAmount, onClose, onDone 
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
           <div><Label htmlFor="c-season">Seizoen</Label>
             <select id="c-season" required className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.seasonId} onChange={(e) => pick(e.target.value)}>
-              <option value="">Kies…</option>{seasons.filter((s) => s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="">Kies…</option>{seasons.filter((s) => s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
             </select></div>
           <div><Label htmlFor="c-pkg">Pakket</Label>
             <select id="c-pkg" className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.packageId} onChange={(e) => pickPackage(e.target.value)}>
@@ -159,7 +160,7 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
             <div><Label htmlFor={`rs-${c.id}`}>Nieuw seizoen</Label>
               <select id={`rs-${c.id}`} required className="h-10 rounded-md border border-border bg-surface px-2" value={renew.seasonId}
                 onChange={(e) => { const s = seasons.find((x) => x.id === e.target.value); setRenew({ seasonId: e.target.value, startsOn: s?.startsOn ?? "", endsOn: s?.endsOn ?? "" }); }}>
-                <option value="">Kies…</option>{seasons.filter((s) => s.id !== c.seasonId && s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                <option value="">Kies…</option>{seasons.filter((s) => s.id !== c.seasonId && s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
               </select></div>
             <Button type="submit" size="sm">Concept-verlenging maken</Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setRenew(null)}>Annuleren</Button>

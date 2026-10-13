@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { SEASON_PHASE_LABEL, seasonPhase } from "@/lib/commercial/season-phase";
 
 interface Season { id: string; name: string; startsOn: string; endsOn: string; status: string }
 interface Pkg { id: string; name: string; description: string | null; defaultAmountCents: number | null; items: { title: string; description: string | null; quantity: number }[] }
-const STATUS: Record<string, string> = { DRAFT: "Concept", ACTIVE: "Actief", CLOSED: "Afgesloten" };
+// Beheerstatus: of er contracten op het seizoen kunnen worden afgesloten. Los van huidig/afgelopen/aankomend.
+const STATUS: Record<string, string> = { DRAFT: "Concept", ACTIVE: "Open voor contracten", CLOSED: "Afgesloten" };
 
 export function SeasonPackageManager({ canManage, canAmounts }: { canManage: boolean; canAmounts: boolean }) {
   const toast = useStableToast();
@@ -71,7 +73,8 @@ export function SeasonPackageManager({ canManage, canAmounts }: { canManage: boo
               <li key={s.id} className="flex flex-wrap items-center gap-3 py-2">
                 <span className="font-medium">{s.name}</span>
                 <span className="text-muted-foreground">{formatDate(s.startsOn)} t/m {formatDate(s.endsOn)}</span>
-                <Badge variant={s.status === "ACTIVE" ? "success" : "outline"}>{STATUS[s.status]}</Badge>
+                <Badge variant={seasonPhase(s) === "CURRENT" ? "success" : "outline"}>{SEASON_PHASE_LABEL[seasonPhase(s)]}</Badge>
+                {s.status !== "ACTIVE" && <span className="text-xs text-muted-foreground">{STATUS[s.status]}</span>}
                 {canManage && (
                   <select aria-label={`Status van ${s.name}`} className="ml-auto h-9 rounded-md border border-border bg-surface px-2" value={s.status} onChange={(e) => setStatus(s, e.target.value)}>
                     {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

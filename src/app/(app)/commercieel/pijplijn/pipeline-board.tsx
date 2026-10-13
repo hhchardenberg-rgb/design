@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
 interface Opp {
   id: string; companyId: string; companyName: string; title: string; stage: string; expectedCloseOn: string | null; ownerName: string | null;
@@ -105,7 +106,7 @@ export function PipelineBoard({ canCreate, canUpdate, canArchive, canContract, c
                           {canContract && (
                             <select aria-label={`Winnen: kies seizoen voor ${o.title}`} className="h-8 rounded-md border border-border bg-surface px-2 text-xs" value="" onChange={(e) => e.target.value && win(o, e.target.value)}>
                               <option value="">Winnen voor…</option>
-                              {seasons.filter((s) => s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              {seasons.filter((s) => s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
                             </select>
                           )}
                           {canArchive && <Button size="sm" variant="ghost" onClick={() => archive(o)}>Archiveren</Button>}

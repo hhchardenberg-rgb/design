@@ -6,8 +6,9 @@ import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatEuro } from "@/lib/commercial/client";
 import { TierFilter } from "@/components/commercial/sponsor-tier";
 import { contactsExportHref } from "@/lib/commercial/sponsor-tiers";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
-interface Season { id: string; name: string }
+interface Season { id: string; name: string; startsOn: string; endsOn: string }
 interface Report {
   season: { season: Season; byStatus: { status: string; count: number; totalCents: number | null }[]; byPackage: { name: string; count: number; totalCents: number | null }[]; byTier: { key: string; name: string; count: number; totalCents: number | null }[]; activeWithoutAmount: number | null };
   pipeline: { stages: { stage: string; count: number; expectedCents: number | null }[] } | null;
@@ -47,7 +48,7 @@ export function Reports({ canExport, canCompanies, canContracts, canContacts }: 
           <div>
             <label htmlFor="rp-season" className="text-sm font-medium">Seizoen</label>
             <select id="rp-season" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setReport(null); }}>
-              <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
             </select>
           </div>
           {canExport && canContracts && <a className="inline-flex h-10 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted" href={`/api/commercial/export?kind=contracts${seasonId ? `&seasonId=${encodeURIComponent(seasonId)}` : ""}`}>Contracten exporteren (CSV)</a>}

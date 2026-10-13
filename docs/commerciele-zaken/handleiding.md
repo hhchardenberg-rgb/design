@@ -87,6 +87,13 @@ Rapportages tonen lopende contracten per sponsorvorm, de exports bevatten de vor
 Bij Mailings kies je welke sponsorvormen de mailing krijgen (leeg = alle vormen). Dat staat los van het vrije veld "Overige
 categorie", dat voor eigen indelingen blijft bestaan.
 
+## Seizoenen
+
+Seizoenen heten in de Hub **huidig seizoen** (vandaag valt tussen start- en einddatum), **afgelopen seizoen** (einddatum
+voorbij) of **aankomend seizoen** (nog niet begonnen). Dat volgt automatisch uit de datums; in keuzelijsten staat het achter de
+naam, bijvoorbeeld "2026/2027 (huidig)". Los daarvan kan een beheerder per seizoen de status Concept, Open voor contracten of
+Afgesloten kiezen; op een afgesloten seizoen kun je geen contracten meer afsluiten. Alle datums staan als dd/mm/jjjj.
+
 ## Contactpersonen en Excel-export
 
 Per bedrijf koppel je zoveel contactpersonen als nodig, elk met naam, functie, e-mail, telefoon en een contactrol. De

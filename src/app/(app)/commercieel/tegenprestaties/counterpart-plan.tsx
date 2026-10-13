@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate } from "@/lib/commercial/client";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
 interface Row {
   id: string;
@@ -19,7 +20,7 @@ interface Row {
   companyName: string;
   seasonName: string;
 }
-interface Season { id: string; name: string; status: string }
+interface Season { id: string; name: string; startsOn: string; endsOn: string; status: string }
 
 const STATUS_LABEL = { PLANNED: "Gepland", IN_PROGRESS: "Bezig", DELIVERED: "Geleverd", CANCELLED: "Vervallen" } as const;
 const VIEWS = [
@@ -80,7 +81,7 @@ export function CounterpartPlan({ canUpdate }: { canUpdate: boolean }) {
           <Label htmlFor="cp-season">Seizoen</Label>
           <select id="cp-season" value={seasonId} onChange={(e) => setSeasonId(e.target.value)} className="h-10 rounded-md border border-border bg-surface px-3 text-sm">
             <option value="">Alle seizoenen</option>
-            {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {seasons.map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
           </select>
         </div>
         {c && (

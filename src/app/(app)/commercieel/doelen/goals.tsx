@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
-interface Season { id: string; name: string; status: string }
+interface Season { id: string; name: string; startsOn: string; endsOn: string; status: string }
 interface Standing { missingCents: number; forecastCents: number; shortfallCents: number; progressPercent: number }
 interface Row { key: string; name: string; contractCount: number; opportunityCount: number; targetCents: number | null; realisedCents: number | null; draftCents: number | null; pipelineWeightedCents: number | null; standing: Standing | null }
 interface Data {
@@ -75,7 +76,7 @@ export function Goals({ canEdit }: { canEdit: boolean }) {
         <CardContent className="pt-5">
           <label htmlFor="goal-season" className="text-sm font-medium">Seizoen</label>
           <select id="goal-season" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setData(null); }}>
-            <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
           </select>
         </CardContent>
       </Card>
