@@ -149,7 +149,7 @@ Menu Relaties → **Contactmomenten**. Per sponsorvorm (en voor sponsoren zonder
 - **Cron**: `vercel.json` roept elke dag 06:00 UTC `/api/cron/commercial-reminders` aan. Zonder `CRON_SECRET`
   is de route dicht en doet hij niets zolang de sectie uit staat.
 - **Resend-webhook**: maak in Resend een webhook naar
-  `https://communicatie.hhc-hardenberg.nl/api/webhooks/resend` met de events delivered, bounced, complained en
+  `https://hub.hhc-hardenberg.nl/api/webhooks/resend` met de events delivered, bounced, complained en
   opened; zet het signing secret als `RESEND_WEBHOOK_SECRET`. Een harde bounce of klacht meldt het adres automatisch af.
 - **Afzenderdomein**: zolang het domein in Resend niet geverifieerd is, mag Resend alleen naar het adres van de
   Resend-eigenaar sturen. Verifieer het domein vóór de eerste echte mailing.
