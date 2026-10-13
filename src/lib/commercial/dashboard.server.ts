@@ -30,7 +30,7 @@ export async function loadDashboard(ctx: RecordCtx) {
   }
 
   const pipeline = ctx.can("opportunities:read")
-    ? await listOpportunities(ctx, {}).then((r) => ({ count: r.items.length, expectedCents: r.totalExpectedCents }))
+    ? await listOpportunities(ctx, {}).then((r) => ({ count: r.items.length }))
     : null;
 
   const counterparts = ctx.can("counterparts:read") && ctx.can("contracts:read")

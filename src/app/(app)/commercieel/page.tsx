@@ -65,7 +65,7 @@ export default async function CommercialHome() {
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Pijplijn</CardTitle></CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.pipeline.count}</span><span className="ml-2 text-muted-foreground">open kansen{dash.pipeline.expectedCents != null ? ` · ${formatEuro(dash.pipeline.expectedCents)} verwacht` : ""}</span></p>
+                  <p><span className="text-2xl font-bold">{dash.pipeline.count}</span><span className="ml-2 text-muted-foreground">open kansen</span></p>
                   <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/pijplijn">Naar de pijplijn</Link>
                 </CardContent>
               </Card>
@@ -104,11 +104,14 @@ export default async function CommercialHome() {
       ) : (
         groups.map((g) => (
           <section key={g.id} aria-labelledby={`grp-${g.id}`}>
-            <h2 id={`grp-${g.id}`} className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.label}</h2>
+            <h2 id={`grp-${g.id}`} className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-hhc-orange-dark">
+              <span aria-hidden className="h-2 w-2 rounded-full bg-hhc-orange" />
+              {g.label}
+            </h2>
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {g.items.map((i) => (
                 <li key={i.href}>
-                  <Link href={i.href} className="block h-full rounded-lg border border-border bg-surface p-4 shadow-sm transition-colors hover:bg-surface-muted">
+                  <Link href={i.href} className="block h-full rounded-lg border border-l-4 border-border border-l-hhc-orange bg-surface p-4 shadow-sm transition-colors hover:bg-surface-muted">
                     <span className="font-semibold">{i.label}</span>
                     <span className="mt-1 block text-sm text-muted-foreground">{i.description}</span>
                   </Link>

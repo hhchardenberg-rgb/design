@@ -34,8 +34,11 @@ export function CommercialSidebar({ groups }: { groups: SidebarGroup[] }) {
       </Link>
       {groups.map((g) => (
         <div key={g.id}>
-          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.label}</p>
-          <ul className="space-y-0.5">
+          <p className="flex items-center gap-2 px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-hhc-orange-dark">
+            <span aria-hidden className="h-2 w-2 rounded-full bg-hhc-orange" />
+            {g.label}
+          </p>
+          <ul className="ml-3 space-y-0.5 border-l-2 border-hhc-orange/25">
             {g.items.map((i) => (
               <li key={i.href}>
                 <Link
@@ -43,8 +46,8 @@ export function CommercialSidebar({ groups }: { groups: SidebarGroup[] }) {
                   onClick={() => setOpen(false)}
                   aria-current={isActive(i.href) ? "page" : undefined}
                   className={cn(
-                    "block rounded-md px-3 py-1.5 text-muted-foreground hover:bg-surface-muted hover:text-foreground",
-                    isActive(i.href) && "bg-surface-muted font-semibold text-foreground"
+                    "-ml-0.5 block rounded-r-md border-l-2 border-transparent px-3 py-1.5 text-muted-foreground hover:bg-hhc-orange/10 hover:text-foreground",
+                    isActive(i.href) && "border-hhc-orange bg-hhc-orange/10 font-semibold text-foreground"
                   )}
                 >
                   {i.label}
