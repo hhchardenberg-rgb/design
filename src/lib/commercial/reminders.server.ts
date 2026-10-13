@@ -3,7 +3,7 @@ import { loadCommercialAccess } from "./authz.server";
 import { clubDay, dayNumber } from "./club-day";
 import { computeContactGaps } from "./contact-moments.server";
 import { effectiveDigestFrequency, isDigestDay, nextDigestDay } from "./digest-frequency";
-import { loadDefaultDigestFrequency } from "./reminder-settings.server";
+import { loadDefaultDigestFrequency, mutedCompanyIds } from "./reminder-settings.server";
 
 export { clubDay };
 
@@ -24,13 +24,14 @@ export function noticeThreshold(daysLeft: number): number | null {
   return NOTICE_THRESHOLDS.find((t) => daysLeft <= t) ?? null;
 }
 
-interface Pending { kind: "TASK_DUE" | "NOTICE" | "CONTACT"; refId: string; userId: string; task?: DigestTask; notice?: DigestNotice; contact?: DigestContact }
+interface Pending { kind: "TASK_DUE" | "NOTICE" | "CONTACT"; refId: string; userId: string; companyId?: string; task?: DigestTask; notice?: DigestNotice; contact?: DigestContact }
 
 /**
  * Verzamelt wat vandaag een herinnering verdient, per ontvanger:
  * - taken die aan iemand zijn toegewezen en verlopen zijn of vervallen vóór de volgende verzenddag van die persoon (eenmalig per taak);
  * - opzegdata van lopende contracten binnen 30, 14 en 7 dagen, naar de eigenaar van het dossier;
- * - sponsoren waarmee te lang geen contactmoment was (per sponsorvorm instelbaar), naar de eigenaar van het dossier;
+ * - sponsoren waarmee te lang geen contactmoment was (termijn per sponsorvorm, door beheerders), naar de eigenaar van het dossier;
+ *   wie een sponsor zelf op stil zette, krijgt over die sponsor geen opzeg- en contactherinneringen;
  *   bij aanhoudende stilte komt er na elke 30 dagen opnieuw een herinnering.
  * Er staan nooit bedragen of dossierinhoud in; alleen titel, sponsornaam en datum.
  */
@@ -58,7 +59,7 @@ async function collect(now: Date): Promise<Pending[]> {
     const daysLeft = dayNumber(noticeOn) - todayN;
     const threshold = noticeThreshold(daysLeft);
     if (threshold == null) continue;
-    pending.push({ kind: "NOTICE", refId: `${c.id}:${threshold}`, userId: c.company.ownerId!, notice: { companyName: c.company.name, noticeOn, daysLeft } });
+    pending.push({ kind: "NOTICE", refId: `${c.id}:${threshold}`, userId: c.company.ownerId!, companyId: c.companyId, notice: { companyName: c.company.name, noticeOn, daysLeft } });
   }
 
   for (const g of await computeContactGaps(now)) {
@@ -67,6 +68,7 @@ async function collect(now: Date): Promise<Pending[]> {
       kind: "CONTACT",
       refId: `${g.companyId}:${g.lastContactOn ?? "nooit"}:${Math.floor(g.overdueDays / 30)}`,
       userId: g.ownerId,
+      companyId: g.companyId,
       contact: { companyName: g.companyName, lastContactOn: g.lastContactOn, daysSince: g.daysSince, intervalDays: g.intervalDays },
     });
   }
@@ -97,7 +99,9 @@ export async function runReminders(now: Date, send: DigestSender): Promise<RunRe
     if (frequency === "OFF") continue; // zelf uitgezet in het profiel, of standaard uit
     if (!isDigestDay(frequency, today)) { result.postponed += 1; continue; }
     const next = nextDigestDay(frequency, today) ?? today;
+    const muted = await mutedCompanyIds(userId);
     const allowed = items.filter((i) => {
+      if (i.companyId && muted.has(i.companyId)) return false; // sponsor zelf op stil gezet
       if (i.kind === "TASK_DUE") return access.can("tasks:read") && i.task!.dueOn < next;
       if (i.kind === "CONTACT") return access.can("companies:read") && access.can("history:read");
       return access.can("contracts:read") && access.can("companies:read");

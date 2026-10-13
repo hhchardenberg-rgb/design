@@ -1265,6 +1265,19 @@ model CommercialReminderSettings {
   @@map("commercial_reminder_settings")
 }
 
+/// Een sponsor die iemand voor zichzelf op "stil" zette: geen herinneringen meer over contactmomenten
+/// en opzegdata van die sponsor. Beheerders zien wie welke sponsor stil zette.
+model CommercialReminderMute {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@map("commercial_reminder_mutes")
+}
+
 /// Welke herinneringen al verstuurd zijn; voorkomt dubbele mails bij herhaalde cron-runs.
 model CommercialReminderLog {
   id        String   @id @default(cuid())
