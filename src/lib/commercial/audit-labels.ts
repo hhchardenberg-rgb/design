@@ -47,6 +47,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "team.delete": "CZ-team gewist",
   "goal.update": "Doelen gewijzigd",
   "contact_rules.update": "Termijnen voor contactmomenten gewijzigd",
+  "reminder_settings.update": "Standaardfrequentie herinneringsmail gewijzigd",
   "activity.archive": "Contactmoment gearchiveerd",
   "activity.restore": "Contactmoment hersteld",
   "activity.delete": "Contactmoment definitief gewist",

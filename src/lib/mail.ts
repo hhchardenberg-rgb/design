@@ -49,7 +49,7 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
 }
 
 /**
- * Dagelijkse herinneringsmail van Commerciële Zaken. Bevat bewust alleen taaktitels,
+ * Herinneringsmail van Commerciële Zaken (frequentie per persoon instelbaar). Bevat bewust alleen taaktitels,
  * sponsornamen en datums: geen bedragen of dossierinhoud.
  */
 export async function sendCommercialDigestEmail(

@@ -71,6 +71,7 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     items: [
       { href: "/commercieel/instellingen/seizoenen", label: "Seizoenen en pakketten", description: "Seizoenen en sponsorpakketten met tegenprestaties.", requires: "contracts:read" },
       { href: "/commercieel/instellingen/teams", label: "CZ-teams", description: "Teams binnen Commerciële Zaken, voor het recordbereik “eigen team”.", requires: "settings:read" },
+      { href: "/commercieel/instellingen/herinneringen", label: "Herinneringsmail", description: "Hoe vaak leden standaard hun herinneringen per e-mail krijgen.", requires: "settings:read" },
       { href: "/commercieel/instellingen/facturatie", label: "Facturatie", description: "Gegevens van de vereniging, betaaltermijn en nummering.", requires: "settings:read" },
     ],
   },
