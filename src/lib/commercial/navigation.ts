@@ -15,6 +15,7 @@ export const COMMERCIAL_NAV: CommercialNavItem[] = [
   { href: "/commercieel/pijplijn", label: "Pijplijn", requires: "opportunities:read" },
   { href: "/commercieel/contracten", label: "Contracten", requires: "contracts:read" },
   { href: "/commercieel/indexatie", label: "Indexatie", requires: "amounts:read" },
+  { href: "/commercieel/rapportages", label: "Rapportages", requires: "reports:read" },
   { href: "/commercieel/taken", label: "Taken", requires: "tasks:read" },
   { href: "/commercieel/instellingen/seizoenen", label: "Seizoenen en pakketten", requires: "contracts:read" },
   { href: "/commercieel/instellingen/teams", label: "Teams", requires: "settings:read" },
