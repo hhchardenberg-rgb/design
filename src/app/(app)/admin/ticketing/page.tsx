@@ -25,9 +25,9 @@ const sections = [
     icon: FileSpreadsheet,
   },
   {
-    href: "/admin/ticketing/nieuws",
+    href: "/admin/nieuws",
     title: "Nieuws",
-    description: "Nieuwsberichten voor Ticketing plaatsen, en het nieuws aan of uit zetten.",
+    description: "Nieuwsberichten voor Ticketing plaatsen in de centrale nieuwsmodule, en het nieuws aan of uit zetten.",
     icon: Newspaper,
   },
 ];

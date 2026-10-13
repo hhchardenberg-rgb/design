@@ -3,13 +3,13 @@ import { ApiError, requireUser } from "@/lib/api-guards";
 import { hasRole, isSectionAdmin, type AppRole } from "@/lib/roles";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
-import { NEWS_SECTION_KEYS, type NewsEnabledMap, type NewsSection } from "@/lib/news";
+import { NEWS_SECTION_KEYS, isNewsSection, type NewsEnabledMap, type NewsRights, type NewsRightsMap, type NewsSection } from "@/lib/news";
 
-// Server-side kant van het nieuws per onderdeel: aan/uit-instelling, rechten en ophalen.
-// Rechten volgen het onderdeel:
-//  - Communicatie: lezen met HUB, schrijven en aan/uit als communicatiebeheerder.
-//  - Ticketing: lezen met TICKETING, schrijven en aan/uit als ticketingbeheerder.
-//  - Commerciële Zaken: lezen als lid, schrijven met news:create/update/archive,
+// Server-side kant van de nieuwsmodule: aan/uit per onderdeel, rechten en ophalen.
+// Eén bericht kan bij meerdere onderdelen staan. Rechten gelden per onderdeel:
+//  - Communicatie: lezen met HUB, publiceren en aan/uit als communicatiebeheerder.
+//  - Ticketing: lezen met TICKETING, publiceren en aan/uit als ticketingbeheerder.
+//  - Commerciële Zaken: lezen als lid, publiceren met news:create/update/archive,
 //    aan/uit met settings:manage_settings.
 // De hoofdadmin mag overal alles.
 
@@ -25,55 +25,68 @@ export async function isNewsEnabled(section: NewsSection): Promise<boolean> {
   return (await loadNewsEnabled())[section];
 }
 
-export interface NewsRights {
-  canRead: boolean;
-  canCreate: boolean;
-  canUpdate: boolean;
-  canDelete: boolean;
-  canToggle: boolean;
-}
-
 const NONE: NewsRights = { canRead: false, canCreate: false, canUpdate: false, canDelete: false, canToggle: false };
 
-export async function newsRights(user: { id: string; roles?: AppRole[] | null }, section: NewsSection): Promise<NewsRights> {
+/** De nieuwsrechten van deze gebruiker voor elk onderdeel. */
+export async function loadNewsRights(user: { id: string; roles?: AppRole[] | null }): Promise<NewsRightsMap> {
   const roles = user.roles ?? [];
-  if (section === "commercial") {
-    if (!isCommercialEnabled()) return NONE;
-    const access = await loadCommercialAccess(user.id);
-    if (!access.isMember) return NONE;
+  const sectionRights = (section: "hub" | "ticketing"): NewsRights => {
+    const admin = isSectionAdmin(roles, section);
     return {
-      canRead: true,
-      canCreate: access.can("news:create"),
-      canUpdate: access.can("news:update"),
-      canDelete: access.can("news:archive"),
-      canToggle: access.can("settings:manage_settings"),
+      canRead: hasRole(roles, section === "hub" ? "HUB" : "TICKETING"),
+      canCreate: admin,
+      canUpdate: admin,
+      canDelete: admin,
+      canToggle: admin,
     };
-  }
-  const admin = isSectionAdmin(roles, section);
-  return {
-    canRead: hasRole(roles, section === "hub" ? "HUB" : "TICKETING"),
-    canCreate: admin,
-    canUpdate: admin,
-    canDelete: admin,
-    canToggle: admin,
   };
+  let commercial = NONE;
+  if (isCommercialEnabled()) {
+    const access = await loadCommercialAccess(user.id);
+    if (access.isMember) {
+      commercial = {
+        canRead: true,
+        canCreate: access.can("news:create"),
+        canUpdate: access.can("news:update"),
+        canDelete: access.can("news:archive"),
+        canToggle: access.can("settings:manage_settings"),
+      };
+    }
+  }
+  return { hub: sectionRights("hub"), ticketing: sectionRights("ticketing"), commercial };
 }
 
-/** Vereist een bepaald nieuwsrecht binnen een onderdeel; geeft de ingelogde gebruiker terug. */
-export async function requireNewsRight(section: NewsSection, right: keyof NewsRights) {
-  if (section === "commercial" && !isCommercialEnabled()) throw new ApiError(404, "Niet gevonden.");
+/** Mag deze gebruiker iets in de nieuwsmodule beheren (in welk onderdeel dan ook)? */
+export function canManageAnyNews(rights: NewsRightsMap): boolean {
+  return NEWS_SECTION_KEYS.some((s) => rights[s].canCreate || rights[s].canUpdate || rights[s].canDelete || rights[s].canToggle);
+}
+
+/** De onderdelen waarvoor de gebruiker dit recht heeft. */
+export function sectionsWith(rights: NewsRightsMap, right: keyof NewsRights): NewsSection[] {
+  return NEWS_SECTION_KEYS.filter((s) => rights[s][right]);
+}
+
+/** Vereist dat de ingelogde gebruiker iets in de nieuwsmodule mag beheren; geeft gebruiker en rechten terug. */
+export async function requireNewsManager() {
   const user = await requireUser();
-  const rights = await newsRights(user, section);
-  if (!rights[right]) throw new ApiError(403, "Je hebt hiervoor geen rechten binnen dit onderdeel.");
+  const rights = await loadNewsRights(user);
+  if (!canManageAnyNews(rights)) throw new ApiError(403, "Je hebt geen rechten om nieuws te beheren.");
   return { user, rights };
 }
 
 export async function listNewsPosts(section: NewsSection, take?: number) {
   const posts = await prisma.newsPost.findMany({
-    where: { section },
+    where: { sections: { has: section } },
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     take,
     include: { author: { select: { name: true } } },
   });
   return posts.map(({ author, ...post }) => ({ ...post, authorName: author?.name ?? null }));
+}
+
+/** De gekozen onderdelen uit een formulier (veld "sections", meerdere keren). */
+export function sectionsFromForm(form: FormData): NewsSection[] {
+  const values = form.getAll("sections").map(String).filter(Boolean);
+  if (!values.every(isNewsSection)) throw new ApiError(400, "Onbekend onderdeel.");
+  return [...new Set(values as NewsSection[])];
 }

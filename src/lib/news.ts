@@ -1,6 +1,6 @@
-// Nieuws per onderdeel. Edge-safe (geen Prisma-imports) zodat dit ook in
-// client-componenten gebruikt kan worden. Een bericht hoort bij precies één
-// onderdeel en is alleen zichtbaar voor wie toegang heeft tot dat onderdeel.
+// Eén nieuwsmodule voor alle onderdelen. Edge-safe (geen Prisma-imports) zodat dit ook in
+// client-componenten gebruikt kan worden. Een bericht kan bij één of meer onderdelen staan
+// en is alleen zichtbaar voor wie toegang heeft tot een van die onderdelen.
 
 export type NewsSection = "hub" | "ticketing" | "commercial";
 
@@ -17,3 +17,13 @@ export function isNewsSection(value: unknown): value is NewsSection {
 }
 
 export type NewsEnabledMap = Record<NewsSection, boolean>;
+
+export interface NewsRights {
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canToggle: boolean;
+}
+
+export type NewsRightsMap = Record<NewsSection, NewsRights>;

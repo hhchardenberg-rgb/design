@@ -46,7 +46,9 @@ export default auth((req) => {
   // staan ook open voor beheerders van Commerciële Zaken, wier rechten uit de
   // database komen; die controle gebeurt server-side op de pagina en in de API.
   const isTicketingAdminRoute = pathname.startsWith("/admin/ticketing");
-  const isSharedAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/users");
+  // De centrale nieuwsmodule (/admin/nieuws) is voor beheerders van elk onderdeel; de pagina en
+  // de API bepalen per onderdeel wat iemand mag.
+  const isSharedAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/users") || pathname.startsWith("/admin/nieuws");
   const isHubRoute = HUB_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isTicketingRoute = TICKETING_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isLoginOnlyRoute = LOGIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix));

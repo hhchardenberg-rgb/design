@@ -1,7 +1,6 @@
--- Nieuws per onderdeel (Communicatie, Ticketing, Commerciële Zaken). Alleen additief:
--- bestaande berichten krijgen het onderdeel "hub" (Communicatie).
-ALTER TABLE "news_posts" ADD COLUMN "section" TEXT NOT NULL DEFAULT 'hub';
-CREATE INDEX "news_posts_section_pinned_createdAt_idx" ON "news_posts"("section", "pinned", "createdAt");
+-- Eén nieuwsmodule voor alle onderdelen (Communicatie, Ticketing, Commerciële Zaken). Alleen
+-- additief: bestaande berichten staan bij "hub" (Communicatie).
+ALTER TABLE "news_posts" ADD COLUMN "sections" TEXT[] DEFAULT ARRAY['hub']::TEXT[];
 
 CREATE TABLE "news_section_settings" (
     "section" TEXT NOT NULL,

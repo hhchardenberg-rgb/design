@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { isNewsSection } from "@/lib/news";
-import { requireNewsRight } from "@/lib/news.server";
+import { requireNewsManager } from "@/lib/news.server";
 
 /** Zet het nieuws van één onderdeel aan of uit. Alleen voor de beheerders van dat onderdeel. */
 export async function PUT(req: Request) {
@@ -11,7 +11,8 @@ export async function PUT(req: Request) {
     const data = (await req.json().catch(() => null)) as { section?: unknown; enabled?: unknown } | null;
     if (!data || !isNewsSection(data.section) || typeof data.enabled !== "boolean") throw new ApiError(400, "Ongeldige invoer.");
     const section = data.section;
-    const { user } = await requireNewsRight(section, "canToggle");
+    const { user, rights } = await requireNewsManager();
+    if (!rights[section].canToggle) throw new ApiError(403, "Alleen een beheerder van dit onderdeel kan het nieuws aan of uit zetten.");
     await prisma.newsSectionSetting.upsert({
       where: { section },
       update: { enabled: data.enabled, updatedById: user.id },

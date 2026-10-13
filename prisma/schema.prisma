@@ -453,9 +453,9 @@ model NewsPost {
   category String? // bv. "Design", "Sponsoring", "Vrijwilligers", "Communicatie", "Social media", "Magazine", "Wedstrijden"
   pinned   Boolean @default(false) // vastgezet bovenaan de nieuwsfeed en hub-homepage
   imageUrl String?
-  // Bij welk onderdeel het bericht hoort: "hub" (Communicatie), "ticketing" of "commercial".
-  // Alleen wie toegang heeft tot dat onderdeel ziet het bericht (zie src/lib/news.ts).
-  section  String  @default("hub")
+  // Bij welke onderdelen het bericht staat: "hub" (Communicatie), "ticketing" en/of "commercial".
+  // Alleen wie toegang heeft tot een van die onderdelen ziet het bericht (zie src/lib/news.ts).
+  sections String[] @default(["hub"])
 
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
@@ -463,7 +463,6 @@ model NewsPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([section, pinned, createdAt])
   @@map("news_posts")
 }
 
