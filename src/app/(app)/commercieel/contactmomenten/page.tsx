@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function ContactMomentsPage() {
   const a = await pageAccess("history:read");
   if (!a.allowed || !a.permissions.includes("companies:read")) return <NoAccess what="de contactmomenten" />;
-  return <ContactMoments canManage={a.permissions.includes("settings:manage_settings")} />;
+  return <ContactMoments canManage={a.permissions.includes("settings:manage_settings")} permissions={a.permissions} />;
 }

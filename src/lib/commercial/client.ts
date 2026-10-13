@@ -19,15 +19,19 @@ export async function api<T = unknown>(url: string, method = "GET", body?: unkno
   }
 }
 
+/** Datum als dd/mm/yyyy (Nederlandse tijd), desgewenst met " hh:mm". */
 export function formatDate(iso: string | null | undefined, withTime = false): string {
   if (!iso) return "–";
-  return new Date(iso).toLocaleString("nl-NL", {
+  const parts = new Intl.DateTimeFormat("nl-NL", {
     timeZone: "Europe/Amsterdam",
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
-    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-  });
+    ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" as const } : {}),
+  }).formatToParts(new Date(iso));
+  const v = (t: Intl.DateTimeFormatPartTypes) => parts.find((x) => x.type === t)?.value ?? "";
+  const day = `${v("day")}/${v("month")}/${v("year")}`;
+  return withTime ? `${day} ${v("hour")}:${v("minute")}` : day;
 }
 
 /** Waarde voor <input type="datetime-local"> in Nederlandse tijd. */

@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { TierBadge, TierFilter } from "@/components/commercial/sponsor-tier";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate } from "@/lib/commercial/client";
+import { ActivityList } from "@/components/commercial/activity-list";
+import type { Permission } from "@/lib/commercial/permissions";
 
 interface Gap { companyId: string; companyName: string; tier: string | null; tierName: string; ownerName: string | null; lastContactOn: string | null; daysSince: number; intervalDays: number; overdueDays: number }
 interface Rule { tier: string; name: string; intervalDays: number | null }
 interface Data { total: number; rows: Gap[]; rules: Rule[] }
 
-export function ContactMoments({ canManage }: { canManage: boolean }) {
+export function ContactMoments({ canManage, permissions }: { canManage: boolean; permissions: Permission[] }) {
   const toast = useStableToast();
   const [data, setData] = useState<Data | null>(null);
   const [tiers, setTiers] = useState<string[]>([]);
@@ -106,6 +108,12 @@ export function ContactMoments({ canManage }: { canManage: boolean }) {
           )}
         </CardContent>
       </Card>
+
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold">Alle contactmomenten</h2>
+        <p className="text-sm text-muted-foreground">Zoek in de contactmomenten van alle dossiers die je mag zien. Gearchiveerde momenten staan onder “Gearchiveerd” en zijn daar te herstellen.</p>
+        <ActivityList can={(p) => permissions.includes(p)} />
+      </div>
     </div>
   );
 }

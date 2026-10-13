@@ -11,6 +11,7 @@ import { useStableToast as useToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, toLocalInput } from "@/lib/commercial/client";
 import type { Permission } from "@/lib/commercial/permissions";
 import { TierBadge, TierSelect } from "@/components/commercial/sponsor-tier";
+import { ActivityList, KIND, NATURE } from "@/components/commercial/activity-list";
 import { FilesTab } from "./files-tab";
 import { MergePanel } from "./merge-panel";
 import { ContractsTab } from "./contracts-tab";
@@ -46,11 +47,8 @@ interface Company {
   canChangeOwner: boolean;
 }
 interface Contact { id: string; name: string; jobTitle: string | null; email: string | null; phone: string | null; role: string | null; notes: string | null }
-interface Activity { id: string; kind: string; nature: string; occurredAt: string; isPlanned: boolean; summary: string; followUp: string | null; contactName: string | null; authorName: string | null }
 interface Task { id: string; title: string; status: "OPEN" | "DONE"; dueAt: string | null; assigneeName: string | null; version: number }
 
-const KIND: Record<string, string> = { CALL: "Telefoongesprek", VISIT: "Bezoek", MEETING: "Afspraak", EMAIL: "E-mail", WHATSAPP: "WhatsApp (handmatig)", QUOTE: "Offerte", OTHER: "Overig" };
-const NATURE: Record<string, string> = { NOTE: "Gespreksnotitie", PROVISIONAL: "Voorlopige toezegging", FORMAL: "Formele afspraak" };
 const STATUS: Record<string, string> = { PROSPECT: "Potentieel", ACTIVE: "Actief", FORMER: "Voormalig" };
 
 type Tab = "overview" | "contacts" | "history" | "tasks" | "contracts" | "files";
@@ -287,19 +285,16 @@ function Contacts({ companyId, can }: { companyId: string; can: (p: Permission) 
 
 function History({ companyId, can }: { companyId: string; can: (p: Permission) => boolean }) {
   const toast = useToast();
-  const [rows, setRows] = useState<Activity[] | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const empty = { kind: "CALL", nature: "NOTE", occurredAt: toLocalInput(), isPlanned: false, summary: "", followUp: "", contactId: "", taskTitle: "", taskDue: "" };
   const [form, setForm] = useState(empty);
   const load = useCallback(async () => {
-    const r = await api<{ activities: Activity[] }>(`/api/commercial/companies/${companyId}/activities`);
-    if (r.ok) setRows(r.data.activities);
-    else toast.error(r.error);
     if (can("contacts:read")) {
       const c = await api<{ contacts: Contact[] }>(`/api/commercial/companies/${companyId}/contacts`);
       if (c.ok) setContacts(c.data.contacts);
     }
-  }, [companyId, toast, can]);
+  }, [companyId, can]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -320,13 +315,8 @@ function History({ companyId, can }: { companyId: string; can: (p: Permission) =
     if (r.ok) {
       setForm({ ...empty, occurredAt: toLocalInput() });
       toast.success("Contactmoment vastgelegd.");
-      await load();
+      setReloadKey((k) => k + 1);
     } else toast.error(r.error);
-  }
-  async function archive(id: string) {
-    const r = await api(`/api/commercial/activities/${id}`, "DELETE");
-    if (r.ok) await load();
-    else toast.error(r.error);
   }
 
   return (
@@ -388,28 +378,7 @@ function History({ companyId, can }: { companyId: string; can: (p: Permission) =
           </CardContent>
         </Card>
       )}
-      <Card>
-        <CardContent className="p-0">
-          {rows === null ? <p className="p-5 text-sm text-muted-foreground">Laden…</p> : rows.length === 0 ? <p className="p-5 text-sm text-muted-foreground">Nog geen contactmomenten.</p> : (
-            <ol className="divide-y divide-border">
-              {rows.map((a) => (
-                <li key={a.id} className="space-y-1 p-4 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{KIND[a.kind] ?? a.kind}</span>
-                    <Badge variant={a.nature === "FORMAL" ? "success" : a.nature === "PROVISIONAL" ? "primary" : "outline"}>{NATURE[a.nature]}</Badge>
-                    {a.isPlanned && <Badge variant="outline">Gepland</Badge>}
-                    <span className="text-muted-foreground">{formatDate(a.occurredAt, true)}</span>
-                    {can("history:archive") && <Button className="ml-auto" variant="ghost" size="sm" onClick={() => archive(a.id)}>Archiveren</Button>}
-                  </div>
-                  <p className="whitespace-pre-wrap">{a.summary}</p>
-                  {a.followUp && <p className="text-muted-foreground">Vervolg: {a.followUp}</p>}
-                  <p className="text-xs text-muted-foreground">{[a.contactName && `Met ${a.contactName}`, a.authorName && `Door ${a.authorName}`].filter(Boolean).join(" · ")}</p>
-                </li>
-              ))}
-            </ol>
-          )}
-        </CardContent>
-      </Card>
+      <ActivityList companyId={companyId} can={can} reloadKey={reloadKey} />
     </div>
   );
 }

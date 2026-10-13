@@ -378,7 +378,9 @@ export async function archiveActivity(ctx: RecordCtx, id: string) {
   const a = await prisma.commercialActivity.findUnique({ where: { id } });
   if (!a) notFound("Contactmoment");
   await visibleCompany(ctx, a.companyId);
+  if (a.archivedAt) return;
   await prisma.commercialActivity.update({ where: { id }, data: { archivedAt: new Date() } });
+  await auditRecord(ctx, { action: "activity.archive", entity: "activity", entityId: id, after: { companyId: a.companyId } });
 }
 
 // --- Samenvoegen -------------------------------------------------------------

@@ -2,14 +2,16 @@
 // imports (pure TypeScript) zodat dit zowel server-side, in de proxy als in
 // tests gebruikt kan worden. Een bevoegdheid is altijd "<onderdeel>:<actie>".
 //
-// Er is bewust geen "verwijderen"-actie: historische dossiers worden
-// gearchiveerd, niet onomkeerbaar verwijderd.
+// Historische dossiers worden gearchiveerd, niet verwijderd. Alleen waar dat
+// expliciet nodig is (contactmomenten) bestaat een aparte actie "delete" voor
+// definitief wissen; die valt nooit onder een niveau en wordt los toegekend.
 
 export type Action =
   | "read"
   | "create"
   | "update"
   | "archive"
+  | "delete"
   | "download"
   | "send"
   | "approve"
@@ -29,6 +31,7 @@ export const ACTIONS: Record<Action, ActionInfo> = {
   create: { label: "Aanmaken", hint: "Nieuwe items toevoegen.", advanced: false },
   update: { label: "Wijzigen", hint: "Bestaande items aanpassen.", advanced: false },
   archive: { label: "Archiveren", hint: "Items uit de actieve lijsten halen (blijft bewaard).", advanced: true },
+  delete: { label: "Definitief wissen", hint: "Onherroepelijk verwijderen; kan niet ongedaan worden gemaakt.", advanced: true },
   download: { label: "Downloaden", hint: "Bestanden of documenten downloaden.", advanced: true },
   send: { label: "Versturen", hint: "Extern versturen (e-mail naar sponsoren).", advanced: true },
   approve: { label: "Goedkeuren / definitief maken", hint: "Een onomkeerbare of formele stap zetten.", advanced: true },
@@ -71,7 +74,7 @@ export interface AreaInfo {
 export const AREAS: Record<AreaKey, AreaInfo> = {
   companies: { label: "Bedrijven en sponsordossiers", description: "Het centrale bedrijvenbestand.", group: "Relaties", actions: ["read", "create", "update", "archive"] },
   contacts: { label: "Contactpersonen", description: "Personen bij sponsoren en prospects.", group: "Relaties", actions: ["read", "create", "update", "archive"] },
-  history: { label: "Contacthistorie en gespreksnotities", description: "Tijdlijn van contactmomenten.", group: "Relaties", actions: ["read", "create", "update", "archive"] },
+  history: { label: "Contacthistorie en gespreksnotities", description: "Tijdlijn van contactmomenten.", group: "Relaties", actions: ["read", "create", "update", "archive", "delete"] },
   opportunities: { label: "Acquisitie en commerciële kansen", description: "Pijplijn van potentiële sponsoren.", group: "Relaties", actions: ["read", "create", "update", "archive", "approve"] },
   contracts: { label: "Contractgegevens", description: "Contracten zonder de bijbehorende documenten.", group: "Afspraken", actions: ["read", "create", "update", "archive", "approve"] },
   contract_documents: { label: "Contractdocumenten", description: "Ondertekende contracten, offertes en bijlagen.", group: "Afspraken", actions: ["read", "create", "update", "download", "archive"], confidential: true },
