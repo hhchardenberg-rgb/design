@@ -961,13 +961,15 @@ model CommercialContact {
   phone      String?
   role       String? // contactrol, bv. "Beslisser", "Facturatie"
   notes      String?
+  // Volgorde binnen het bedrijf: laagste = eerste contactpersoon. Gelijke waarden vallen terug op aanmaakdatum.
+  position   Int               @default(0)
   archivedAt DateTime?
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
   activities CommercialActivity[]
 
-  @@index([companyId])
+  @@index([companyId, position])
   @@map("commercial_contacts")
 }
 

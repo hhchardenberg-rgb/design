@@ -1,6 +1,6 @@
-import { contactSchema } from "@/lib/commercial/schemas";
+import { contactOrderSchema, contactSchema } from "@/lib/commercial/schemas";
 import { handle } from "@/lib/commercial/api";
-import { createContact, listContacts } from "@/lib/commercial/companies.server";
+import { createContact, listContacts, reorderContacts } from "@/lib/commercial/companies.server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,4 +14,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const body = await req.json().catch(() => null);
   return handle(async (ctx) => ({ id: (await createContact(ctx, id, contactSchema.parse(body))).id }));
+}
+
+/** Volgorde wijzigen: { order: [id eerste, id tweede, ...] }. */
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const body = await req.json().catch(() => null);
+  return handle(async (ctx) => {
+    await reorderContacts(ctx, id, contactOrderSchema.parse(body).order);
+  });
 }

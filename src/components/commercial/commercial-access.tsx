@@ -10,6 +10,7 @@ import { useToast } from "@/components/toast";
 import { findInconsistencies, isPermission, type Permission } from "@/lib/commercial/permissions";
 import { ACTION_NAMES, Matrix, send, toSet, type Member, type Overview, type Role } from "@/components/commercial/rights-parts";
 import { ACTIONS, AREAS, type Action, type AreaKey } from "@/lib/commercial/permissions";
+import { formatDayTime } from "@/lib/date-format";
 
 interface AccessUser { id: string; hasAccess: boolean; roleId: string | null; isAdmin: boolean }
 interface AccessRole { id: string; key: string; name: string }
@@ -319,7 +320,7 @@ export function CommercialRolesPanel() {
                     return (
                       <li key={a.id} className="flex flex-wrap justify-between gap-2 py-2">
                         <span>{ACTION_NAMES[a.action] ?? a.action}{target ? ` – ${target}` : ""}</span>
-                        <span className="text-muted-foreground">{a.actor ?? "onbekend"} · {new Date(a.at).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })}</span>
+                        <span className="text-muted-foreground">{a.actor ?? "onbekend"} · {formatDayTime(a.at)}</span>
                       </li>
                     );
                   })}

@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatEuro } from "@/lib/commercial/client";
+import { TierFilter } from "@/components/commercial/sponsor-tier";
+import { contactsExportHref } from "@/lib/commercial/sponsor-tiers";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
-interface Season { id: string; name: string }
+interface Season { id: string; name: string; startsOn: string; endsOn: string }
 interface Report {
   season: { season: Season; byStatus: { status: string; count: number; totalCents: number | null }[]; byPackage: { name: string; count: number; totalCents: number | null }[]; byTier: { key: string; name: string; count: number; totalCents: number | null }[]; activeWithoutAmount: number | null };
   pipeline: { stages: { stage: string; count: number; expectedCents: number | null }[] } | null;
@@ -14,11 +17,12 @@ interface Report {
 const STATUS: Record<string, string> = { ACTIVE: "Lopend", DRAFT: "Concept", ENDED: "Afgelopen", CANCELLED: "Geannuleerd" };
 const STAGE: Record<string, string> = { LEAD: "Lead", CONTACTED: "Gesproken", PROPOSAL: "Voorstel", NEGOTIATION: "Onderhandeling", WON: "Gewonnen", LOST: "Verloren" };
 
-export function Reports({ canExport, canCompanies, canContracts }: { canExport: boolean; canCompanies: boolean; canContracts: boolean }) {
+export function Reports({ canExport, canCompanies, canContracts, canContacts }: { canExport: boolean; canCompanies: boolean; canContracts: boolean; canContacts: boolean }) {
   const toast = useStableToast();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [seasonId, setSeasonId] = useState("");
   const [report, setReport] = useState<Report | null>(null);
+  const [exportTiers, setExportTiers] = useState<string[]>([]);
 
   useEffect(() => {
     void api<{ seasons: Season[] }>("/api/commercial/seasons").then((r) => {
@@ -44,13 +48,23 @@ export function Reports({ canExport, canCompanies, canContracts }: { canExport: 
           <div>
             <label htmlFor="rp-season" className="text-sm font-medium">Seizoen</label>
             <select id="rp-season" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setReport(null); }}>
-              <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
             </select>
           </div>
           {canExport && canContracts && <a className="inline-flex h-10 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted" href={`/api/commercial/export?kind=contracts${seasonId ? `&seasonId=${encodeURIComponent(seasonId)}` : ""}`}>Contracten exporteren (CSV)</a>}
           {canExport && canCompanies && <a className="inline-flex h-10 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted" href="/api/commercial/export?kind=companies">Sponsoren exporteren (CSV)</a>}
         </CardContent>
       </Card>
+      {canExport && canCompanies && canContacts && (
+        <Card>
+          <CardHeader><CardTitle>Bedrijven en contactpersonen (Excel)</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Eén rij per bedrijf met contact 1, contact 2, enzovoort naast elkaar (naam, functie, e-mail, telefoon), in de volgorde uit het dossier. Een tweede blad bevat één rij per contactpersoon. Kies geen sponsorvorm om alle bedrijven te exporteren.</p>
+            <TierFilter allowNone value={exportTiers} onChange={setExportTiers} />
+            <a className="inline-flex h-10 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted" href={contactsExportHref(exportTiers)}>Exporteren (.xlsx)</a>
+          </CardContent>
+        </Card>
+      )}
       {report && (
         <>
           <Card>

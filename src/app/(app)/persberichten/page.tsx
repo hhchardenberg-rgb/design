@@ -186,7 +186,7 @@ export default function PersberichtenPage() {
                     <div>
                       <p className="font-medium">{release.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(release.date), "d MMMM yyyy", { locale: nl })}
+                        {format(new Date(release.date), "dd/MM/yyyy", { locale: nl })}
                         {release.author?.name ? ` · ${release.author.name}` : ""}
                       </p>
                     </div>

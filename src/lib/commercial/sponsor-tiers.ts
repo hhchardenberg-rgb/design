@@ -19,3 +19,8 @@ export function parseTier(input: string | null | undefined): SponsorTier | null 
   const t = (input ?? "").trim().toLowerCase().replace(/sponsor$/, "").trim();
   return SPONSOR_TIERS.find((x) => x.key.toLowerCase() === t || x.label.toLowerCase() === t)?.key ?? null;
 }
+
+/** Downloadlink voor de Excel-export van bedrijven met contactpersonen; "NONE" = zonder sponsorvorm, leeg = alle. */
+export function contactsExportHref(tiers: readonly string[]): string {
+  return `/api/commercial/export?kind=contacts${tiers.map((t) => `&tier=${encodeURIComponent(t)}`).join("")}`;
+}

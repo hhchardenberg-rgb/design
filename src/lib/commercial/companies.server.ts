@@ -272,15 +272,20 @@ export interface ContactFields {
 export async function listContacts(ctx: RecordCtx, companyId: string) {
   need(ctx, "contacts:read");
   await visibleCompany(ctx, companyId);
-  return prisma.commercialContact.findMany({ where: { companyId, archivedAt: null }, orderBy: { name: "asc" } });
+  return prisma.commercialContact.findMany({ where: { companyId, archivedAt: null }, orderBy: CONTACT_ORDER });
 }
+
+/** Volgorde van contactpersonen: eerste contactpersoon bovenaan; gelijke posities op aanmaakdatum. */
+export const CONTACT_ORDER = [{ position: "asc" as const }, { createdAt: "asc" as const }, { id: "asc" as const }];
 
 export async function createContact(ctx: RecordCtx, companyId: string, input: ContactFields) {
   need(ctx, "contacts:create");
   await visibleCompany(ctx, companyId);
   if (!input.name?.trim()) throw new ApiError(400, "Geef de contactpersoon een naam.");
+  // Nieuwe contactpersonen sluiten achteraan aan.
+  const last = await prisma.commercialContact.aggregate({ where: { companyId }, _max: { position: true } });
   return prisma.commercialContact.create({
-    data: { companyId, name: input.name.trim(), jobTitle: clean(input.jobTitle), email: clean(input.email), phone: clean(input.phone), role: clean(input.role), notes: clean(input.notes) },
+    data: { companyId, position: (last._max.position ?? 0) + 1, name: input.name.trim(), jobTitle: clean(input.jobTitle), email: clean(input.email), phone: clean(input.phone), role: clean(input.role), notes: clean(input.notes) },
   });
 }
 
@@ -298,6 +303,18 @@ export async function updateContact(ctx: RecordCtx, id: string, input: Partial<C
     where: { id },
     data: { name: input.name?.trim(), jobTitle: clean(input.jobTitle), email: clean(input.email), phone: clean(input.phone), role: clean(input.role), notes: clean(input.notes) },
   });
+}
+
+/** Legt de volgorde vast: ids[0] wordt eerste contactpersoon, ids[1] tweede, enzovoort. */
+export async function reorderContacts(ctx: RecordCtx, companyId: string, ids: string[]) {
+  need(ctx, "contacts:update");
+  await visibleCompany(ctx, companyId);
+  const current = await prisma.commercialContact.findMany({ where: { companyId, archivedAt: null }, select: { id: true } });
+  const known = new Set(current.map((c) => c.id));
+  if (ids.length !== known.size || new Set(ids).size !== ids.length || ids.some((id) => !known.has(id))) {
+    throw new ApiError(409, "De lijst met contactpersonen is intussen gewijzigd. Laad de pagina opnieuw.");
+  }
+  await prisma.$transaction(ids.map((id, i) => prisma.commercialContact.update({ where: { id }, data: { position: i + 1 } })));
 }
 
 export async function archiveContact(ctx: RecordCtx, id: string) {

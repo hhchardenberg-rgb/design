@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
-import { api, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
 import type { Permission } from "@/lib/commercial/permissions";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
 interface Contract {
   id: string; seasonId: string; seasonName: string; packageId: string | null; packageName: string | null; status: string;
@@ -82,7 +83,7 @@ function NewContract({ companyId, seasons, packages, canAmount, onClose, onDone 
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
           <div><Label htmlFor="c-season">Seizoen</Label>
             <select id="c-season" required className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.seasonId} onChange={(e) => pick(e.target.value)}>
-              <option value="">Kies…</option>{seasons.filter((s) => s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="">Kies…</option>{seasons.filter((s) => s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
             </select></div>
           <div><Label htmlFor="c-pkg">Pakket</Label>
             <select id="c-pkg" className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.packageId} onChange={(e) => pickPackage(e.target.value)}>
@@ -143,10 +144,10 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-base font-semibold">{c.seasonName}</span>
           <Badge variant={c.status === "ACTIVE" ? "success" : "outline"}>{STATUS[c.status]}</Badge>
-          <span className="text-muted-foreground">{c.packageName ?? "Geen pakket"} · {c.startsOn} t/m {c.endsOn}</span>
+          <span className="text-muted-foreground">{c.packageName ?? "Geen pakket"} · {formatDate(c.startsOn)} t/m {formatDate(c.endsOn)}</span>
           {c.amountVisible && <span className="ml-auto font-medium">{formatEuro(c.amountCents)}</span>}
         </div>
-        {(c.noticeUntil || c.renewalOn) && <p className="text-muted-foreground">{c.noticeUntil && <>Opzeggen uiterlijk {c.noticeUntil}. </>}{c.renewalOn && <>Verlengingsgesprek rond {c.renewalOn}.</>}</p>}
+        {(c.noticeUntil || c.renewalOn) && <p className="text-muted-foreground">{c.noticeUntil && <>Opzeggen uiterlijk {formatDate(c.noticeUntil)}. </>}{c.renewalOn && <>Verlengingsgesprek rond {formatDate(c.renewalOn)}.</>}</p>}
         {c.notes && <p>{c.notes}</p>}
         <div className="flex flex-wrap gap-2">
           {c.status === "DRAFT" && can("contracts:approve") && <Button size="sm" onClick={() => status("ACTIVE", "activeren")}>Activeren</Button>}
@@ -159,7 +160,7 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
             <div><Label htmlFor={`rs-${c.id}`}>Nieuw seizoen</Label>
               <select id={`rs-${c.id}`} required className="h-10 rounded-md border border-border bg-surface px-2" value={renew.seasonId}
                 onChange={(e) => { const s = seasons.find((x) => x.id === e.target.value); setRenew({ seasonId: e.target.value, startsOn: s?.startsOn ?? "", endsOn: s?.endsOn ?? "" }); }}>
-                <option value="">Kies…</option>{seasons.filter((s) => s.id !== c.seasonId && s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                <option value="">Kies…</option>{seasons.filter((s) => s.id !== c.seasonId && s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
               </select></div>
             <Button type="submit" size="sm">Concept-verlenging maken</Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setRenew(null)}>Annuleren</Button>
@@ -171,7 +172,7 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
             <ul className="divide-y divide-border">
               {cps?.map((cp) => (
                 <li key={cp.id} className="flex flex-wrap items-center gap-3 py-1.5">
-                  <span>{cp.quantity > 1 ? `${cp.quantity}× ` : ""}{cp.title}{cp.dueOn ? ` (voor ${cp.dueOn})` : ""}</span>
+                  <span>{cp.quantity > 1 ? `${cp.quantity}× ` : ""}{cp.title}{cp.dueOn ? ` (voor ${formatDate(cp.dueOn)})` : ""}</span>
                   <select aria-label={`Status van ${cp.title}`} disabled={!can("counterparts:update")} className="ml-auto h-8 rounded-md border border-border bg-surface px-2" value={cp.status} onChange={(e) => setCp(cp.id, e.target.value)}>
                     {Object.entries(CP_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
