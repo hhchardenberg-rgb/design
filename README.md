@@ -91,6 +91,30 @@ npm run start
 Zet in productie (of achter een reverse proxy) ook `AUTH_TRUST_HOST="true"`,
 en een correcte `NEXTAUTH_URL`.
 
+### Domein
+
+De Hub draait op `https://hub.hhc-hardenberg.nl`. Het oude adres
+`communicatie.hhc-hardenberg.nl` blijft aan het Vercel-project gekoppeld en
+stuurt met een 308-redirect door naar het nieuwe adres. Die redirect staat in
+`next.config.ts`; routes onder `/api/` worden niet doorgestuurd, zodat cron en
+webhooks op het oude adres blijven werken.
+
+Alle absolute links (wachtwoordreset, herinneringsmails, afmeldlinks in
+mailings) en de WebAuthn-instellingen voor passkeys worden afgeleid van
+`NEXTAUTH_URL`. Bij een domeinwissel:
+
+1. Zet een CNAME-record voor het nieuwe subdomein naar `cname.vercel-dns.com`.
+2. Voeg het domein toe aan het Vercel-project en wacht tot het geldig is.
+3. Zet `NEXTAUTH_URL` op het nieuwe adres en deploy productie opnieuw.
+4. Pas de host-redirect in `next.config.ts` aan naar het nieuwe domein.
+5. Pas de Resend-webhook aan naar `https://<nieuw domein>/api/webhooks/resend`
+   (een webhook volgt geen redirect).
+
+Passkeys zijn gebonden aan het domein waarop ze zijn aangemaakt. Na een
+domeinwissel werken bestaande passkeys niet meer; gebruikers loggen in met
+wachtwoord en authenticator-code en maken daarna een nieuwe passkey aan.
+De authenticator-app (2FA-codes) zelf is niet aan het domein gebonden.
+
 ### Deployen op Vercel
 
 1. Koppel een PostgreSQL-database aan het project (bijv. via **Storage →

@@ -43,6 +43,16 @@ const nextConfig: NextConfig = {
   // Het rechtenbeheer van Commerciële Zaken is samengevoegd met het gebruikersbeheer.
   async redirects() {
     return [
+      // Oud domein: pagina's sturen door naar hub.hhc-hardenberg.nl, zodat oude
+      // links en bladwijzers blijven werken. /api/ blijft op beide adressen
+      // bereikbaar, zodat cron en webhooks die nog het oude adres gebruiken niet
+      // op een redirect stuklopen.
+      {
+        source: "/:path((?!api/).*)",
+        has: [{ type: "host", value: "communicatie.hhc-hardenberg.nl" }],
+        destination: "https://hub.hhc-hardenberg.nl/:path",
+        permanent: true,
+      },
       { source: "/admin/commercieel", destination: "/admin/users", permanent: true },
       { source: "/commercieel/instellingen/rechten", destination: "/admin/users", permanent: true },
     ];
