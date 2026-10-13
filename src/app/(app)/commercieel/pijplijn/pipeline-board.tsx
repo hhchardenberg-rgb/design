@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
-import { api, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
 
 interface Opp {
   id: string; companyId: string; companyName: string; title: string; stage: string; expectedCloseOn: string | null; ownerName: string | null;
@@ -93,7 +93,7 @@ export function PipelineBoard({ canCreate, canUpdate, canArchive, canContract, c
                     <CardContent className="space-y-2 p-3 text-sm">
                       <div className="font-medium">{o.title}</div>
                       <Link className="text-xs underline" href={`/commercieel/sponsoren/${o.companyId}`}>{o.companyName}</Link>
-                      <div className="text-xs text-muted-foreground">{[o.ownerName, o.expectedCloseOn && `afsluiten ${o.expectedCloseOn}`, o.amountVisible && o.expectedAmountCents != null ? formatEuro(o.expectedAmountCents) : null].filter(Boolean).join(" · ")}</div>
+                      <div className="text-xs text-muted-foreground">{[o.ownerName, o.expectedCloseOn && `afsluiten ${formatDate(o.expectedCloseOn)}`, o.amountVisible && o.expectedAmountCents != null ? formatEuro(o.expectedAmountCents) : null].filter(Boolean).join(" · ")}</div>
                       {o.lostReason && <div className="text-xs">Reden: {o.lostReason}</div>}
                       {o.wonContractId && <Link className="text-xs underline" href={`/commercieel/sponsoren/${o.companyId}`}>Naar het contract</Link>}
                       {(OPEN as readonly string[]).includes(o.stage) && canUpdate && (

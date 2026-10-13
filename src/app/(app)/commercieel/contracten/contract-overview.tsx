@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { api, formatEuro } from "@/lib/commercial/client";
+import { api, formatDate, formatEuro } from "@/lib/commercial/client";
 import { TierBadge, TierFilter } from "@/components/commercial/sponsor-tier";
 
 interface Row { id: string; companyId: string; companyName: string; sponsorTier: string | null; seasonName: string; packageName: string | null; status: string; endsOn: string; noticeUntil: string | null; amountCents: number | null; amountVisible: boolean }
@@ -67,7 +67,7 @@ export function ContractOverview() {
                   <td className="px-3 py-2"><Link className="font-medium underline" href={`/commercieel/sponsoren/${r.companyId}`}>{r.companyName}</Link></td>
                   <td className="px-3 py-2"><TierBadge tier={r.sponsorTier} /></td><td className="px-3 py-2">{r.seasonName}</td><td className="px-3 py-2">{r.packageName ?? "–"}</td>
                   <td className="px-3 py-2"><Badge variant={r.status === "ACTIVE" ? "success" : "outline"}>{STATUS[r.status]}</Badge></td>
-                  <td className="px-3 py-2">{r.endsOn}{r.noticeUntil ? ` (opzeggen voor ${r.noticeUntil})` : ""}</td>
+                  <td className="px-3 py-2">{formatDate(r.endsOn)}{r.noticeUntil ? ` (opzeggen voor ${formatDate(r.noticeUntil)})` : ""}</td>
                   {showAmount && <td className="px-3 py-2 text-right">{formatEuro(r.amountCents)}</td>}
                 </tr>
               ))}

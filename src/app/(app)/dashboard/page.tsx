@@ -70,7 +70,7 @@ export default async function DashboardPage() {
                     {match.isHome ? match.opponent.shortName ?? match.opponent.name : match.team.shortName ?? match.team.name}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {format(match.date, "EEEE d MMMM, HH:mm", { locale: nl })}
+                    {format(match.date, "EEEE dd/MM/yyyy, HH:mm", { locale: nl })}
                   </p>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">

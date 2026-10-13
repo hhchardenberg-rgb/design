@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { useToast } from "@/components/toast";
+import { formatDay } from "@/lib/date-format";
 
 interface MfaStatus {
   totpEnabled: boolean;
@@ -30,7 +31,7 @@ async function parseJsonOrThrow(res: Response) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("nl-NL", { dateStyle: "medium" }).format(new Date(value));
+  return formatDay(value);
 }
 
 export default function AccountSecurityPage() {

@@ -250,7 +250,7 @@ export default function AdminNieuwsPage() {
                     </div>
                     <p className="whitespace-pre-wrap text-sm">{post.body}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(post.createdAt), "d MMMM yyyy", { locale: nl })}
+                      {format(new Date(post.createdAt), "dd/MM/yyyy", { locale: nl })}
                       {post.author?.name ? ` · ${post.author.name}` : ""}
                     </p>
                   </div>

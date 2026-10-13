@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { PDFDocument, PDFFont, PDFPage, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import { formatDay } from "@/lib/date-format";
 import {
   PAGE_WIDTH_PT, PAGE_HEIGHT_PT, MARGIN_LEFT_PT, MARGIN_RIGHT_PT, MARGIN_BOTTOM_PT, HEADER_IMAGE_WIDTH_PT, HEADER_IMAGE_HEIGHT_PT,
   HEADER_FIRST_PAGE_PATH, HEADER_CONTINUATION_PATH, PDF_FONT_REGULAR_PATH, PDF_FONT_BOLD_PATH, LINE_HEIGHT_RATIO,
@@ -31,7 +32,7 @@ async function loadFile(rel: string): Promise<Buffer> {
 }
 
 const euro = (cents: number) => new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(cents / 100);
-const day = (iso: string) => iso.split("-").reverse().join("-");
+const day = (iso: string) => formatDay(iso);
 
 function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const out: string[] = [];

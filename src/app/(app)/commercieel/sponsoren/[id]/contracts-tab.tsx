@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
-import { api, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
 import type { Permission } from "@/lib/commercial/permissions";
 
 interface Contract {
@@ -143,10 +143,10 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-base font-semibold">{c.seasonName}</span>
           <Badge variant={c.status === "ACTIVE" ? "success" : "outline"}>{STATUS[c.status]}</Badge>
-          <span className="text-muted-foreground">{c.packageName ?? "Geen pakket"} · {c.startsOn} t/m {c.endsOn}</span>
+          <span className="text-muted-foreground">{c.packageName ?? "Geen pakket"} · {formatDate(c.startsOn)} t/m {formatDate(c.endsOn)}</span>
           {c.amountVisible && <span className="ml-auto font-medium">{formatEuro(c.amountCents)}</span>}
         </div>
-        {(c.noticeUntil || c.renewalOn) && <p className="text-muted-foreground">{c.noticeUntil && <>Opzeggen uiterlijk {c.noticeUntil}. </>}{c.renewalOn && <>Verlengingsgesprek rond {c.renewalOn}.</>}</p>}
+        {(c.noticeUntil || c.renewalOn) && <p className="text-muted-foreground">{c.noticeUntil && <>Opzeggen uiterlijk {formatDate(c.noticeUntil)}. </>}{c.renewalOn && <>Verlengingsgesprek rond {formatDate(c.renewalOn)}.</>}</p>}
         {c.notes && <p>{c.notes}</p>}
         <div className="flex flex-wrap gap-2">
           {c.status === "DRAFT" && can("contracts:approve") && <Button size="sm" onClick={() => status("ACTIVE", "activeren")}>Activeren</Button>}
@@ -171,7 +171,7 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
             <ul className="divide-y divide-border">
               {cps?.map((cp) => (
                 <li key={cp.id} className="flex flex-wrap items-center gap-3 py-1.5">
-                  <span>{cp.quantity > 1 ? `${cp.quantity}× ` : ""}{cp.title}{cp.dueOn ? ` (voor ${cp.dueOn})` : ""}</span>
+                  <span>{cp.quantity > 1 ? `${cp.quantity}× ` : ""}{cp.title}{cp.dueOn ? ` (voor ${formatDate(cp.dueOn)})` : ""}</span>
                   <select aria-label={`Status van ${cp.title}`} disabled={!can("counterparts:update")} className="ml-auto h-8 rounded-md border border-border bg-surface px-2" value={cp.status} onChange={(e) => setCp(cp.id, e.target.value)}>
                     {Object.entries(CP_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>

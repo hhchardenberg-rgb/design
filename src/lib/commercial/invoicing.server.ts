@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { formatDay } from "@/lib/date-format";
 import { ApiError } from "@/lib/api-guards";
 import { CLUB_TIME_ZONE } from "@/lib/timezone";
 import { auditRecord, need, type RecordCtx } from "./ctx.server";
@@ -390,7 +391,7 @@ export async function getSendDefaults(ctx: RecordCtx, id: string) {
   const subject = `${credit ? "Creditnota" : "Factuur"} ${d.number} van ${name}`;
   const lines = credit
     ? [`Beste ${d.buyerName},`, `Hierbij ontvangt u creditnota ${d.number}. De creditnota vindt u als pdf in de bijlage.`]
-    : [`Beste ${d.buyerName},`, `Hierbij ontvangt u factuur ${d.number}${d.dueOn ? `, te betalen vóór ${new Intl.DateTimeFormat("nl-NL", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).format(d.dueOn)}` : ""}. De factuur vindt u als pdf in de bijlage.`];
+    : [`Beste ${d.buyerName},`, `Hierbij ontvangt u factuur ${d.number}${d.dueOn ? `, te betalen vóór ${formatDay(d.dueOn.toISOString().slice(0, 10))}` : ""}. De factuur vindt u als pdf in de bijlage.`];
   const bodyText = `${lines.join("\n\n")}\n\nMet vriendelijke groet,\n${name}`;
   const contacts = ctx.can("contacts:read")
     ? (await prisma.commercialContact.findMany({ where: { companyId: d.companyId, archivedAt: null, email: { not: null } }, select: { name: true, email: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] })).map((c) => ({ name: c.name, email: c.email! }))

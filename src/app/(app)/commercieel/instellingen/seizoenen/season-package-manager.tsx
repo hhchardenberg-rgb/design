@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
-import { api, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
 
 interface Season { id: string; name: string; startsOn: string; endsOn: string; status: string }
 interface Pkg { id: string; name: string; description: string | null; defaultAmountCents: number | null; items: { title: string; description: string | null; quantity: number }[] }
@@ -70,7 +70,7 @@ export function SeasonPackageManager({ canManage, canAmounts }: { canManage: boo
             {seasons?.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-3 py-2">
                 <span className="font-medium">{s.name}</span>
-                <span className="text-muted-foreground">{s.startsOn} t/m {s.endsOn}</span>
+                <span className="text-muted-foreground">{formatDate(s.startsOn)} t/m {formatDate(s.endsOn)}</span>
                 <Badge variant={s.status === "ACTIVE" ? "success" : "outline"}>{STATUS[s.status]}</Badge>
                 {canManage && (
                   <select aria-label={`Status van ${s.name}`} className="ml-auto h-9 rounded-md border border-border bg-surface px-2" value={s.status} onChange={(e) => setStatus(s, e.target.value)}>

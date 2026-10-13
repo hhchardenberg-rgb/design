@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatDay } from "@/lib/date-format";
 import { auditRecord, need, type RecordCtx } from "./ctx.server";
 import { csvSafeCell } from "./csv";
 import { companyScopeWhere } from "./scope";
@@ -70,7 +71,7 @@ function csvLine(cells: Array<string | number | null | undefined>): string {
     .join(";");
 }
 const euro = (cents: number | null) => (cents == null ? "" : (cents / 100).toFixed(2).replace(".", ","));
-const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+const day = (d: Date | null) => (d ? formatDay(d.toISOString().slice(0, 10)) : "");
 
 /** Puntkomma en BOM: opent direct goed in Nederlandse Excel. Export vereist een eigen bevoegdheid en wordt gelogd. */
 function finish(lines: string[]) {

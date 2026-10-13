@@ -57,7 +57,7 @@ export default async function KalenderPage() {
           {groups.map((group) => (
             <div key={group.day.toISOString()}>
               <p className="mb-2 text-sm font-semibold capitalize text-muted-foreground">
-                {format(group.day, "EEEE d MMMM yyyy", { locale: nl })}
+                {format(group.day, "EEEE dd/MM/yyyy", { locale: nl })}
               </p>
               <div className="flex flex-col gap-2">
                 {group.events.map((event) => (

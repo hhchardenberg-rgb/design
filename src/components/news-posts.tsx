@@ -90,7 +90,7 @@ export function NewsPosts({ posts, variant }: { posts: NewsPostView[]; variant: 
                   </div>
                   <p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">{post.body}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(post.createdAt, "d MMMM yyyy", { locale: nl })}
+                    {format(post.createdAt, "dd/MM/yyyy", { locale: nl })}
                     {post.authorName ? ` · ${post.authorName}` : ""}
                     <span className="ml-2 font-medium text-hhc-orange-dark group-hover:underline">Lees meer</span>
                   </p>
@@ -135,7 +135,7 @@ export function NewsPosts({ posts, variant }: { posts: NewsPostView[]; variant: 
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                {format(selected.createdAt, "d MMMM yyyy", { locale: nl })}
+                {format(selected.createdAt, "dd/MM/yyyy", { locale: nl })}
                 {selected.authorName ? ` · ${selected.authorName}` : ""}
               </p>
               <p className="whitespace-pre-wrap text-sm">{selected.body}</p>

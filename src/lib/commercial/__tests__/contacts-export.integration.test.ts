@@ -49,7 +49,7 @@ before(async () => {
   ctxMod = await import("../ctx.server");
   co = await import("../companies.server");
   rp = await import("../reports.server");
-  for (const t of ["commercialActivity", "commercialContact", "commercialCompany", "commercialAuditEvent", "commercialMembership"] as const) {
+  for (const t of ["commercialPayment", "commercialInvoiceDelivery", "commercialInvoiceLine", "commercialInvoice", "commercialMailEvent", "commercialUnsubscribe", "commercialMailingRecipient", "commercialMailing", "commercialReminderLog", "commercialGoal", "commercialIndexation", "commercialOpportunity", "commercialCounterpart", "commercialContract", "commercialPackageItem", "commercialPackage", "commercialSeason", "commercialFile", "commercialTask", "commercialActivity", "commercialContact", "commercialCompany", "commercialTeam", "commercialAuditEvent", "commercialMembership"] as const) {
     await (db[t] as unknown as { deleteMany: (a?: unknown) => Promise<unknown> }).deleteMany();
   }
   await db.user.deleteMany({ where: { email: { endsWith: "@contacts.test" } } });

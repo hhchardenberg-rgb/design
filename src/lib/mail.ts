@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { unsubscribeParams } from "@/lib/commercial/mail-security";
 import { renderMailing } from "@/lib/commercial/mail-render";
+import { formatDay } from "@/lib/date-format";
 
 // Zelfde manier van URL-opbouw als src/lib/webauthn/rp.ts: afgeleid van
 // NEXTAUTH_URL (server-geconfigureerd), niet van request-headers.
@@ -57,9 +58,9 @@ export async function sendCommercialDigestEmail(
   digest: { tasks: { title: string; companyName: string | null; dueOn: string }[]; notices: { companyName: string; noticeOn: string; daysLeft: number }[]; contacts: { companyName: string; lastContactOn: string | null; daysSince: number }[] },
 ): Promise<void> {
   const resend = getClient();
-  const taskRows = digest.tasks.map((t) => `<li>${escapeHtml(t.title)}${t.companyName ? ` (${escapeHtml(t.companyName)})` : ""}, uiterlijk ${escapeHtml(t.dueOn)}</li>`).join("");
-  const noticeRows = digest.notices.map((n) => `<li>${escapeHtml(n.companyName)}: opzegdatum ${escapeHtml(n.noticeOn)} (nog ${n.daysLeft} dag${n.daysLeft === 1 ? "" : "en"})</li>`).join("");
-  const contactRows = digest.contacts.map((c) => `<li>${escapeHtml(c.companyName)}: ${c.lastContactOn ? `laatste contact op ${escapeHtml(c.lastContactOn)} (${c.daysSince} dagen geleden)` : "nog geen contactmoment vastgelegd"}</li>`).join("");
+  const taskRows = digest.tasks.map((t) => `<li>${escapeHtml(t.title)}${t.companyName ? ` (${escapeHtml(t.companyName)})` : ""}, uiterlijk ${escapeHtml(formatDay(t.dueOn))}</li>`).join("");
+  const noticeRows = digest.notices.map((n) => `<li>${escapeHtml(n.companyName)}: opzegdatum ${escapeHtml(formatDay(n.noticeOn))} (nog ${n.daysLeft} dag${n.daysLeft === 1 ? "" : "en"})</li>`).join("");
+  const contactRows = digest.contacts.map((c) => `<li>${escapeHtml(c.companyName)}: ${c.lastContactOn ? `laatste contact op ${escapeHtml(formatDay(c.lastContactOn))} (${c.daysSince} dagen geleden)` : "nog geen contactmoment vastgelegd"}</li>`).join("");
   const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
