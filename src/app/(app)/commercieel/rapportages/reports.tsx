@@ -43,7 +43,7 @@ export function Reports({ canExport, canCompanies, canContracts }: { canExport: 
         <CardContent className="flex flex-wrap items-end gap-3 pt-5">
           <div>
             <label htmlFor="rp-season" className="text-sm font-medium">Seizoen</label>
-            <select id="rp-season" className="mt-1 block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setReport(null); }}>
+            <select id="rp-season" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setReport(null); }}>
               <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>

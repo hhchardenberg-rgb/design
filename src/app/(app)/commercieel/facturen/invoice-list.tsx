@@ -64,7 +64,7 @@ export function InvoiceList({ canCreate }: { canCreate: boolean }) {
             </div>
             {company && (
               <div><Label htmlFor="nf-contract">Op basis van contract</Label>
-                <select id="nf-contract" className="mt-1 block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={contractId} onChange={(e) => setContractId(e.target.value)}>
+                <select id="nf-contract" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={contractId} onChange={(e) => setContractId(e.target.value)}>
                   <option value="">Geen (losse factuur)</option>{contracts.map((c) => <option key={c.id} value={c.id}>{c.seasonName}{c.packageName ? ` – ${c.packageName}` : ""}</option>)}
                 </select></div>
             )}

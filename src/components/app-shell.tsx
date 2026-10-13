@@ -12,7 +12,6 @@ import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { adminModuleGroups } from "@/lib/admin-modules";
 import { ticketingModules } from "@/lib/ticketing-modules";
 import { hasRole, resolveHomePath, type AppRole } from "@/lib/roles";
-import { Briefcase } from "lucide-react";
 
 // Sub-navigatie bínnen het designtool-onderdeel — apart van het apps-menu,
 // zodat je niet elke keer een dropdown hoeft te openen om van "Nieuwe
@@ -55,9 +54,6 @@ const SECTION_DEFINITIONS: { key: string; role: AppRole; label: string; href: st
 export interface CommercialShellState {
   /** Heeft de gebruiker toegang tot de sectie (server-side bepaald, flag + lidmaatschap). */
   member: boolean;
-  nav: { href: string; label: string }[];
-  /** Platformbeheer: link naar het toewijzen van sectietoegang. */
-  showAdminLink: boolean;
 }
 
 export function AppShell({ children, commercial }: { children: React.ReactNode; commercial: CommercialShellState }) {
@@ -72,7 +68,7 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
     !isAdminSection &&
     !isTicketingSection &&
     (pathname?.startsWith("/dashboard") || pathname?.startsWith("/templates") || pathname?.startsWith("/designs"));
-  const nav = isCommercialSection ? commercial.nav : isAdminSection || isTicketingSection ? [] : isDesigntoolSection ? designtoolNav : [];
+  const nav = isAdminSection || isTicketingSection ? [] : isDesigntoolSection ? designtoolNav : [];
 
   const adminMenuGroups: NavMenuGroup[] = adminModuleGroups
     .map((g) => ({
@@ -83,13 +79,6 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
         .map((m) => ({ title: m.title, href: m.href, icon: m.icon })),
     }))
     .filter((g) => g.items.length > 0);
-  if (commercial.showAdminLink) {
-    adminMenuGroups.push({
-      id: "commercieel",
-      label: "Commerciële Zaken",
-      items: [{ title: "Toegang Commerciële Zaken", href: "/admin/commercieel", icon: Briefcase }],
-    });
-  }
 
   const isAccountSection = pathname?.startsWith("/account");
   const activeSectionKey = isAccountSection
@@ -142,7 +131,7 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : isTicketingSection ? (
               <GroupedNavMenu groups={ticketingMenuGroups} label="Onderdelen" />
-            ) : (
+            ) : isCommercialSection ? null : (
               <GroupedNavMenu groups={hubMenuGroups} label="Onderdelen" />
             )}
             <SectionSwitcher items={sectionLinks} activeKey={activeSectionKey} />

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ASSIGNABLE_ROLES, type AppRole } from "@/lib/roles";
 import { generatePassword } from "@/lib/password";
 import { cn } from "@/lib/utils";
+import { CommercialAccessProvider, CommercialRolesPanel, UserCommercialPanel } from "@/components/commercial/commercial-access";
 
 function toggleRole(roles: AppRole[], role: AppRole): AppRole[] {
   return roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role];
@@ -199,12 +200,14 @@ export default function AdminUsersPage() {
   }
 
   return (
+    <CommercialAccessProvider>
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Gebruikers</h1>
+        <h1 className="text-2xl font-bold">Gebruikers en rechten</h1>
         <p className="mt-1 text-muted-foreground">
           Beheer wie kan inloggen op de HHC Hardenberg Hub en welke onderdelen ze mogen gebruiken. Een gebruiker
-          kan meerdere rollen tegelijk hebben.
+          kan meerdere rollen tegelijk hebben. Staat Commerciële Zaken aan, dan regel je de toegang en de rechten
+          daarbinnen per gebruiker op deze pagina.
         </p>
       </div>
 
@@ -443,10 +446,14 @@ export default function AdminUsersPage() {
                   </>
                 )}
               </div>
+              <UserCommercialPanel userId={u.id} userName={u.name} isSelf={u.id === session?.user?.id} />
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <CommercialRolesPanel />
     </div>
+    </CommercialAccessProvider>
   );
 }

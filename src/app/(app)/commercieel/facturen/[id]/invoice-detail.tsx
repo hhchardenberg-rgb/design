@@ -157,7 +157,7 @@ export function InvoiceDetail({ id, permissions }: { id: string; permissions: st
                   <div><Label htmlFor={`l-q-${i}`}>Aantal</Label><Input id={`l-q-${i}`} value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} /></div>
                   <div><Label htmlFor={`l-p-${i}`}>Prijs excl. btw</Label><Input id={`l-p-${i}`} value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} /></div>
                   <div><Label htmlFor={`l-v-${i}`}>Btw</Label>
-                    <select id={`l-v-${i}`} className="mt-1 block h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={l.vat} onChange={(e) => setLine(i, { vat: e.target.value })}>{VAT_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
+                    <select id={`l-v-${i}`} className="block h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={l.vat} onChange={(e) => setLine(i, { vat: e.target.value })}>{VAT_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
                   <Button variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Weg</Button>
                 </div>
               ))}

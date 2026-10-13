@@ -81,11 +81,11 @@ function NewContract({ companyId, seasons, packages, canAmount, onClose, onDone 
       <CardContent className="pt-5">
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
           <div><Label htmlFor="c-season">Seizoen</Label>
-            <select id="c-season" required className="mt-1 h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.seasonId} onChange={(e) => pick(e.target.value)}>
+            <select id="c-season" required className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.seasonId} onChange={(e) => pick(e.target.value)}>
               <option value="">Kies…</option>{seasons.filter((s) => s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select></div>
           <div><Label htmlFor="c-pkg">Pakket</Label>
-            <select id="c-pkg" className="mt-1 h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.packageId} onChange={(e) => pickPackage(e.target.value)}>
+            <select id="c-pkg" className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={f.packageId} onChange={(e) => pickPackage(e.target.value)}>
               <option value="">Nog geen pakket</option>{packages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select></div>
           <div><Label htmlFor="c-start">Start</Label><Input id="c-start" type="date" required value={f.startsOn} onChange={(e) => setF({ ...f, startsOn: e.target.value })} /></div>
@@ -157,7 +157,7 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
         {renew && (
           <form onSubmit={doRenew} className="flex flex-wrap items-end gap-3 rounded-md border border-border p-3">
             <div><Label htmlFor={`rs-${c.id}`}>Nieuw seizoen</Label>
-              <select id={`rs-${c.id}`} required className="mt-1 h-10 rounded-md border border-border bg-surface px-2" value={renew.seasonId}
+              <select id={`rs-${c.id}`} required className="h-10 rounded-md border border-border bg-surface px-2" value={renew.seasonId}
                 onChange={(e) => { const s = seasons.find((x) => x.id === e.target.value); setRenew({ seasonId: e.target.value, startsOn: s?.startsOn ?? "", endsOn: s?.endsOn ?? "" }); }}>
                 <option value="">Kies…</option>{seasons.filter((s) => s.id !== c.seasonId && s.status !== "CLOSED").map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select></div>

@@ -40,6 +40,13 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@napi-rs/canvas", "sharp", "ag-psd"],
   // Voorkomt dat Next.js automatisch AGENTS.md/CLAUDE.md-bestanden genereert.
   agentRules: false,
+  // Het rechtenbeheer van Commerciële Zaken is samengevoegd met het gebruikersbeheer.
+  async redirects() {
+    return [
+      { source: "/admin/commercieel", destination: "/admin/users", permanent: true },
+      { source: "/commercieel/instellingen/rechten", destination: "/admin/users", permanent: true },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

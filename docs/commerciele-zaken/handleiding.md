@@ -19,12 +19,14 @@ Beschermde sectie van de HHC Hub voor de sponsorcommissie. Alles hieronder is ge
 | Rapportages | Contracten per status en pakket, pijplijnstand; CSV-export van contracten en sponsoren |
 | Herinneringen | Dagelijkse mail met verlopen taken en naderende opzegdata (30/14/7 dagen) |
 | Mailings | Bericht aan sponsorcontacten, ontvangerslijst, versturen, resultaat per ontvanger, afmelden |
-| Rechten | Rollen als sjabloon, per persoon toestaan/weigeren, bereik, audit, delegatiegrens |
+| Facturen | Concept, definitief maken (doorlopend nummer), btw per regel, creditnota, betalingen, pdf op het briefpapier van het persbericht, versturen per e-mail met pdf-bijlage |
+| Rechten | Rollen als sjabloon, per persoon toestaan/weigeren, bereik, audit, delegatiegrens; alles in Beheer > Gebruikers en rechten |
+| Menu | Vaste kolom links met groepen (Relaties, Afspraken, Financiën, Communicatie, Instellingen) en een startpagina met tegels |
 
 ## 2. Rechten
 
 **Toegang tot de sectie** is los van de platformrol. Een platformbeheerder (ADMIN) heeft *geen* impliciete toegang;
-die geeft toegang aan personen via Beheer > Commerciële Zaken. Bestaande gebruikers krijgen niets automatisch.
+die geeft toegang aan personen via Beheer > Gebruikers en rechten (blok "Commerciële Zaken" in de kaart van de gebruiker). Bestaande gebruikers krijgen niets automatisch.
 
 Een bevoegdheid heet `onderdeel:actie` (bijvoorbeeld `contracts:update`, `amounts:read`, `mailings:send`).
 Er is bewust geen "verwijderen": dossiers worden gearchiveerd.
@@ -37,7 +39,7 @@ Er is bewust geen "verwijderen": dossiers worden gearchiveerd.
 | Sponsorcommissielid | Dossiers, contacten, historie, taken bewerken; contracten lezen. Geen financiën |
 | Relatiebeheerder | Relaties, kansen, tegenprestaties, bestanden beheren; contracten, bedragen, rapportages lezen |
 | Contractbeheerder | Contracten en bedragen bewerken; definitief maken is aparte bevoegdheid |
-| Financieel medewerker | Rechten voor facturen/creditnota's/betalingen (de schermen zijn nog niet gebouwd, zie §7) |
+| Financieel medewerker | Facturen, creditnota's en betalingen beheren, definitief maken, downloaden en versturen |
 | Mailingbeheerder | Mailings voorbereiden en resultaten zien, niet versturen |
 | Beheerder Commerciële Zaken | Alles, inclusief rechtenbeheer binnen de delegatiegrens |
 
@@ -65,8 +67,15 @@ bedragen, adressen of berichttekst.
 
 ## 4. Beheer
 
-- **Toegang geven**: Beheer > Commerciële Zaken (alleen ADMIN): zet iemand aan en kies een rol. Daarna kan een
-  beheerder van Commerciële Zaken rol, afwijkingen, bereik en teams afstellen (Instellingen > Rechten / Teams).
+- **Toegang en rechten**: alles staat bij Beheer > Gebruikers en rechten (alleen ADMIN). In de kaart van een
+  gebruiker zit het blok "Commerciële Zaken": toegang geven of intrekken met een startrol, en daarna "Rechten
+  instellen" voor rol, bereik en afwijkingen. Onderaan de pagina beheer je de rollen en zie je de laatste
+  wijzigingen. Rechten instellen en rollen beheren kan alleen een ADMIN die zelf ook een rol met rechtenbeheer in
+  Commerciële Zaken heeft (bijvoorbeeld "Beheerder Commerciële Zaken"); toegang geven en intrekken kan elke ADMIN.
+  De oude pagina's Beheer > Commerciële Zaken en Instellingen > Rechten verwijzen hierheen.
+- **Facturatie-instellingen**: Instellingen > Facturatie: gegevens van de vereniging, btw-nummer, IBAN,
+  betalingstermijn en nummering. Zolang btw-nummer, IBAN, termijn en volgnummers leeg zijn, kan geen factuur
+  definitief worden gemaakt. Het briefpapier toont zelf ook een IBAN; controleer dat beide kloppen.
 - **Teams**: Instellingen > Teams; teamlidmaatschap bepaalt het bereik "eigen team" en is een rechtenwijziging.
 - **Seizoenen en pakketten**: Instellingen > Seizoenen en pakketten.
 - Wie alleen toegang heeft tot Commerciële Zaken (geen hub-/ticketingrol) wordt na het inloggen automatisch naar
@@ -82,6 +91,7 @@ bedragen, adressen of berichttekst.
 | `CRON_SECRET` | Beveiligt de dagelijkse cron (lange willekeurige waarde) | Herinneringen |
 | `RESEND_WEBHOOK_SECRET` | Signing secret van de Resend-webhook | Resultaten van mailings |
 | `STORAGE_DRIVER` en bijbehorende opslag | Bestandsopslag (Vercel Blob) | Bestanden |
+| `MFA_ENCRYPTION_KEY` | Bestaat al voor Production; een preview die dezelfde database gebruikt heeft dezelfde waarde nodig, anders is elke 2FA-code "ongeldig" | Inloggen met 2FA op een preview |
 
 - **Cron**: `vercel.json` roept elke dag 06:00 UTC `/api/cron/commercial-reminders` aan. Zonder `CRON_SECRET`
   is de route dicht en doet hij niets zolang de sectie uit staat.
@@ -98,24 +108,24 @@ bedragen, adressen of berichttekst.
 **Activeren (aanbevolen volgorde)**
 1. Zet `CRON_SECRET` en (voor mailings) `RESEND_WEBHOOK_SECRET`; verifieer het mailingdomein in Resend.
 2. Zet `COMMERCIAL_ENABLED=true` in Vercel (productie) en deploy opnieuw.
-3. Geef als platformbeheerder jezelf of een aanspreekpunt toegang (Beheer > Commerciële Zaken) met rol "Beheerder".
+3. Geef als platformbeheerder jezelf of een aanspreekpunt toegang (Beheer > Gebruikers en rechten) met rol "Beheerder".
 4. Laat die persoon teams, seizoenen, pakketten en de overige rollen instellen en de sponsorcommissie uitnodigen.
 5. Importeer bestaande sponsoren (Sponsoren > Importeren) en controleer het voorbeeld voor je bevestigt.
 
 **Terugdraaien**
 - *Direct uitzetten*: `COMMERCIAL_ENABLED` op `false` (of verwijderen) en opnieuw deployen. Menu, schermen en API's
   verdwijnen (404), de cron slaat over. De gegevens blijven in de database staan.
-- *Eén persoon uitsluiten*: toegang intrekken in Beheer > Commerciële Zaken; werkt direct.
+- *Eén persoon uitsluiten*: toegang intrekken in Beheer > Gebruikers en rechten; werkt direct.
 - *Code terugdraaien*: een eerdere deployment promoten in Vercel. De nieuwe tabellen blijven bestaan en
   schaden de rest van de Hub niet.
 
 ## 7. Niet gebouwd en bekende beperkingen
 
-- **Facturen, creditnota's en betalingen**: bewust *niet* gebouwd. Daarvoor zijn de juridische gegevens van HHC
-  nodig (exacte statutaire naam, adres, KvK-nummer, btw-nummer, IBAN, betalingstermijn en nummering) en die zijn
-  niet aangeleverd; er is niets verzonnen. De rechten (`invoices`, `credit_notes`, `payments`) en de rol
-  "Financieel medewerker" bestaan al, zodat dit later zonder rechtenmigratie kan worden toegevoegd. Bedragen
-  staan in eurocenten exclusief btw; btw wordt bij facturatie bepaald.
+- **Facturen**: de wettelijke factuurvereisten zijn niet gecontroleerd tegen de officiële bronnen van de
+  Belastingdienst (die waren tijdens de bouw niet bereikbaar). Laat de pdf door de penningmeester of boekhouder
+  nalopen vóór de eerste echte factuur. Het btw-tarief kies je zelf per regel; het systeem bepaalt geen
+  vrijstellingen. Een bestaande rol "Financieel medewerker" in productie krijgt de nieuwe rechten
+  `credit_notes:approve` en `credit_notes:send` niet automatisch; vink ze zo nodig aan.
 - **Antwoorden op mailings registreren**: niet gebouwd (vraagt een inkomende mailbox).
 - **Herinneringen** gaan naar de taakhouder en naar de eigenaar van het dossier; een eigen voorkeur om dit uit te
   zetten is er (nog) niet.
@@ -127,10 +137,10 @@ bedragen, adressen of berichttekst.
 
 ## 8. Tests
 
-`npm test` draait 48 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
+`npm test` draait 52 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
 overgeslagen. Gedekt: rechtenmodel en delegatie, bereik (eigen/team/alles) en lekken via dubbelencontrole,
 financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versiecontrole, bestanden, import en
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),
 herinneringen (eenmalig, geen bedragen), mailings (afmelden, eenmalig versturen, foutherstel, webhook-handtekening
 en idempotentie) en een bewaking dat elke commerciële API-route de centrale toegangscontrole gebruikt.
-Er is in geen enkele test echt gemaild of gefactureerd.
+Facturatie is gedekt (instellingen, nummering bij gelijktijdig uitgeven, onveranderlijkheid, creditnota's, betalingen, bereik, versturen met mislukte poging). Er is in geen enkele test echt gemaild.
