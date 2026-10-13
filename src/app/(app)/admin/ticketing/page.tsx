@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, Mail, FileSpreadsheet } from "lucide-react";
+import { BookOpen, Mail, FileSpreadsheet, Newspaper } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Ticketing" };
@@ -23,6 +23,12 @@ const sections = [
     title: "Excel-sjablonen",
     description: "Standaard Excel-bestanden om te downloaden bij het ticketingsysteem.",
     icon: FileSpreadsheet,
+  },
+  {
+    href: "/admin/ticketing/nieuws",
+    title: "Nieuws",
+    description: "Nieuwsberichten voor Ticketing plaatsen, en het nieuws aan of uit zetten.",
+    icon: Newspaper,
   },
 ];
 

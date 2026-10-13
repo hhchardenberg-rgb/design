@@ -7,6 +7,8 @@ import { buildRecordCtx } from "@/lib/commercial/ctx.server";
 import { loadDashboard } from "@/lib/commercial/dashboard.server";
 import { formatDate, formatEuro } from "@/lib/commercial/client";
 import { visibleNavGroups } from "@/lib/commercial/navigation";
+import { NewsPosts } from "@/components/news-posts";
+import { isNewsEnabled, listNewsPosts } from "@/lib/news.server";
 
 export const metadata: Metadata = { title: "Commerciële Zaken" };
 export const dynamic = "force-dynamic";
@@ -14,8 +16,14 @@ export const dynamic = "force-dynamic";
 export default async function CommercialHome() {
   const session = await auth();
   const access = await loadCommercialAccess(session!.user.id);
-  const groups = visibleNavGroups(access.can);
-  const dash = groups.length > 0 ? await loadDashboard(await buildRecordCtx(session!.user)) : null;
+  const newsEnabled = await isNewsEnabled("commercial");
+  const groups = visibleNavGroups(access.can, { news: newsEnabled });
+  // Alleen onderdelen met een bevoegdheid tellen mee; het nieuws is voor elk lid.
+  const hasPermissions = visibleNavGroups(access.can).length > 0;
+  const [dash, newsPosts] = await Promise.all([
+    hasPermissions ? buildRecordCtx(session!.user).then(loadDashboard) : null,
+    newsEnabled ? listNewsPosts("commercial", 3) : [],
+  ]);
 
   return (
     <div className="space-y-8">
@@ -95,7 +103,17 @@ export default async function CommercialHome() {
         </section>
       )}
 
-      {groups.length === 0 ? (
+      {newsPosts.length > 0 && (
+        <section aria-labelledby="news-h">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 id="news-h" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nieuws</h2>
+            <Link className="text-sm text-hhc-orange-dark underline" href="/commercieel/nieuws">Alle berichten</Link>
+          </div>
+          <NewsPosts variant="dashboard" posts={newsPosts} />
+        </section>
+      )}
+
+      {!hasPermissions ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
             Je hebt toegang tot de sectie, maar nog geen bevoegdheden voor onderdelen. Vraag een beheerder om een rol.

@@ -24,24 +24,33 @@ const designtoolNav = [
 
 // In het Onderdelen-menu staat de designtool gewoon tussen de bronnen en
 // hulpmiddelen; alleen de hub-startpagina geeft hem een eigen, grote tegel.
-const hubMenuGroups: NavMenuGroup[] = hubModuleGroups.map((g) => ({
-  id: g.id,
-  label: g.label,
-  items: (g.id === "bronnen" ? [featuredModule, ...g.modules] : g.modules).map((m) => ({
-    title: m.title,
-    href: m.href,
-    status: m.status,
-    icon: m.icon,
-  })),
-}));
+// Staat het nieuws van een onderdeel uit, dan valt de Nieuws-link uit het menu.
+function hubMenuGroups(newsEnabled: boolean): NavMenuGroup[] {
+  return hubModuleGroups.map((g) => ({
+    id: g.id,
+    label: g.label,
+    items: (g.id === "bronnen" ? [featuredModule, ...g.modules] : g.modules)
+      .filter((m) => m.id !== "nieuws" || newsEnabled)
+      .map((m) => ({
+        title: m.title,
+        href: m.href,
+        status: m.status,
+        icon: m.icon,
+      })),
+  }));
+}
 
-const ticketingMenuGroups: NavMenuGroup[] = [
-  {
-    id: "ticketing",
-    label: "Ticketing",
-    items: ticketingModules.map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
-  },
-];
+function ticketingMenuGroups(newsEnabled: boolean): NavMenuGroup[] {
+  return [
+    {
+      id: "ticketing",
+      label: "Ticketing",
+      items: ticketingModules
+        .filter((m) => m.id !== "nieuws" || newsEnabled)
+        .map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
+    },
+  ];
+}
 
 // Drie mogelijke top-level secties — enkel getoond aan wie er rechten voor
 // heeft. Nieuwe rol met een eigen sectie? Hier een entry toevoegen.
@@ -57,7 +66,16 @@ export interface CommercialShellState {
   admin: boolean;
 }
 
-export function AppShell({ children, commercial }: { children: React.ReactNode; commercial: CommercialShellState }) {
+export function AppShell({
+  children,
+  commercial,
+  news,
+}: {
+  children: React.ReactNode;
+  commercial: CommercialShellState;
+  /** Of het nieuws van Communicatie en Ticketing aan staat (server-side uit de database). */
+  news: { hub: boolean; ticketing: boolean };
+}) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const roles = session?.user?.roles ?? [];
@@ -129,9 +147,9 @@ export function AppShell({ children, commercial }: { children: React.ReactNode; 
             {isAdminSection ? (
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : isTicketingSection ? (
-              <GroupedNavMenu groups={ticketingMenuGroups} label="Onderdelen" />
+              <GroupedNavMenu groups={ticketingMenuGroups(news.ticketing)} label="Onderdelen" />
             ) : isCommercialSection ? null : (
-              <GroupedNavMenu groups={hubMenuGroups} label="Onderdelen" />
+              <GroupedNavMenu groups={hubMenuGroups(news.hub)} label="Onderdelen" />
             )}
             <SectionSwitcher items={sectionLinks} activeKey={activeSectionKey} />
             <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>

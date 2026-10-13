@@ -1,30 +1,29 @@
 import Link from "next/link";
 import { ArrowRight, AlertTriangle } from "lucide-react";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { AgendaEventCard } from "@/components/agenda-event-card";
 import { NewsPosts } from "@/components/news-posts";
 import { getMergedAgendaEvents } from "@/lib/agenda";
+import { isNewsEnabled, listNewsPosts } from "@/lib/news.server";
 
 export const revalidate = 900;
 
-// De "crisis"-groep krijgt hierboven al een eigen, altijd-zichtbare
-// snelkoppeling — niet nogmaals tonen tussen de gewone onderdelen-secties.
-const moduleGroups = hubModuleGroups.filter((g) => g.id !== "crisis");
-
 export default async function HubPage() {
-  const [session, { events: highlightedEvents }, newsPosts] = await Promise.all([
+  const [session, { events: highlightedEvents }, newsEnabled] = await Promise.all([
     auth(),
     getMergedAgendaEvents({ onlyHighlighted: true, limit: 4 }),
-    prisma.newsPost.findMany({
-      orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
-      take: 3,
-      include: { author: { select: { name: true } } },
-    }),
+    isNewsEnabled("hub"),
   ]);
+  const newsPosts = newsEnabled ? await listNewsPosts("hub", 3) : [];
+  // De "crisis"-groep krijgt hierboven al een eigen, altijd-zichtbare
+  // snelkoppeling — niet nogmaals tonen tussen de gewone onderdelen-secties.
+  // Staat het nieuws uit, dan verdwijnt ook de Nieuws-tegel.
+  const moduleGroups = hubModuleGroups
+    .filter((g) => g.id !== "crisis")
+    .map((g) => ({ ...g, modules: g.modules.filter((m) => m.id !== "nieuws" || newsEnabled) }));
 
   return (
     <div className="flex flex-col gap-8">
@@ -108,10 +107,7 @@ export default async function HubPage() {
               Alle berichten
             </Link>
           </div>
-          <NewsPosts
-            variant="dashboard"
-            posts={newsPosts.map(({ author, ...post }) => ({ ...post, authorName: author?.name ?? null }))}
-          />
+          <NewsPosts variant="dashboard" posts={newsPosts} />
         </section>
       )}
 

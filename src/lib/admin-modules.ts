@@ -45,7 +45,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
     modules: [
       { title: "Templates", description: "PSD-templates importeren en beheren.", href: "/admin/templates", icon: LayoutTemplate, section: "hub" },
       { title: "Agenda", description: "Agendapunten toevoegen en uitlichten.", href: "/admin/agenda", icon: CalendarDays, section: "hub" },
-      { title: "Nieuws", description: "Nieuwsberichten plaatsen en vastzetten.", href: "/admin/nieuws", icon: Newspaper, section: "hub" },
+      { title: "Nieuws", description: "Nieuwsberichten voor Communicatie plaatsen, en het nieuws aan of uit zetten.", href: "/admin/nieuws", icon: Newspaper, section: "hub" },
       { title: "Fotobank", description: "Standaardfoto's uploaden en beheren.", href: "/admin/fotobank", icon: Images, section: "hub" },
       { title: "Kennisbank", description: "Handleidingen en werkwijzen beheren.", href: "/admin/kennisbank", icon: BookOpen, section: "hub" },
       { title: "Crisiscommunicatie", description: "Protocollen per incidenttype beheren.", href: "/admin/crisis", icon: AlertTriangle, section: "hub" },

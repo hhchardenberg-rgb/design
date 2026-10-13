@@ -4,7 +4,7 @@
 // met status "soon" als duidelijke plek in de structuur, zie hub-modules.ts
 // voor dat patroon).
 
-import { BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, type LucideIcon } from "lucide-react";
+import { BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, Newspaper, type LucideIcon } from "lucide-react";
 
 export interface TicketingModule {
   id: string;
@@ -50,6 +50,15 @@ export const ticketingQuickLinks: TicketingQuickLink[] = [
 ];
 
 export const ticketingModules: TicketingModule[] = [
+  {
+    // Alleen zichtbaar als het nieuws voor Ticketing aan staat (zie src/lib/news.server.ts).
+    id: "nieuws",
+    title: "Nieuws",
+    description: "Het laatste nieuws voor Ticketing.",
+    href: "/ticketing/nieuws",
+    status: "available",
+    icon: Newspaper,
+  },
   {
     id: "handleidingen",
     title: "Handleidingen",

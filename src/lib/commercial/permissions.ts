@@ -52,6 +52,7 @@ export type AreaKey =
   | "credit_notes"
   | "payments"
   | "mailings"
+  | "news"
   | "reports"
   | "exports"
   | "settings"
@@ -83,6 +84,7 @@ export const AREAS: Record<AreaKey, AreaInfo> = {
   credit_notes: { label: "Creditnota's", description: "Creditering van definitieve facturen.", group: "Financiën", actions: ["read", "create", "download", "send", "approve"], financial: true },
   payments: { label: "Betalingen", description: "Betalingen registreren en corrigeren.", group: "Financiën", actions: ["read", "create", "update"], financial: true },
   mailings: { label: "Mailings en verzendresultaten", description: "Voorbereiden en versturen naar sponsoren.", group: "Communicatie", actions: ["read", "create", "update", "send", "archive"] },
+  news: { label: "Nieuwsberichten", description: "Nieuws binnen Commerciële Zaken plaatsen en beheren. Het nieuws lezen kan elk lid.", group: "Communicatie", actions: ["read", "create", "update", "archive"] },
   reports: { label: "Rapportages", description: "Dashboards en overzichten (financiële cijfers volgen de financiële rechten).", group: "Communicatie", actions: ["read"] },
   exports: { label: "Gegevensexports", description: "Exporteren naar CSV of Excel.", group: "Communicatie", actions: ["export"] },
   settings: { label: "Commerciële instellingen", description: "Seizoenen, pakketten, statussen en templates.", group: "Beheer", actions: ["read", "manage_settings"] },
