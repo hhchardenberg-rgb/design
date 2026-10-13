@@ -1211,3 +1211,66 @@ model CommercialReminderLog {
   @@unique([userId, kind, refId])
   @@map("commercial_reminder_logs")
 }
+
+/// Mailing aan sponsorcontacten. Ontvangers worden bij voorbereiden vastgelegd (momentopname).
+model CommercialMailing {
+  id             String    @id @default(cuid())
+  subject        String
+  bodyText       String
+  // Filter op dossierstatus (PROSPECT | ACTIVE | FORMER); leeg = alle.
+  audienceStatus String?
+  status         String    @default("DRAFT") // DRAFT | SENDING | SENT
+  createdById    String?
+  sentById       String?
+  sentAt         DateTime?
+  version        Int       @default(1)
+  archivedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  recipients CommercialMailingRecipient[]
+
+  @@index([status])
+  @@map("commercial_mailings")
+}
+
+model CommercialMailingRecipient {
+  id                String            @id @default(cuid())
+  mailingId         String
+  mailing           CommercialMailing @relation(fields: [mailingId], references: [id], onDelete: Cascade)
+  companyId         String
+  contactId         String?
+  email             String
+  name              String?
+  // PENDING | SENT | DELIVERED | BOUNCED | COMPLAINED | FAILED | SKIPPED
+  status            String            @default("PENDING")
+  providerMessageId String?
+  error             String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  openedAt          DateTime?
+
+  @@unique([mailingId, email])
+  @@index([providerMessageId])
+  @@index([companyId])
+  @@map("commercial_mailing_recipients")
+}
+
+/// Adressen die geen mailings meer willen. Wordt altijd gecontroleerd vlak voor verzenden.
+model CommercialUnsubscribe {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String // LINK | BOUNCE | COMPLAINT | MANUAL
+  createdAt DateTime @default(now())
+
+  @@map("commercial_unsubscribes")
+}
+
+/// Verwerkte webhook-gebeurtenissen van de mailprovider; voorkomt dubbel verwerken.
+model CommercialMailEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+
+  @@map("commercial_mail_events")
+}

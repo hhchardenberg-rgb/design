@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { unsubscribeParams } from "@/lib/commercial/mail-security";
 
 // Zelfde manier van URL-opbouw als src/lib/webauthn/rp.ts: afgeleid van
 // NEXTAUTH_URL (server-geconfigureerd), niet van request-headers.
@@ -69,6 +70,31 @@ export async function sendCommercialDigestEmail(
     `,
   });
   if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+}
+
+/**
+ * Eén mailing-bericht aan een sponsorcontact. Elke mail bevat een afmeldlink (ook als List-Unsubscribe-header
+ * met one-click) en een korte afzenderregel; er worden geen juridische gegevens verzonnen.
+ */
+export async function sendMailingEmail(mail: { to: string; name: string | null; subject: string; bodyText: string }): Promise<{ providerMessageId: string | null }> {
+  const resend = getClient();
+  const { e, t } = unsubscribeParams(mail.to);
+  const unsubscribeUrl = `${APP_URL}/afmelden?e=${e}&t=${t}`;
+  const personal = mail.bodyText.replace(/\{\{\s*naam\s*\}\}/gi, mail.name ?? "");
+  const html =
+    personal.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("") +
+    `<hr><p style="font-size:12px;color:#666">Je ontvangt deze e-mail van HHC Hardenberg. <a href="${unsubscribeUrl}">Afmelden voor deze mailings</a></p>`;
+  const text = `${personal}\n\n--\nJe ontvangt deze e-mail van HHC Hardenberg. Afmelden: ${unsubscribeUrl}`;
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: mail.to,
+    subject: mail.subject,
+    html,
+    text,
+    headers: { "List-Unsubscribe": `<${unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+  return { providerMessageId: data?.id ?? null };
 }
 
 function escapeHtml(value: string): string {
