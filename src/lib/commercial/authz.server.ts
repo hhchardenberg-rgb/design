@@ -70,6 +70,27 @@ export async function ensureSystemRoles(): Promise<void> {
       create: { key: t.key, name: t.name, description: t.description, permissions: t.permissions, isSystem: true },
     });
   }
+  await addLaterPermissions();
+}
+
+/**
+ * Bevoegdheden die na de eerste uitrol zijn bijgekomen, één keer toevoegen aan de bestaande
+ * standaardrol. Een regel in het logboek markeert dat het gebeurd is, zodat een bewuste
+ * verwijdering door een beheerder daarna blijft staan.
+ */
+const LATER_PERMISSIONS: { roleKey: string; permission: Permission }[] = [{ roleKey: "beheerder", permission: "history:delete" }];
+
+async function addLaterPermissions(): Promise<void> {
+  for (const { roleKey, permission } of LATER_PERMISSIONS) {
+    const marker = `${roleKey}:${permission}`;
+    if (await prisma.commercialAuditEvent.findFirst({ where: { action: "role.permission_added", entityId: marker }, select: { id: true } })) continue;
+    const role = await prisma.commercialRole.findUnique({ where: { key: roleKey } });
+    if (!role) continue;
+    if (!role.permissions.includes(permission)) {
+      await prisma.commercialRole.update({ where: { id: role.id }, data: { permissions: { push: permission } } });
+    }
+    await writeCommercialAudit({ actorId: null, actorLabel: "Systeem", action: "role.permission_added", entity: "role", entityId: marker, after: { role: role.name, permission } });
+  }
 }
 
 export async function writeCommercialAudit(entry: {
