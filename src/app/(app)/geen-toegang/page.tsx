@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { loadCommercialAccess } from "@/lib/commercial/authz.server";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { ShieldOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Geen toegang" };
 
-export default function GeenToegangPage() {
+export const dynamic = "force-dynamic";
+
+export default async function GeenToegangPage() {
+  // Wie alleen toegang tot Commerciële Zaken heeft (geen hub-, ticketing- of beheerrol) belandt na het inloggen hier: stuur door.
+  if (isCommercialEnabled()) {
+    const session = await auth();
+    if (session?.user && (await loadCommercialAccess(session.user.id)).isMember) redirect("/commercieel");
+  }
   return (
     <div className="mx-auto max-w-md">
       <Card>
