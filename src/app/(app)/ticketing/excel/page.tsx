@@ -42,14 +42,14 @@ export default async function TicketingExcelPage() {
               .map((t) => (
                 <Card key={t.id}>
                   <CardContent className="flex items-start justify-between gap-3 p-4">
-                    <div className="flex items-start gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
                       <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
                         <FileSpreadsheet className="h-4 w-4" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium">{t.title}</p>
                         {t.description && <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>}
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 break-all text-xs text-muted-foreground">
                           {t.fileName}
                           {t.fileSize ? ` · ${formatSize(t.fileSize)}` : ""}
                         </p>

@@ -176,24 +176,24 @@ export default function AdminTicketingExcelPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
                     <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
                       <FileSpreadsheet className="h-4 w-4" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         {t.category && <Badge variant="outline">{t.category}</Badge>}
                         <p className="font-medium">{t.title}</p>
                       </div>
                       {t.description && <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>}
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 break-all text-xs text-muted-foreground">
                         {t.fileName}
                         {t.fileSize ? ` · ${formatSize(t.fileSize)}` : ""}
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex shrink-0 items-center gap-3 pl-12 sm:pl-0">
                     <a href={t.url} download className="flex items-center gap-1 text-xs text-hhc-orange-dark hover:underline">
                       <Download className="h-3.5 w-3.5" />
                       downloaden

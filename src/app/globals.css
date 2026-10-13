@@ -89,6 +89,24 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Lange woorden (bestandsnamen, links) breken af in plaats van de pagina
+     breder te maken dan het scherm. */
+  overflow-wrap: break-word;
+}
+
+/*
+ * iOS Safari zoomt de pagina in zodra je een invoerveld met een lettergrootte
+ * onder 16px aanraakt (bijv. de inlogcode) en zoomt daarna niet terug, waardoor
+ * de Hub na het inloggen te breed en afgesneden lijkt. Op smalle schermen
+ * daarom altijd minimaal 16px. Bewust buiten @layer, zodat dit boven
+ * utilities als text-sm wint.
+ */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 /* Kopteksten in de huisstijlletter (DIN), zie --font-heading hierboven. */
