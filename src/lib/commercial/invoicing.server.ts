@@ -393,7 +393,7 @@ export async function getSendDefaults(ctx: RecordCtx, id: string) {
     : [`Beste ${d.buyerName},`, `Hierbij ontvangt u factuur ${d.number}${d.dueOn ? `, te betalen vóór ${new Intl.DateTimeFormat("nl-NL", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).format(d.dueOn)}` : ""}. De factuur vindt u als pdf in de bijlage.`];
   const bodyText = `${lines.join("\n\n")}\n\nMet vriendelijke groet,\n${name}`;
   const contacts = ctx.can("contacts:read")
-    ? (await prisma.commercialContact.findMany({ where: { companyId: d.companyId, archivedAt: null, email: { not: null } }, select: { name: true, email: true }, orderBy: { name: "asc" } })).map((c) => ({ name: c.name, email: c.email! }))
+    ? (await prisma.commercialContact.findMany({ where: { companyId: d.companyId, archivedAt: null, email: { not: null } }, select: { name: true, email: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] })).map((c) => ({ name: c.name, email: c.email! }))
     : [];
   const deliveries = (await prisma.commercialInvoiceDelivery.findMany({ where: { invoiceId: id }, orderBy: { createdAt: "desc" }, take: 20 })).map((x) => ({
     id: x.id, toEmail: x.toEmail, status: x.status, error: x.error, createdAt: x.createdAt,

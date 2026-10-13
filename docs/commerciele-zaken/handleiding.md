@@ -87,6 +87,19 @@ Rapportages tonen lopende contracten per sponsorvorm, de exports bevatten de vor
 Bij Mailings kies je welke sponsorvormen de mailing krijgen (leeg = alle vormen). Dat staat los van het vrije veld "Overige
 categorie", dat voor eigen indelingen blijft bestaan.
 
+## Contactpersonen en Excel-export
+
+Per bedrijf koppel je zoveel contactpersonen als nodig, elk met naam, functie, e-mail, telefoon en een contactrol. De
+volgorde staat in het dossier (tab Contactpersonen): bovenaan staat de eerste contactpersoon, daaronder de tweede,
+enzovoort. Met de pijltjes verschuif je iemand; een nieuwe contactpersoon komt onderaan. Met "Bewerken" pas je functie of
+gegevens aan. Bestaande contactpersonen kregen bij de invoering de volgorde waarin ze zijn aangemaakt.
+
+De **Excel-export** (.xlsx) staat bij Rapportages en in het overzicht Sponsoren (daar met de gekozen sponsorvormfilter). Kies
+een of meer sponsorvormen of "Zonder vorm"; niets gekozen betekent alle bedrijven. Blad "Bedrijven" heeft één rij per
+bedrijf met contact 1, contact 2, ... naast elkaar (naam, functie, e-mail, telefoon). Blad "Contactpersonen" heeft één rij
+per persoon. De export vraagt het exportrecht plus leesrecht op dossiers en contactpersonen, toont alleen bedrijven binnen
+je recordbereik en wordt in het auditlog vastgelegd.
+
 ## Doelen en prognose
 
 Menu Financiën → **Doelen en prognose**. Kies een seizoen: je ziet per sponsorvorm (en in totaal) het doel, wat al loopt, wat de pijplijn gewogen nog oplevert, wat er nog nodig is en het tekort na de prognose.

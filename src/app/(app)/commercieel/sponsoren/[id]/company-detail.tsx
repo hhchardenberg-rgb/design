@@ -218,10 +218,18 @@ function Overview({ company, canEdit, canArchive, onSaved }: { company: Company;
   );
 }
 
+const CONTACT_FIELDS = [["name", "Naam"], ["jobTitle", "Functie"], ["email", "E-mailadres"], ["phone", "Telefoon"], ["role", "Contactrol (bijv. beslisser, facturatie)"]] as const;
+type ContactForm = Record<(typeof CONTACT_FIELDS)[number][0], string>;
+const EMPTY_CONTACT: ContactForm = { name: "", jobTitle: "", email: "", phone: "", role: "" };
+const ordinal = (i: number) => (i === 0 ? "Eerste contactpersoon" : i === 1 ? "Tweede contactpersoon" : i === 2 ? "Derde contactpersoon" : `${i + 1}e contactpersoon`);
+
 function Contacts({ companyId, can }: { companyId: string; can: (p: Permission) => boolean }) {
   const toast = useToast();
   const [rows, setRows] = useState<Contact[] | null>(null);
-  const [form, setForm] = useState({ name: "", jobTitle: "", email: "", phone: "", role: "" });
+  const [form, setForm] = useState<ContactForm>(EMPTY_CONTACT);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [edit, setEdit] = useState<ContactForm>(EMPTY_CONTACT);
+  const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     const r = await api<{ contacts: Contact[] }>(`/api/commercial/companies/${companyId}/contacts`);
     if (r.ok) setRows(r.data.contacts);
@@ -235,7 +243,7 @@ function Contacts({ companyId, can }: { companyId: string; can: (p: Permission) 
     e.preventDefault();
     const r = await api(`/api/commercial/companies/${companyId}/contacts`, "POST", form);
     if (r.ok) {
-      setForm({ name: "", jobTitle: "", email: "", phone: "", role: "" });
+      setForm(EMPTY_CONTACT);
       toast.success("Contactpersoon toegevoegd.");
       await load();
     } else toast.error(r.error);
@@ -245,23 +253,76 @@ function Contacts({ companyId, can }: { companyId: string; can: (p: Permission) 
     if (r.ok) await load();
     else toast.error(r.error);
   }
+  function startEdit(c: Contact) {
+    setEditing(c.id);
+    setEdit({ name: c.name, jobTitle: c.jobTitle ?? "", email: c.email ?? "", phone: c.phone ?? "", role: c.role ?? "" });
+  }
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    const r = await api(`/api/commercial/contacts/${editing}`, "PUT", edit);
+    if (r.ok) {
+      setEditing(null);
+      toast.success("Contactpersoon bijgewerkt.");
+      await load();
+    } else toast.error(r.error);
+  }
+  async function move(index: number, delta: -1 | 1) {
+    if (!rows) return;
+    const next = [...rows];
+    const [item] = next.splice(index, 1);
+    next.splice(index + delta, 0, item);
+    setBusy(true);
+    setRows(next);
+    const r = await api(`/api/commercial/companies/${companyId}/contacts`, "PUT", { order: next.map((c) => c.id) });
+    setBusy(false);
+    if (!r.ok) toast.error(r.error);
+    await load();
+  }
 
   return (
     <div className="space-y-4">
       <Card>
         <CardContent className="p-0">
           {rows === null ? <p className="p-5 text-sm text-muted-foreground">Laden…</p> : rows.length === 0 ? <p className="p-5 text-sm text-muted-foreground">Nog geen contactpersonen.</p> : (
-            <ul className="divide-y divide-border">
-              {rows.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
-                  <div>
-                    <div className="font-medium">{c.name}{c.role && <Badge className="ml-2" variant="outline">{c.role}</Badge>}</div>
-                    <div className="text-muted-foreground">{[c.jobTitle, c.email, c.phone].filter(Boolean).join(" · ") || "Geen gegevens"}</div>
-                  </div>
-                  {can("contacts:archive") && <Button variant="ghost" size="sm" onClick={() => archive(c.id)}>Archiveren</Button>}
+            <ol className="divide-y divide-border">
+              {rows.map((c, i) => (
+                <li key={c.id} className="p-4 text-sm">
+                  {editing === c.id ? (
+                    <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
+                      {CONTACT_FIELDS.map(([k, label]) => (
+                        <div key={k}>
+                          <Label htmlFor={`e-${k}`}>{label}</Label>
+                          <Input id={`e-${k}`} required={k === "name"} value={edit[k]} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} />
+                        </div>
+                      ))}
+                      <div className="flex gap-2 sm:col-span-2">
+                        <Button type="submit" size="sm">Opslaan</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(null)}>Annuleren</Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{ordinal(i)}</div>
+                        <div className="font-medium">{c.name}{c.jobTitle && <span className="font-normal text-muted-foreground"> · {c.jobTitle}</span>}{c.role && <Badge className="ml-2" variant="outline">{c.role}</Badge>}</div>
+                        <div className="text-muted-foreground">{[c.email, c.phone].filter(Boolean).join(" · ") || "Geen contactgegevens"}</div>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {can("contacts:update") && rows.length > 1 && (
+                          <>
+                            <Button variant="ghost" size="sm" disabled={busy || i === 0} aria-label={`${c.name} omhoog`} title="Omhoog" onClick={() => move(i, -1)}>↑</Button>
+                            <Button variant="ghost" size="sm" disabled={busy || i === rows.length - 1} aria-label={`${c.name} omlaag`} title="Omlaag" onClick={() => move(i, 1)}>↓</Button>
+                          </>
+                        )}
+                        {can("contacts:update") && <Button variant="ghost" size="sm" onClick={() => startEdit(c)}>Bewerken</Button>}
+                        {can("contacts:archive") && <Button variant="ghost" size="sm" onClick={() => archive(c.id)}>Archiveren</Button>}
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
         </CardContent>
       </Card>
@@ -269,8 +330,9 @@ function Contacts({ companyId, can }: { companyId: string; can: (p: Permission) 
         <Card>
           <CardHeader><CardTitle>Contactpersoon toevoegen</CardTitle></CardHeader>
           <CardContent>
+            <p className="mb-3 text-sm text-muted-foreground">Een nieuwe contactpersoon komt onderaan de volgorde. Met de pijltjes zet je iemand hoger of lager.</p>
             <form onSubmit={add} className="grid gap-3 sm:grid-cols-2">
-              {([["name", "Naam"], ["jobTitle", "Functie"], ["email", "E-mailadres"], ["phone", "Telefoon"], ["role", "Contactrol (bijv. beslisser, facturatie)"]] as const).map(([k, label]) => (
+              {CONTACT_FIELDS.map(([k, label]) => (
                 <div key={k}>
                   <Label htmlFor={`c-${k}`}>{label}</Label>
                   <Input id={`c-${k}`} required={k === "name"} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />

@@ -4,6 +4,8 @@ import { csvSafeCell } from "./csv";
 import { companyScopeWhere } from "./scope";
 import { ApiError } from "@/lib/api-guards";
 import { SPONSOR_TIERS, tierLabel } from "./sponsor-tiers";
+import { buildXlsx } from "./xlsx";
+import { CONTACT_ORDER } from "./companies.server";
 
 const CONTRACT_STATUSES = ["ACTIVE", "DRAFT", "ENDED", "CANCELLED"] as const;
 const STAGES = ["LEAD", "CONTACTED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"] as const;
@@ -103,3 +105,45 @@ export async function exportCompaniesCsv(ctx: RecordCtx) {
   return finish(lines);
 }
 
+
+const COMPANY_STATUS_LABEL: Record<string, string> = { PROSPECT: "Potentieel", ACTIVE: "Actief", FORMER: "Voormalig" };
+/** Filterwaarde voor bedrijven zonder sponsorvorm. */
+export const NO_TIER = "NONE";
+
+/**
+ * Excel-export van alle bedrijven met hun contactpersonen, optioneel gefilterd op sponsorvorm(en).
+ * Blad 1: één rij per bedrijf met contact 1, contact 2, ... naast elkaar (volgorde uit het dossier).
+ * Blad 2: één rij per contactpersoon, handig voor mailen of samenvoegen.
+ */
+export async function exportCompanyContactsXlsx(ctx: RecordCtx, tiers: string[] = []) {
+  need(ctx, "exports:export");
+  need(ctx, "companies:read");
+  need(ctx, "contacts:read");
+  const known = tiers.filter((t) => t === NO_TIER || SPONSOR_TIERS.some((s) => s.key === t));
+  const tierWhere = known.length
+    ? { OR: [...(known.some((t) => t !== NO_TIER) ? [{ sponsorTier: { in: known.filter((t) => t !== NO_TIER) } }] : []), ...(known.includes(NO_TIER) ? [{ sponsorTier: null }] : [])] }
+    : {};
+  const rows = await prisma.commercialCompany.findMany({
+    where: { archivedAt: null, ...companyScopeWhere(ctx.scope("companies"), ctx.viewer), ...tierWhere },
+    include: { contacts: { where: { archivedAt: null }, orderBy: CONTACT_ORDER } },
+    orderBy: { name: "asc" },
+  });
+  const tierRank = (t: string | null) => { const i = SPONSOR_TIERS.findIndex((s) => s.key === t); return i < 0 ? SPONSOR_TIERS.length : i; };
+  rows.sort((a, b) => tierRank(a.sponsorTier) - tierRank(b.sponsorTier) || a.name.localeCompare(b.name, "nl"));
+
+  const maxContacts = Math.max(1, ...rows.map((r) => r.contacts.length));
+  const base = ["Bedrijf", "Handelsnaam", "Sponsorvorm", "Status", "Plaats", "E-mail bedrijf", "Telefoon bedrijf", "Aantal contactpersonen"];
+  const header = [...base, ...Array.from({ length: maxContacts }, (_, i) => [`Contact ${i + 1} naam`, `Contact ${i + 1} functie`, `Contact ${i + 1} e-mail`, `Contact ${i + 1} telefoon`]).flat()];
+  const companySheet = rows.map((c) => [
+    c.name, c.tradeName, tierLabel(c.sponsorTier) ?? "", COMPANY_STATUS_LABEL[c.status] ?? c.status, c.city, c.email, c.phone, String(c.contacts.length),
+    ...c.contacts.flatMap((p) => [p.name, p.jobTitle, p.email, p.phone]),
+  ]);
+  const personSheet = rows.flatMap((c) => c.contacts.map((p, i) => [c.name, tierLabel(c.sponsorTier) ?? "", String(i + 1), p.name, p.jobTitle, p.email, p.phone, p.role]));
+
+  const file = await buildXlsx([
+    { name: "Bedrijven", header, rows: companySheet },
+    { name: "Contactpersonen", header: ["Bedrijf", "Sponsorvorm", "Volgorde", "Naam", "Functie", "E-mail", "Telefoon", "Contactrol"], rows: personSheet },
+  ]);
+  await auditRecord(ctx, { action: "export.contacts", entity: "export", entityId: known.length ? known.join(",") : "alle", after: { companies: rows.length, contacts: personSheet.length } });
+  return file;
+}
