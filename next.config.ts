@@ -38,6 +38,21 @@ const nextConfig: NextConfig = {
   // bundler worden verwerkt, maar op runtime als gewone Node-module worden
   // geladen (PSD-import, lettertype-rendering en beeldbewerking).
   serverExternalPackages: ["@napi-rs/canvas", "sharp", "ag-psd"],
+  // Houdt de functiebundels op Vercel klein (Vercel telt de bundels van elke
+  // bewaarde deployment mee als "Functions Storage"). Vercel draait op glibc-
+  // Linux, dus de musl- en wasm-varianten van canvas/sharp worden nooit
+  // geladen; Prisma gebruikt de native library-engine, niet de wasm-engines
+  // voor andere databases. Samen scheelde dit ruim 100 MB per functie.
+  outputFileTracingExcludes: {
+    "*": [
+      "node_modules/@napi-rs/canvas-linux-x64-musl/**",
+      "node_modules/@img/sharp-libvips-linuxmusl-x64/**",
+      "node_modules/@img/sharp-linuxmusl-x64/**",
+      "node_modules/@img/sharp-wasm32/**",
+      "node_modules/@prisma/client/runtime/*.wasm-base64.js",
+      "node_modules/@prisma/client/runtime/*.wasm-base64.mjs",
+    ],
+  },
   // Voorkomt dat Next.js automatisch AGENTS.md/CLAUDE.md-bestanden genereert.
   agentRules: false,
   // Het rechtenbeheer van Commerciële Zaken is samengevoegd met het gebruikersbeheer.
