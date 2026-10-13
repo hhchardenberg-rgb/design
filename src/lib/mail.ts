@@ -45,6 +45,32 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
   }
 }
 
+/**
+ * Dagelijkse herinneringsmail van Commerciële Zaken. Bevat bewust alleen taaktitels,
+ * sponsornamen en datums: geen bedragen of dossierinhoud.
+ */
+export async function sendCommercialDigestEmail(
+  to: string,
+  name: string,
+  digest: { tasks: { title: string; companyName: string | null; dueOn: string }[]; notices: { companyName: string; noticeOn: string; daysLeft: number }[] },
+): Promise<void> {
+  const resend = getClient();
+  const taskRows = digest.tasks.map((t) => `<li>${escapeHtml(t.title)}${t.companyName ? ` (${escapeHtml(t.companyName)})` : ""}, uiterlijk ${escapeHtml(t.dueOn)}</li>`).join("");
+  const noticeRows = digest.notices.map((n) => `<li>${escapeHtml(n.companyName)}: opzegdatum ${escapeHtml(n.noticeOn)} (nog ${n.daysLeft} dag${n.daysLeft === 1 ? "" : "en"})</li>`).join("");
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Herinneringen Commerciële Zaken — HHC Hardenberg Hub",
+    html: `
+      <p>Hoi ${escapeHtml(name)},</p>
+      ${taskRows ? `<p>Deze taken vragen je aandacht:</p><ul>${taskRows}</ul>` : ""}
+      ${noticeRows ? `<p>Deze opzegdata komen eraan:</p><ul>${noticeRows}</ul>` : ""}
+      <p><a href="${APP_URL}/commercieel/taken">Open Commerciële Zaken</a></p>
+    `,
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
