@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { format } from "date-fns";
-import { nl } from "date-fns/locale";
-import { ArrowRight, AlertTriangle, Pin } from "lucide-react";
+import { ArrowRight, AlertTriangle } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { AgendaEventCard } from "@/components/agenda-event-card";
+import { NewsPosts } from "@/components/news-posts";
 import { getMergedAgendaEvents } from "@/lib/agenda";
 
 export const revalidate = 900;
@@ -20,7 +19,11 @@ export default async function HubPage() {
   const [session, { events: highlightedEvents }, newsPosts] = await Promise.all([
     auth(),
     getMergedAgendaEvents({ onlyHighlighted: true, limit: 4 }),
-    prisma.newsPost.findMany({ orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 3 }),
+    prisma.newsPost.findMany({
+      orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+      take: 3,
+      include: { author: { select: { name: true } } },
+    }),
   ]);
 
   return (
@@ -105,31 +108,10 @@ export default async function HubPage() {
               Alle berichten
             </Link>
           </div>
-          <div className="flex flex-col gap-2">
-            {newsPosts.map((post) => (
-              <Card key={post.id} className={post.pinned ? "border-hhc-orange" : undefined}>
-                <CardContent className="flex gap-3 p-4">
-                  {post.imageUrl && (
-                    <div className="h-16 w-16 shrink-0 rounded bg-surface-muted bg-cover bg-center" style={{ backgroundImage: `url(${post.imageUrl})` }} />
-                  )}
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {post.pinned && (
-                        <Badge variant="primary" className="flex items-center gap-1">
-                          <Pin className="h-3 w-3" />
-                          Vastgezet
-                        </Badge>
-                      )}
-                      {post.category && <Badge variant="outline">{post.category}</Badge>}
-                      <p className="font-medium">{post.title}</p>
-                      <span className="text-xs text-muted-foreground">{format(post.createdAt, "d MMM", { locale: nl })}</span>
-                    </div>
-                    <p className="line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <NewsPosts
+            variant="dashboard"
+            posts={newsPosts.map(({ author, ...post }) => ({ ...post, authorName: author?.name ?? null }))}
+          />
         </section>
       )}
 
