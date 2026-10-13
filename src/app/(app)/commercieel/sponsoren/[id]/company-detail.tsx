@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,7 @@ interface Company {
   archivedAt: string | null;
   ownerOptions: { id: string; name: string }[];
   canChangeOwner: boolean;
+  remindersMuted: boolean;
 }
 interface Contact { id: string; name: string; jobTitle: string | null; email: string | null; phone: string | null; role: string | null; notes: string | null }
 interface Task { id: string; title: string; status: "OPEN" | "DONE"; dueAt: string | null; assigneeName: string | null; version: number }
@@ -58,6 +59,8 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
   const [company, setCompany] = useState<Company | null>(null);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
+  const [muting, setMuting] = useState(false);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     const r = await api<Company>(`/api/commercial/companies/${id}`);
@@ -78,6 +81,16 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
   }
   if (!company) return <p className="text-sm text-muted-foreground">Laden…</p>;
 
+  async function toggleMute() {
+    if (!company) return;
+    setMuting(true);
+    const r = await api(`/api/commercial/companies/${company.id}/mute`, "POST", { muted: !company.remindersMuted });
+    setMuting(false);
+    if (!r.ok) { toast.error(r.error); return; }
+    toast.success(company.remindersMuted ? "Je krijgt weer meldingen over deze sponsor." : "Deze sponsor staat voor jou op stil.");
+    setCompany({ ...company, remindersMuted: !company.remindersMuted });
+  }
+
   const tabs: { key: Tab; label: string; show: boolean }[] = [
     { key: "overview", label: "Overzicht", show: true },
     { key: "contacts", label: "Contactpersonen", show: can("contacts:read") },
@@ -96,7 +109,12 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
         {company.sponsorTier && <TierBadge tier={company.sponsorTier} />}
         {company.archivedAt && <Badge variant="outline">Gearchiveerd</Badge>}
       </div>
-      <p className="text-sm text-muted-foreground">Verantwoordelijke: {company.ownerName ?? "niemand"}</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <span>Verantwoordelijke: {company.ownerName ?? "niemand"}</span>
+        <button type="button" disabled={muting} onClick={toggleMute} className="inline-flex items-center gap-1 text-hhc-orange-dark underline disabled:opacity-50" title="Alleen voor jou: geen herinneringsmails meer over contactmomenten en opzegdata van deze sponsor.">
+          {company.remindersMuted ? <><BellOff className="h-4 w-4" /> Op stil: meldingen weer aanzetten</> : <><Bell className="h-4 w-4" /> Op stil zetten</>}
+        </button>
+      </div>
 
       <div className="flex gap-1 overflow-x-auto border-b border-border" role="tablist">
         {tabs.filter((t) => t.show).map((t) => (

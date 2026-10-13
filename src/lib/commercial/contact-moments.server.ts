@@ -78,7 +78,8 @@ export async function listContactGaps(ctx: RecordCtx, q: ContactGapQuery = {}) {
   if (q.tiers && q.tiers.length > 0) gaps = gaps.filter((g) => q.tiers!.includes(g.tier ?? NO_TIER));
   const owners = await prisma.user.findMany({ where: { id: { in: [...new Set(gaps.map((g) => g.ownerId).filter(Boolean) as string[])] } }, select: { id: true, name: true } });
   const ownerName = new Map(owners.map((o) => [o.id, o.name ?? ""]));
-  const rows = gaps.slice(0, q.pageSize ?? gaps.length).map((g) => ({ ...g, tierName: tierLabel(g.tier) ?? "Zonder vorm", ownerName: g.ownerId ? ownerName.get(g.ownerId) ?? null : null }));
+  const muted = new Set((await prisma.commercialReminderMute.findMany({ where: { userId: ctx.userId }, select: { companyId: true } })).map((m) => m.companyId));
+  const rows = gaps.slice(0, q.pageSize ?? gaps.length).map((g) => ({ ...g, tierName: tierLabel(g.tier) ?? "Zonder vorm", ownerName: g.ownerId ? ownerName.get(g.ownerId) ?? null : null, muted: muted.has(g.companyId) }));
   return { total: gaps.length, rows };
 }
 

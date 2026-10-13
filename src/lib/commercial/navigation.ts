@@ -27,7 +27,7 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     items: [
       { href: "/commercieel/sponsoren", label: "Sponsoren", description: "Dossiers, contactpersonen, historie en bestanden.", requires: "companies:read" },
       { href: "/commercieel/pijplijn", label: "Pijplijn", description: "Acquisitiekansen van eerste contact tot ondertekening.", requires: "opportunities:read" },
-      { href: "/commercieel/contactmomenten", label: "Contactmomenten", description: "Sponsoren die te lang niet gesproken zijn, met instelbare termijnen.", requires: "history:read" },
+      { href: "/commercieel/contactmomenten", label: "Contactmomenten", description: "Sponsoren die te lang niet gesproken zijn, op stil te zetten voor jezelf.", requires: "history:read" },
       { href: "/commercieel/taken", label: "Taken", description: "Afspraken en opvolging, met herinneringen per e-mail.", requires: "tasks:read" },
     ],
   },
@@ -71,6 +71,7 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     items: [
       { href: "/commercieel/instellingen/seizoenen", label: "Seizoenen en pakketten", description: "Seizoenen en sponsorpakketten met tegenprestaties.", requires: "contracts:read" },
       { href: "/commercieel/instellingen/teams", label: "CZ-teams", description: "Teams binnen Commerciële Zaken, voor het recordbereik “eigen team”.", requires: "settings:read" },
+      { href: "/commercieel/instellingen/herinneringen", label: "Herinneringen", description: "Standaardfrequentie van de herinneringsmail, termijnen voor contactmomenten en sponsoren op stil.", requires: "settings:read" },
       { href: "/commercieel/instellingen/facturatie", label: "Facturatie", description: "Gegevens van de vereniging, betaaltermijn en nummering.", requires: "settings:read" },
     ],
   },

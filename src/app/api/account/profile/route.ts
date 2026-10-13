@@ -10,6 +10,7 @@ const schema = z.object({
   phone: z.string().nullable().optional(),
   jobTitle: z.string().nullable().optional(),
   notifyCommercialDigest: z.boolean().optional(),
+  commercialDigestFrequency: z.string().nullable().optional(),
 });
 
 export async function GET() {

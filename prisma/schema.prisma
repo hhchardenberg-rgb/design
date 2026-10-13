@@ -73,8 +73,10 @@ model User {
   // Profiel: vrijwillig in te vullen door de gebruiker zelf.
   phone        String?
   jobTitle     String?
-  // Dagelijkse herinneringsmail van Commerciële Zaken; standaard aan.
+  // Herinneringsmail van Commerciële Zaken; standaard aan. false = uit (blijft zo).
   notifyCommercialDigest Boolean @default(true)
+  // Eigen frequentie (DAILY | TWICE_WEEKLY | WEEKLY | BIWEEKLY | MONTHLY | OFF); null = standaard van Commerciële Zaken.
+  commercialDigestFrequency String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1251,6 +1253,29 @@ model CommercialContactRule {
   updatedAt    DateTime @updatedAt
 
   @@map("commercial_contact_rules")
+}
+
+/// Algemene instellingen voor de herinneringsmail (één rij, id "default").
+model CommercialReminderSettings {
+  id               String   @id
+  defaultFrequency String
+  updatedById      String?
+  updatedAt        DateTime @updatedAt
+
+  @@map("commercial_reminder_settings")
+}
+
+/// Een sponsor die iemand voor zichzelf op "stil" zette: geen herinneringen meer over contactmomenten
+/// en opzegdata van die sponsor. Beheerders zien wie welke sponsor stil zette.
+model CommercialReminderMute {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@map("commercial_reminder_mutes")
 }
 
 /// Welke herinneringen al verstuurd zijn; voorkomt dubbele mails bij herhaalde cron-runs.

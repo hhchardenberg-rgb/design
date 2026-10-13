@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input, Label } from "@/components/ui/input";
 import { useToast } from "@/components/toast";
 import { api } from "@/lib/commercial/client";
+import { DIGEST_FREQUENCIES, DIGEST_FREQUENCY_LABELS, type DigestFrequency } from "@/lib/commercial/digest-frequency";
 import { formatDay } from "@/lib/date-format";
 
 interface Profile {
@@ -16,6 +17,8 @@ interface Profile {
   phone: string | null;
   jobTitle: string | null;
   notifyCommercialDigest: boolean;
+  commercialDigestFrequency: DigestFrequency | null;
+  commercialDigestDefault: DigestFrequency;
   memberSince: string;
   roles: string[];
   commercial: { member: boolean; roleName: string | null };
@@ -29,7 +32,8 @@ export function ProfileForm() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [jobTitle, setJobTitle] = useState("");
-  const [digest, setDigest] = useState(true);
+  // "" = de standaard van Commerciële Zaken volgen.
+  const [digest, setDigest] = useState<DigestFrequency | "">("");
   const [saving, setSaving] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -43,14 +47,14 @@ export function ProfileForm() {
       setName(r.data.name);
       setPhone(r.data.phone ?? "");
       setJobTitle(r.data.jobTitle ?? "");
-      setDigest(r.data.notifyCommercialDigest);
+      setDigest(r.data.commercialDigestFrequency ?? "");
     });
   }, []);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const r = await api("/api/account/profile", "PATCH", { name, phone: phone || null, jobTitle: jobTitle || null, notifyCommercialDigest: digest });
+    const r = await api("/api/account/profile", "PATCH", { name, phone: phone || null, jobTitle: jobTitle || null, commercialDigestFrequency: digest || null });
     setSaving(false);
     if (r.ok) toast.success("Profiel opgeslagen. Een gewijzigde naam zie je in de balk bovenin na opnieuw inloggen.");
     else toast.error(r.error);
@@ -99,13 +103,17 @@ export function ProfileForm() {
         <Card>
           <CardHeader><CardTitle>Voorkeuren</CardTitle></CardHeader>
           <CardContent>
-            <label className="flex items-start gap-3 text-sm">
-              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-hhc-orange" checked={digest} onChange={(e) => setDigest(e.target.checked)} />
-              <span>
-                <span className="font-medium">Dagelijkse herinneringsmail van Commerciële Zaken</span>
-                <span className="block text-muted-foreground">Een mail op de dag dat een taak van jou vervalt of een opzegtermijn nadert. Zonder bedragen.</span>
-              </span>
-            </label>
+            <div className="space-y-1 text-sm">
+              <Label htmlFor="pf-digest">Herinneringsmail van Commerciële Zaken</Label>
+              <select id="pf-digest" className="block h-10 w-full max-w-sm rounded-md border border-border bg-surface px-2 text-sm" value={digest} onChange={(e) => setDigest(e.target.value as DigestFrequency | "")}>
+                <option value="">Standaard ({DIGEST_FREQUENCY_LABELS[profile.commercialDigestDefault].label.toLowerCase()})</option>
+                {DIGEST_FREQUENCIES.map((f) => <option key={f} value={f}>{DIGEST_FREQUENCY_LABELS[f].label}</option>)}
+              </select>
+              <p className="text-muted-foreground">
+                {DIGEST_FREQUENCY_LABELS[digest || profile.commercialDigestDefault].hint}
+                {(digest || profile.commercialDigestDefault) !== "OFF" && " Met taken van jou die verlopen zijn of eraan komen, naderende opzegdata en sponsoren die te lang niet gesproken zijn. Alleen als er iets is, en zonder bedragen."}
+              </p>
+            </div>
           </CardContent>
         </Card>
 

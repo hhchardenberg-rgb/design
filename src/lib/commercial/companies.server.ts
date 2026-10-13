@@ -209,7 +209,8 @@ export async function getCompany(ctx: RecordCtx, id: string) {
   const ownerOptions = canChangeOwner
     ? (await prisma.commercialMembership.findMany({ include: { user: { select: { id: true, name: true } } } })).map((m) => ({ id: m.user.id, name: m.user.name }))
     : [];
-  return { ...company, ownerName: owner?.name ?? null, ownerOptions, canChangeOwner };
+  const remindersMuted = (await prisma.commercialReminderMute.count({ where: { userId: ctx.userId, companyId: id } })) > 0;
+  return { ...company, ownerName: owner?.name ?? null, ownerOptions, canChangeOwner, remindersMuted };
 }
 
 export async function updateCompany(

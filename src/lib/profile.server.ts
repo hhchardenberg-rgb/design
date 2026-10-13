@@ -3,12 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { ASSIGNABLE_ROLES, effectiveRoles } from "@/lib/roles";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
+import { effectiveDigestFrequency, isDigestFrequency } from "@/lib/commercial/digest-frequency";
+import { loadDefaultDigestFrequency } from "@/lib/commercial/reminder-settings.server";
 
 export interface ProfileInput {
   name?: string;
   phone?: string | null;
   jobTitle?: string | null;
   notifyCommercialDigest?: boolean;
+  /** Eigen frequentie van de herinneringsmail; null = standaard van Commerciële Zaken volgen. */
+  commercialDigestFrequency?: string | null;
 }
 
 const optional = (v: string | null | undefined, max: number, what: string): string | null | undefined => {
@@ -22,11 +26,12 @@ const optional = (v: string | null | undefined, max: number, what: string): stri
 export async function getProfile(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, role: true, roles: true, phone: true, jobTitle: true, notifyCommercialDigest: true, createdAt: true, totpCredential: { select: { id: true } }, webauthnCredentials: { select: { id: true } } },
+    select: { id: true, name: true, email: true, role: true, roles: true, phone: true, jobTitle: true, notifyCommercialDigest: true, commercialDigestFrequency: true, createdAt: true, totpCredential: { select: { id: true } }, webauthnCredentials: { select: { id: true } } },
   });
   if (!user) throw new ApiError(404, "Account niet gevonden.");
   const roles = effectiveRoles(user);
   const access = await loadCommercialAccess(userId).catch(() => null);
+  const defaultFrequency = await loadDefaultDigestFrequency();
   const membership = access?.isMember ? await prisma.commercialMembership.findUnique({ where: { userId }, select: { role: { select: { name: true } } } }) : null;
   return {
     id: user.id,
@@ -35,6 +40,10 @@ export async function getProfile(userId: string) {
     phone: user.phone,
     jobTitle: user.jobTitle,
     notifyCommercialDigest: user.notifyCommercialDigest,
+    // Eigen keuze (null = standaard volgen); wie de mail vroeger uitvinkte, staat op "uit".
+    commercialDigestFrequency: user.notifyCommercialDigest ? (isDigestFrequency(user.commercialDigestFrequency) ? user.commercialDigestFrequency : null) : "OFF",
+    commercialDigestDefault: defaultFrequency,
+    commercialDigestEffective: effectiveDigestFrequency(user, defaultFrequency),
     memberSince: user.createdAt.toISOString(),
     roles: roles.map((r) => ASSIGNABLE_ROLES.find((d) => d.value === r)?.label ?? r),
     commercial: access?.isMember ? { member: true, roleName: roles.includes("ADMIN") ? "Volledige toegang (hoofdadmin)" : (membership?.role?.name ?? null) } : { member: false, roleName: null },
@@ -43,7 +52,7 @@ export async function getProfile(userId: string) {
 }
 
 export async function updateProfile(userId: string, input: ProfileInput) {
-  const data: { name?: string; phone?: string | null; jobTitle?: string | null; notifyCommercialDigest?: boolean } = {};
+  const data: { name?: string; phone?: string | null; jobTitle?: string | null; notifyCommercialDigest?: boolean; commercialDigestFrequency?: string | null } = {};
   if (input.name !== undefined) {
     const name = input.name.trim();
     if (!name) throw new ApiError(400, "Naam is verplicht.");
@@ -58,6 +67,13 @@ export async function updateProfile(userId: string, input: ProfileInput) {
   const jobTitle = optional(input.jobTitle, 80, "Functie");
   if (jobTitle !== undefined) data.jobTitle = jobTitle;
   if (input.notifyCommercialDigest !== undefined) data.notifyCommercialDigest = !!input.notifyCommercialDigest;
+  if (input.commercialDigestFrequency !== undefined) {
+    const f = input.commercialDigestFrequency;
+    if (f !== null && !isDigestFrequency(f)) throw new ApiError(400, "Onbekende frequentie voor de herinneringsmail.");
+    // "Uit" blijft ook in het oude vinkje staan, zodat uit altijd uit is.
+    data.commercialDigestFrequency = f === "OFF" ? null : f;
+    data.notifyCommercialDigest = f !== "OFF";
+  }
   if (Object.keys(data).length === 0) throw new ApiError(400, "Er is niets om op te slaan.");
   await prisma.user.update({ where: { id: userId }, data });
 }
