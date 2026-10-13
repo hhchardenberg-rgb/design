@@ -79,6 +79,14 @@ bedragen, adressen of berichttekst.
    afvinken, status (gepland, bezig, vervallen) en een markering "te laat" na de einddatum.
 9. **Rapportages**: kies een seizoen; exporteren kan als je het exportrecht hebt.
 
+## Sponsorvormen
+
+Elke sponsor kan een **sponsorvorm** hebben: Hoofd, Platina, Goud, Zilver of Overig (kies hem in het dossier of bij Nieuw bedrijf).
+De vorm staat als aparte kolom in Sponsoren en Contracten, waar je er ook op filtert (meerdere vormen tegelijk, of "Zonder vorm").
+Rapportages tonen lopende contracten per sponsorvorm, de exports bevatten de vorm, en de import herkent een kolom "Sponsorvorm".
+Bij Mailings kies je welke sponsorvormen de mailing krijgen (leeg = alle vormen). Dat staat los van het vrije veld "Overige
+categorie", dat voor eigen indelingen blijft bestaan.
+
 ## 4. Beheer
 
 - **Toegang en rechten**: alles staat bij Beheer > Gebruikers en rechten (hoofdadmin; beheerders per onderdeel zien alleen hun eigen onderdeel). In de kaart van een
@@ -164,7 +172,7 @@ bedragen, adressen of berichttekst.
 
 ## 8. Tests
 
-`npm test` draait 60 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
+`npm test` draait 62 tests. De integratietests vragen een Postgres via `TEST_DATABASE_URL` en worden anders
 overgeslagen. Gedekt: rechtenmodel en delegatie, bereik (eigen/team/alles) en lekken via dubbelencontrole,
 financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versiecontrole, bestanden, import en
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),

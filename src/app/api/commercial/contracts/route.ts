@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     listContracts(ctx, {
       companyId: p.get("companyId") || undefined,
       seasonId: p.get("seasonId") || undefined,
+      tiers: p.get("tiers")?.split(",").filter(Boolean),
       status: status && (CONTRACT_STATUSES as readonly string[]).includes(status) ? (status as ContractStatus) : undefined,
       expiringWithinDays: num(p.get("expiring")),
       page: num(p.get("page")),

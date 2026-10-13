@@ -3,12 +3,13 @@ import { ApiError } from "@/lib/api-guards";
 import { auditRecord, need, type RecordCtx } from "./ctx.server";
 import { companyScopeWhere } from "./scope";
 import { normalizeEmail } from "./mail-security";
+import { isSponsorTier, SPONSOR_TIER_KEYS } from "./sponsor-tiers";
 
 export const MAX_RECIPIENTS = 500;
 const COMPANY_STATUSES = ["PROSPECT", "ACTIVE", "FORMER"];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export interface MailingInput { subject: string; bodyText: string; audienceStatus?: string | null }
+export interface MailingInput { subject: string; bodyText: string; audienceStatus?: string | null; /** Leeg of weggelaten = alle sponsorvormen (ook dossiers zonder vorm). */ audienceTiers?: string[] }
 export interface OutgoingMail { to: string; name: string | null; subject: string; bodyText: string }
 export type MailSender = (mail: OutgoingMail) => Promise<{ providerMessageId: string | null }>;
 
@@ -18,7 +19,9 @@ function clean(input: MailingInput) {
   if (!subject || subject.length > 200) throw new ApiError(400, "Geef een onderwerp op (maximaal 200 tekens).");
   if (!bodyText || bodyText.length > 20_000) throw new ApiError(400, "Schrijf een bericht (maximaal 20.000 tekens).");
   if (input.audienceStatus && !COMPANY_STATUSES.includes(input.audienceStatus)) throw new ApiError(400, "Onbekende dossierstatus.");
-  return { subject, bodyText, audienceStatus: input.audienceStatus || null };
+  const audienceTiers = [...new Set(input.audienceTiers ?? [])];
+  if (audienceTiers.some((t) => !isSponsorTier(t))) throw new ApiError(400, `Onbekende sponsorvorm. Kies uit: ${SPONSOR_TIER_KEYS.join(", ")}.`);
+  return { subject, bodyText, audienceStatus: input.audienceStatus || null, audienceTiers };
 }
 
 /** Ontvangers worden alleen getoond (en geteld) voor dossiers binnen het eigen bereik. */
@@ -39,7 +42,7 @@ export async function listMailings(ctx: RecordCtx) {
   const visible = await visibleCompanyIds(ctx);
   return Promise.all(rows.map(async (m) => {
     const groups = await prisma.commercialMailingRecipient.groupBy({ by: ["status"], where: { mailingId: m.id, companyId: { in: visible } }, _count: true });
-    return { id: m.id, subject: m.subject, status: m.status, audienceStatus: m.audienceStatus, sentAt: m.sentAt, createdAt: m.createdAt, counts: Object.fromEntries(groups.map((g) => [g.status, g._count])) };
+    return { id: m.id, subject: m.subject, status: m.status, audienceStatus: m.audienceStatus, audienceTiers: m.audienceTiers, sentAt: m.sentAt, createdAt: m.createdAt, counts: Object.fromEntries(groups.map((g) => [g.status, g._count])) };
   }));
 }
 
@@ -51,7 +54,7 @@ export async function getMailing(ctx: RecordCtx, id: string) {
     orderBy: { email: "asc" },
     select: { id: true, companyId: true, email: true, name: true, status: true, error: true, sentAt: true, deliveredAt: true, openedAt: true },
   });
-  return { id: m.id, subject: m.subject, bodyText: m.bodyText, audienceStatus: m.audienceStatus, status: m.status, version: m.version, sentAt: m.sentAt, recipients };
+  return { id: m.id, subject: m.subject, bodyText: m.bodyText, audienceStatus: m.audienceStatus, audienceTiers: m.audienceTiers, status: m.status, version: m.version, sentAt: m.sentAt, recipients };
 }
 
 export async function createMailing(ctx: RecordCtx, input: MailingInput) {
@@ -83,7 +86,7 @@ export async function prepareRecipients(ctx: RecordCtx, id: string) {
     where: {
       archivedAt: null,
       email: { not: null },
-      company: { ...companyScopeWhere(ctx.scope("companies"), ctx.viewer), archivedAt: null, ...(m.audienceStatus ? { status: m.audienceStatus } : {}) },
+      company: { ...companyScopeWhere(ctx.scope("companies"), ctx.viewer), archivedAt: null, ...(m.audienceStatus ? { status: m.audienceStatus } : {}), ...(m.audienceTiers.length ? { sponsorTier: { in: m.audienceTiers } } : {}) },
     },
     select: { id: true, companyId: true, email: true, name: true },
     orderBy: { createdAt: "asc" },

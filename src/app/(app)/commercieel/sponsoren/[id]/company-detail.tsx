@@ -10,6 +10,7 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { useStableToast as useToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate, toLocalInput } from "@/lib/commercial/client";
 import type { Permission } from "@/lib/commercial/permissions";
+import { TierBadge, TierSelect } from "@/components/commercial/sponsor-tier";
 import { FilesTab } from "./files-tab";
 import { MergePanel } from "./merge-panel";
 import { ContractsTab } from "./contracts-tab";
@@ -35,6 +36,7 @@ interface Company {
   industry: string | null;
   tags: string[];
   sponsorCategory: string | null;
+  sponsorTier: string | null;
   source: string | null;
   internalNotes: string | null;
   ownerId: string | null;
@@ -93,6 +95,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">{company.name}</h1>
         <Badge variant={company.status === "ACTIVE" ? "success" : company.status === "PROSPECT" ? "primary" : "outline"}>{STATUS[company.status] ?? company.status}</Badge>
+        {company.sponsorTier && <TierBadge tier={company.sponsorTier} />}
         {company.archivedAt && <Badge variant="outline">Gearchiveerd</Badge>}
       </div>
       <p className="text-sm text-muted-foreground">Verantwoordelijke: {company.ownerName ?? "niemand"}</p>
@@ -119,7 +122,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
 const FIELD_LABELS: [keyof Company, string][] = [
   ["name", "Bedrijfsnaam"], ["tradeName", "Handelsnaam"], ["street", "Adres"], ["postalCode", "Postcode"], ["city", "Plaats"], ["country", "Land"],
   ["website", "Website"], ["email", "Algemeen e-mailadres"], ["phone", "Telefoon"], ["kvkNumber", "KvK-nummer"], ["vatNumber", "Btw-nummer"],
-  ["billingName", "Factuur t.a.v."], ["billingEmail", "Factuur e-mailadres"], ["industry", "Branche"], ["sponsorCategory", "Sponsorcategorie"], ["source", "Herkomst van de relatie"],
+  ["billingName", "Factuur t.a.v."], ["billingEmail", "Factuur e-mailadres"], ["industry", "Branche"], ["sponsorCategory", "Overige categorie (vrije tekst)"], ["source", "Herkomst van de relatie"],
 ];
 
 function Overview({ company, canEdit, canArchive, onSaved }: { company: Company; canEdit: boolean; canArchive: boolean; onSaved: () => Promise<void> }) {
@@ -130,6 +133,7 @@ function Overview({ company, canEdit, canArchive, onSaved }: { company: Company;
     const f: Record<string, string> = {};
     for (const [k] of FIELD_LABELS) f[k] = (company[k] as string | null) ?? "";
     f.status = company.status;
+    f.sponsorTier = company.sponsorTier ?? "";
     f.billingAddress = company.billingAddress ?? "";
     f.internalNotes = company.internalNotes ?? "";
     f.tags = company.tags.join(", ");
@@ -141,6 +145,7 @@ function Overview({ company, canEdit, canArchive, onSaved }: { company: Company;
     e.preventDefault();
     setSaving(true);
     const body: Record<string, unknown> = { version: company.version, ...form, tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean) };
+    body.sponsorTier = form.sponsorTier || null;
     delete body.ownerId;
     if (company.canChangeOwner && form.ownerId !== (company.ownerId ?? "")) body.ownerId = form.ownerId || null;
     const r = await api(`/api/commercial/companies/${company.id}`, "PUT", body);
@@ -174,6 +179,10 @@ function Overview({ company, canEdit, canArchive, onSaved }: { company: Company;
             <select id="f-status" className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm disabled:opacity-60" value={form.status ?? ""} onChange={set("status")} disabled={!canEdit}>
               {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
+          </div>
+          <div>
+            <Label htmlFor="f-tier">Sponsorvorm</Label>
+            <TierSelect id="f-tier" value={form.sponsorTier ?? ""} onChange={(v) => setForm((f) => ({ ...f, sponsorTier: v }))} disabled={!canEdit} />
           </div>
           <div>
             <Label htmlFor="f-owner">Verantwoordelijke</Label>

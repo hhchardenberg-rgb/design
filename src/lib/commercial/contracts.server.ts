@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { auditRecord, need, notFound, type RecordCtx } from "./ctx.server";
 import { visibleCompany } from "./companies.server";
 import { companyScopeWhere } from "./scope";
+import { isSponsorTier } from "./sponsor-tiers";
 
 export const SEASON_STATUSES = ["DRAFT", "ACTIVE", "CLOSED"] as const;
 export const CONTRACT_STATUSES = ["DRAFT", "ACTIVE", "ENDED", "CANCELLED"] as const;
@@ -117,10 +118,10 @@ type Snapshot = NonNullable<Awaited<ReturnType<typeof snapshotOf>>>;
 
 // --- Contracten --------------------------------------------------------------
 
-type ContractRow = Prisma.CommercialContractGetPayload<{ include: { season: true; package: true; company: { select: { name: true } } } }>;
+type ContractRow = Prisma.CommercialContractGetPayload<{ include: { season: true; package: true; company: { select: { name: true; sponsorTier: true } } } }>;
 function present(ctx: RecordCtx, c: ContractRow) {
   return {
-    id: c.id, companyId: c.companyId, companyName: c.company.name, seasonId: c.seasonId, seasonName: c.season.name,
+    id: c.id, companyId: c.companyId, companyName: c.company.name, sponsorTier: c.company.sponsorTier, seasonId: c.seasonId, seasonName: c.season.name,
     packageId: c.packageId, packageName: c.package?.name ?? (c.packageSnapshot as Snapshot | null)?.name ?? null,
     status: c.status, startsOn: iso(c.startsOn), endsOn: iso(c.endsOn), renewalOn: iso(c.renewalOn), noticeUntil: iso(c.noticeUntil),
     autoRenew: c.autoRenew, notes: c.notes, packageSnapshot: c.packageSnapshot, renewedFromId: c.renewedFromId,
@@ -129,7 +130,7 @@ function present(ctx: RecordCtx, c: ContractRow) {
     amountCents: canSeeAmounts(ctx) ? c.amountCents : null,
   };
 }
-const INCLUDE = { season: true, package: true, company: { select: { name: true } } } as const;
+const INCLUDE = { season: true, package: true, company: { select: { name: true, sponsorTier: true } } } as const;
 
 async function visibleContract(ctx: RecordCtx, id: string) {
   const c = await prisma.commercialContract.findUnique({ where: { id }, include: INCLUDE });
@@ -141,6 +142,8 @@ async function visibleContract(ctx: RecordCtx, id: string) {
 export interface ContractListQuery {
   companyId?: string;
   seasonId?: string;
+  /** Alleen contracten van sponsoren met een van deze sponsorvormen. */
+  tiers?: string[];
   status?: ContractStatus;
   /** Contracten die binnen dit aantal dagen aflopen of opgezegd moeten worden. */
   expiringWithinDays?: number;
@@ -154,7 +157,7 @@ export async function listContracts(ctx: RecordCtx, q: ContractListQuery) {
   const horizon = q.expiringWithinDays ? new Date(Date.now() + q.expiringWithinDays * 86_400_000) : null;
   const where: Prisma.CommercialContractWhereInput = {
     archivedAt: null,
-    company: companyScopeWhere(ctx.scope("companies"), ctx.viewer),
+    company: { ...companyScopeWhere(ctx.scope("companies"), ctx.viewer), ...(q.tiers?.length ? { AND: [{ sponsorTier: { in: q.tiers.filter(isSponsorTier) } }] } : {}) },
     ...(q.companyId ? { companyId: q.companyId } : {}),
     ...(q.seasonId ? { seasonId: q.seasonId } : {}),
     ...(q.status ? { status: q.status } : {}),

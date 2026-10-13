@@ -7,10 +7,12 @@ import { Input, Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { api, formatDate } from "@/lib/commercial/client";
 import { renderMailing } from "@/lib/commercial/mail-render";
+import { TierFilter } from "@/components/commercial/sponsor-tier";
+import { tierLabel } from "@/lib/commercial/sponsor-tiers";
 
-interface Row { id: string; subject: string; status: string; sentAt: string | null; createdAt: string; counts: Record<string, number> }
+interface Row { id: string; subject: string; audienceTiers: string[]; status: string; sentAt: string | null; createdAt: string; counts: Record<string, number> }
 interface Recipient { id: string; email: string; name: string | null; status: string; error: string | null }
-interface Detail { id: string; subject: string; bodyText: string; audienceStatus: string | null; status: string; version: number; recipients: Recipient[] }
+interface Detail { id: string; subject: string; bodyText: string; audienceStatus: string | null; audienceTiers: string[]; status: string; version: number; recipients: Recipient[] }
 
 const STATUS: Record<string, string> = { DRAFT: "Concept", SENDING: "Wordt verstuurd", SENT: "Verstuurd" };
 const R_STATUS: Record<string, string> = { PENDING: "Wacht", SENDING: "Bezig", SENT: "Verstuurd", DELIVERED: "Afgeleverd", BOUNCED: "Gebounced", COMPLAINED: "Klacht", FAILED: "Mislukt", SKIPPED: "Overgeslagen" };
@@ -48,6 +50,7 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [audience, setAudience] = useState("");
+  const [tiers, setTiers] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [testTo, setTestTo] = useState("");
@@ -67,12 +70,13 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
     setSubject(r.data.subject);
     setBodyText(r.data.bodyText);
     setAudience(r.data.audienceStatus ?? "");
+    setTiers(r.data.audienceTiers ?? []);
   }
-  function startNew() { setDetail(null); setSubject(""); setBodyText(""); setAudience(""); }
+  function startNew() { setDetail(null); setSubject(""); setBodyText(""); setAudience(""); setTiers([]); }
 
   async function save() {
     setBusy(true);
-    const payload = { subject, bodyText, audienceStatus: audience || null };
+    const payload = { subject, bodyText, audienceStatus: audience || null, audienceTiers: tiers };
     const r = detail ? await api(`/api/commercial/mailings/${detail.id}`, "PUT", { ...payload, version: detail.version }) : await api<{ id: string }>("/api/commercial/mailings", "POST", payload);
     setBusy(false);
     if (!r.ok) { toast.error(r.error); return; }
@@ -118,7 +122,7 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
                 {rows.map((r) => (
                   <li key={r.id}><button className="w-full py-2 text-left hover:underline" onClick={() => open(r.id)}>
                     <span className="font-medium">{r.subject}</span><br />
-                    <span className="text-xs text-muted-foreground">{STATUS[r.status] ?? r.status} · {formatDate(r.sentAt ?? r.createdAt)}{Object.keys(r.counts).length ? " · " + Object.entries(r.counts).map(([k, v]) => `${v} ${R_STATUS[k]?.toLowerCase() ?? k}`).join(", ") : ""}</span>
+                    <span className="text-xs text-muted-foreground">{STATUS[r.status] ?? r.status} · {formatDate(r.sentAt ?? r.createdAt)}{r.audienceTiers?.length ? " · " + r.audienceTiers.map((t) => tierLabel(t) ?? t).join(", ") : ""}{Object.keys(r.counts).length ? " · " + Object.entries(r.counts).map(([k, v]) => `${v} ${R_STATUS[k]?.toLowerCase() ?? k}`).join(", ") : ""}</span>
                   </button></li>
                 ))}
               </ul>
@@ -135,6 +139,9 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
               <select id="ml-aud" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={audience} disabled={!draft} onChange={(e) => setAudience(e.target.value)}>
                 <option value="">Alle dossiers binnen mijn bereik</option><option value="ACTIVE">Alleen actieve sponsoren</option><option value="PROSPECT">Alleen prospects</option><option value="FORMER">Alleen oud-sponsoren</option>
               </select></div>
+            <div>
+              <TierFilter label="Sponsorvorm (leeg = alle vormen)" value={tiers} onChange={setTiers} disabled={!draft} />
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" disabled={!bodyText.trim()} onClick={() => setPreviewing(true)}>Voorbeeld bekijken</Button>
               {draft && (detail ? canUpdate : canCreate) && <Button disabled={busy || !subject.trim() || !bodyText.trim()} onClick={save}>Opslaan</Button>}

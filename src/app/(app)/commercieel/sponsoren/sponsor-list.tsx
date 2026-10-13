@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useToast } from "@/components/toast";
 import { api, formatDate } from "@/lib/commercial/client";
+import { TierBadge, TierFilter, TierSelect } from "@/components/commercial/sponsor-tier";
 
 interface Row {
   id: string;
@@ -19,6 +20,7 @@ interface Row {
   city: string | null;
   ownerName: string | null;
   tags: string[];
+  sponsorTier: string | null;
   lastContactAt: string | null;
   openTasks: number;
   nextActionDue: string | null;
@@ -43,8 +45,9 @@ interface Filters {
   mine: boolean;
   noAction: boolean;
   archived: boolean;
+  tiers: string[];
 }
-const EMPTY: Filters = { q: "", status: "", mine: false, noAction: false, archived: false };
+const EMPTY: Filters = { q: "", status: "", mine: false, noAction: false, archived: false, tiers: [] };
 const PRESETS: { label: string; filters: Filters }[] = [
   { label: "Alle sponsoren", filters: EMPTY },
   { label: "Mijn sponsoren", filters: { ...EMPTY, mine: true } },
@@ -55,7 +58,8 @@ const SAVED_KEY = "commercieel.sponsoren.filters";
 
 function loadSaved(): { name: string; filters: Filters }[] {
   try {
-    return JSON.parse(localStorage.getItem(SAVED_KEY) ?? "[]");
+    const rows = JSON.parse(localStorage.getItem(SAVED_KEY) ?? "[]") as { name: string; filters: Partial<Filters> }[];
+    return rows.map((r) => ({ name: r.name, filters: { ...EMPTY, ...r.filters } }));
   } catch {
     return [];
   }
@@ -84,6 +88,7 @@ export function SponsorList({ canCreate }: { canCreate: boolean }) {
     if (filters.mine) p.set("mine", "1");
     if (filters.noAction) p.set("noAction", "1");
     if (filters.archived) p.set("archived", "1");
+    if (filters.tiers.length) p.set("tiers", filters.tiers.join(","));
     const r = await api<ListResult>(`/api/commercial/companies?${p}`);
     setLoading(false);
     if (r.ok) {
@@ -175,6 +180,7 @@ export function SponsorList({ canCreate }: { canCreate: boolean }) {
             ))}
           </select>
         </div>
+        <TierFilter allowNone value={filters.tiers} onChange={(tiers) => apply({ ...filters, tiers })} />
         <Button variant="outline" size="sm" onClick={saveCurrent}>Selectie opslaan</Button>
       </div>
 
@@ -182,11 +188,12 @@ export function SponsorList({ canCreate }: { canCreate: boolean }) {
 
       <Card>
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full min-w-[44rem] text-sm">
+          <table className="w-full min-w-[48rem] text-sm">
             <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 {sortHead("name", "Sponsor")}
                 {sortHead("status", "Status")}
+                <th scope="col" className="px-3 py-2 text-left font-medium">Vorm</th>
                 {sortHead("city", "Plaats")}
                 <th scope="col" className="px-3 py-2 text-left font-medium">Verantwoordelijke</th>
                 <th scope="col" className="px-3 py-2 text-left font-medium">Laatste contact</th>
@@ -201,6 +208,7 @@ export function SponsorList({ canCreate }: { canCreate: boolean }) {
                     {r.tradeName && <div className="text-xs text-muted-foreground">{r.tradeName}</div>}
                   </td>
                   <td className="px-3 py-2"><Badge variant={STATUS[r.status]?.variant ?? "outline"}>{STATUS[r.status]?.label ?? r.status}</Badge></td>
+                  <td className="px-3 py-2"><TierBadge tier={r.sponsorTier} /></td>
                   <td className="px-3 py-2">{r.city ?? "–"}</td>
                   <td className="px-3 py-2">{r.ownerName ?? "–"}</td>
                   <td className="px-3 py-2">{formatDate(r.lastContactAt)}</td>
@@ -211,13 +219,13 @@ export function SponsorList({ canCreate }: { canCreate: boolean }) {
               ))}
               {data && data.rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
-                    {filters.q || filters.status || filters.mine || filters.noAction ? "Geen sponsoren gevonden voor deze selectie." : "Er zijn nog geen sponsoren. Voeg het eerste bedrijf toe."}
+                  <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                    {filters.q || filters.status || filters.mine || filters.noAction || filters.tiers.length ? "Geen sponsoren gevonden voor deze selectie." : "Er zijn nog geen sponsoren. Voeg het eerste bedrijf toe."}
                   </td>
                 </tr>
               )}
               {!data && loading && (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">Laden…</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Laden…</td></tr>
               )}
             </tbody>
           </table>
@@ -245,6 +253,7 @@ function NewCompany({ onCancel }: { onCancel: () => void }) {
   const [city, setCity] = useState("");
   const [kvk, setKvk] = useState("");
   const [status, setStatus] = useState("PROSPECT");
+  const [tier, setTier] = useState("");
   const [dups, setDups] = useState<{ visible: { id: string; name: string; city: string | null; archived: boolean }[]; hiddenCount: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -257,7 +266,7 @@ function NewCompany({ onCancel }: { onCancel: () => void }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const r = await api<{ id: string }>("/api/commercial/companies", "POST", { name, city: city || null, kvkNumber: kvk || null, status });
+    const r = await api<{ id: string }>("/api/commercial/companies", "POST", { name, city: city || null, kvkNumber: kvk || null, status, sponsorTier: tier || null });
     setSaving(false);
     if (r.ok) {
       toast.success("Bedrijf aangemaakt.");
@@ -289,6 +298,10 @@ function NewCompany({ onCancel }: { onCancel: () => void }) {
               <select id="nc-status" className="h-10 w-full rounded-md border border-border bg-surface px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
                 {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
+            </div>
+            <div>
+              <Label htmlFor="nc-tier">Sponsorvorm</Label>
+              <TierSelect id="nc-tier" value={tier} onChange={setTier} />
             </div>
           </div>
           {dups && (dups.visible.length > 0 || dups.hiddenCount > 0) && (
