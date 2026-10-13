@@ -1,3 +1,4 @@
+import { formatDay, formatDayTime } from "@/lib/date-format";
 // Kleine fetch-hulp voor de commerciële schermen. Toont de foutmelding van de server
 // letterlijk (die is bedoeld voor gebruikers) en meldt nooit succes bij een mislukte aanvraag.
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; status: number };
@@ -19,15 +20,9 @@ export async function api<T = unknown>(url: string, method = "GET", body?: unkno
   }
 }
 
+/** Altijd dd/mm/jjjj (met tijd: dd/mm/jjjj uu:mm), zie src/lib/date-format.ts. */
 export function formatDate(iso: string | null | undefined, withTime = false): string {
-  if (!iso) return "–";
-  return new Date(iso).toLocaleString("nl-NL", {
-    timeZone: "Europe/Amsterdam",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-  });
+  return withTime ? formatDayTime(iso) : formatDay(iso);
 }
 
 /** Waarde voor <input type="datetime-local"> in Nederlandse tijd. */

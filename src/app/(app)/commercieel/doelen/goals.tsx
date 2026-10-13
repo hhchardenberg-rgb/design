@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
-import { api, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { api, formatDate, formatEuro, parseEuro } from "@/lib/commercial/client";
+import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 
-interface Season { id: string; name: string; status: string }
+interface Season { id: string; name: string; startsOn: string; endsOn: string; status: string }
 interface Standing { missingCents: number; forecastCents: number; shortfallCents: number; progressPercent: number }
 interface Row { key: string; name: string; contractCount: number; opportunityCount: number; targetCents: number | null; realisedCents: number | null; draftCents: number | null; pipelineWeightedCents: number | null; standing: Standing | null }
 interface Data {
@@ -75,7 +76,7 @@ export function Goals({ canEdit }: { canEdit: boolean }) {
         <CardContent className="pt-5">
           <label htmlFor="goal-season" className="text-sm font-medium">Seizoen</label>
           <select id="goal-season" className="block h-10 rounded-md border border-border bg-surface px-2 text-sm" value={seasonId} onChange={(e) => { setSeasonId(e.target.value); setData(null); }}>
-            <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <option value="">Kies…</option>{seasons.map((s) => <option key={s.id} value={s.id}>{seasonOptionLabel(s)}</option>)}
           </select>
         </CardContent>
       </Card>
@@ -136,7 +137,7 @@ export function Goals({ canEdit }: { canEdit: boolean }) {
         <Card>
           <CardHeader><CardTitle>Hoe de pijplijn wordt meegeteld</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>Open kansen met een verwachte sluitdatum binnen dit seizoen ({data.season.startsOn} t/m {data.season.endsOn}) tellen mee, gewogen naar fase. Dit zijn schattingen, geen toezeggingen: {data.weights.map((w) => `${STAGE[w.stage] ?? w.stage} ${w.percent}%`).join(", ")}.</p>
+            <p>Open kansen met een verwachte sluitdatum binnen dit seizoen ({formatDate(data.season.startsOn)} t/m {formatDate(data.season.endsOn)}) tellen mee, gewogen naar fase. Dit zijn schattingen, geen toezeggingen: {data.weights.map((w) => `${STAGE[w.stage] ?? w.stage} ${w.percent}%`).join(", ")}.</p>
             {data.notes.undatedOpportunities > 0 && <p>{data.notes.undatedOpportunities} open kans(en) hebben nog geen verwachte sluitdatum en tellen niet mee.</p>}
             {data.notes.opportunitiesWithoutAmount > 0 && <p>{data.notes.opportunitiesWithoutAmount} kans(en) in dit seizoen hebben nog geen verwacht bedrag en tellen niet mee.</p>}
           </CardContent>

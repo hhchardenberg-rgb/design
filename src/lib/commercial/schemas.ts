@@ -38,6 +38,8 @@ export const contactSchema = z.object({
   notes: z.string().max(2000).nullish(),
 });
 
+export const contactOrderSchema = z.object({ order: z.array(z.string().min(1)).max(500) });
+
 export const taskSchema = z.object({
   title: z.string().trim().min(1, "Geef de taak een titel.").max(200),
   description: z.string().trim().max(2000).nullish(),

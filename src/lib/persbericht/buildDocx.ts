@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
+import { formatDay } from "@/lib/date-format";
 
 export interface PersberichtData {
   title: string;
@@ -116,9 +117,7 @@ function withFreshRevisionIds(paragraphXml: string): string {
 }
 
 function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" })
-    .format(date)
-    .replace(/\//g, "-");
+  return formatDay(date);
 }
 
 /**

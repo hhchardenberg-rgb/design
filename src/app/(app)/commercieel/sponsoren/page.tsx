@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function SponsorsPage() {
   const a = await pageAccess("companies:read");
   if (!a.allowed) return <NoAccess what="de sponsoren" />;
-  return <SponsorList canCreate={a.permissions.includes("companies:create")} />;
+  return <SponsorList canCreate={a.permissions.includes("companies:create")} canExportContacts={a.permissions.includes("exports:export") && a.permissions.includes("contacts:read")} />;
 }

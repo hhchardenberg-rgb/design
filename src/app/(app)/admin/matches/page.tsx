@@ -160,7 +160,7 @@ export default function AdminMatchesPage() {
                 {m.isHome ? m.team.name : m.opponent.name} – {m.isHome ? m.opponent.name : m.team.name}
               </span>
               <span className="ml-2 text-muted-foreground">
-                {format(new Date(m.date), "d MMM yyyy, HH:mm", { locale: nl })}
+                {format(new Date(m.date), "dd/MM/yyyy, HH:mm", { locale: nl })}
               </span>
             </div>
             <div className="flex items-center gap-2">

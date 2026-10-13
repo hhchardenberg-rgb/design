@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function ReportsPage() {
   const a = await pageAccess("reports:read");
   if (!a.allowed) return <NoAccess what="de rapportages" />;
-  return <Reports canExport={a.permissions.includes("exports:export")} canCompanies={a.permissions.includes("companies:read")} canContracts={a.permissions.includes("contracts:read")} />;
+  return <Reports canExport={a.permissions.includes("exports:export")} canCompanies={a.permissions.includes("companies:read")} canContracts={a.permissions.includes("contracts:read")} canContacts={a.permissions.includes("contacts:read")} />;
 }
