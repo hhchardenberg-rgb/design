@@ -3,6 +3,7 @@ import { listInvoices } from "./invoicing.server";
 import { listOpportunities } from "./opportunities.server";
 import { listTasks } from "./tasks.server";
 import { planCounterparts } from "./contracts.server";
+import { listContactGaps } from "./contact-moments.server";
 import type { RecordCtx } from "./ctx.server";
 
 /**
@@ -36,5 +37,9 @@ export async function loadDashboard(ctx: RecordCtx) {
     ? await planCounterparts(ctx, { status: "OPEN" }).then((r) => ({ open: r.rows.length, overdue: r.rows.filter((x) => x.overdue).length }))
     : null;
 
-  return { tasks, overdueTasks, contracts, invoices, pipeline, counterparts };
+  const contactGaps = ctx.can("companies:read") && ctx.can("history:read")
+    ? await listContactGaps(ctx, { mine: true, pageSize: 5 }).then((r) => ({ total: r.total, rows: r.rows.map((g) => ({ companyId: g.companyId, companyName: g.companyName, daysSince: g.daysSince, lastContactOn: g.lastContactOn })) }))
+    : null;
+
+  return { tasks, overdueTasks, contracts, invoices, pipeline, counterparts, contactGaps };
 }

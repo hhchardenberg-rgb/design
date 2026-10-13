@@ -70,6 +70,18 @@ export default async function CommercialHome() {
                 </CardContent>
               </Card>
             )}
+            {dash.contactGaps && (
+              <Card className="flex h-full flex-col">
+                <CardHeader><CardTitle className="text-base">Contactmoment nodig</CardTitle></CardHeader>
+                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
+                  <p><span className="text-2xl font-bold">{dash.contactGaps.total}</span><span className="ml-2 text-muted-foreground">van jouw sponsoren al lang niet gesproken</span></p>
+                  <ul className="divide-y divide-border">
+                    {dash.contactGaps.rows.map((g) => <li key={g.companyId} className="py-1.5"><Link className="font-medium underline" href={`/commercieel/sponsoren/${g.companyId}`}>{g.companyName}</Link><span className="block text-xs text-muted-foreground">{g.lastContactOn ? `laatst gesproken ${formatDate(g.lastContactOn)} (${g.daysSince} dagen)` : "nog geen contactmoment vastgelegd"}</span></li>)}
+                  </ul>
+                  <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/contactmomenten">Alle contactmomenten</Link>
+                </CardContent>
+              </Card>
+            )}
             {dash.counterparts && (
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Tegenprestaties</CardTitle></CardHeader>

@@ -1211,6 +1211,32 @@ model CommercialIndexation {
   @@map("commercial_indexations")
 }
 
+/// Doel voor sponsorinkomsten per seizoen (eurocenten, exclusief btw). tier: "ALL" = totaal voor de vereniging,
+/// anders een sponsorvorm (HOOFD | PLATINA | GOUD | ZILVER | OVERIG) of "NONE" (sponsoren zonder vorm).
+model CommercialGoal {
+  id          String   @id @default(cuid())
+  seasonId    String
+  tier        String
+  targetCents Int
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([seasonId, tier])
+  @@map("commercial_goals")
+}
+
+/// Hoe lang een sponsor zonder contactmoment mag blijven, per sponsorvorm (of "NONE" zonder vorm).
+/// Geen regel = geen herinnering voor die groep.
+model CommercialContactRule {
+  tier         String   @id
+  intervalDays Int
+  updatedById  String?
+  updatedAt    DateTime @updatedAt
+
+  @@map("commercial_contact_rules")
+}
+
 /// Welke herinneringen al verstuurd zijn; voorkomt dubbele mails bij herhaalde cron-runs.
 model CommercialReminderLog {
   id        String   @id @default(cuid())
