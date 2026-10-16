@@ -203,11 +203,36 @@ async function finishImport(source: { psdUrl: string }, meta: UploadMeta): Promi
   const res = await fetch("/api/admin/templates/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...source, ...meta }),
+    body: JSON.stringify({ ...source, ...meta, deferred: true }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "Upload mislukt");
-  return data;
+  return followJob(res);
+}
+
+/**
+ * De import draait als taak op de server. Zolang die bezig is (202) vragen
+ * we de status op; een afgebroken poging wordt daar opnieuw opgepakt.
+ */
+async function followJob(first: Response): Promise<UploadResult> {
+  const data = await first.json().catch(() => ({}));
+  if (first.status === 200 && data.template) return data;
+  if (first.status !== 202 || !data.jobId) throw new Error(data.error ?? "Importeren is mislukt.");
+  const started = Date.now();
+  while (Date.now() - started < 15 * 60_000) {
+    await new Promise((r) => setTimeout(r, 2500));
+    let res: Response;
+    let body: { template?: unknown; error?: string };
+    try {
+      res = await fetch(`/api/admin/templates/import-jobs/${data.jobId}`);
+      body = await res.json().catch(() => ({}));
+    } catch {
+      continue; // netwerkfout: opnieuw de status vragen
+    }
+    if (res.status === 200 && body.template) return body as UploadResult;
+    // 202: nog bezig; 5xx/time-out: de taak wordt bij een volgende vraag hervat.
+    if (res.status === 202 || res.status >= 500) continue;
+    throw new Error(body.error ?? "Importeren is mislukt.");
+  }
+  throw new Error("Het importeren duurt te lang. Probeer het later opnieuw.");
 }
 
 /** Fallback: stuurt het bestand als multipart/form-data direct naar onze eigen route. */
@@ -217,8 +242,7 @@ async function uploadDirectly(file: File, meta: UploadMeta): Promise<UploadResul
   if (meta.templateId) form.append("templateId", meta.templateId);
   form.append("name", meta.name);
   form.append("category", meta.category);
+  form.append("deferred", "true");
   const res = await fetch("/api/admin/templates/upload", { method: "POST", body: form });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "Upload mislukt");
-  return data;
+  return followJob(res);
 }

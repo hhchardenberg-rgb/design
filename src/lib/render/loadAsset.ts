@@ -43,7 +43,7 @@ export async function loadAssetBuffer(url: string): Promise<Buffer> {
  * expliciet ingestelde S3_PUBLIC_BASE_URL) — nooit een willekeurige,
  * door de aanroeper opgegeven host (SSRF-preventie).
  */
-function assertAllowedExternalHost(url: string) {
+export function assertAllowedExternalHost(url: string) {
   let parsed: URL;
   try {
     parsed = new URL(url);

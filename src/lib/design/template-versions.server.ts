@@ -9,6 +9,7 @@ import {
 import { TEMPLATE_SCHEMA_VERSION } from "@/lib/validations/template";
 import { resolveFontFace, type FontFaceInfo } from "@/lib/fonts/faces";
 import { listFontFaces } from "@/lib/fonts/faces.server";
+import { reportErrors } from "@/lib/psd/import-job.server";
 
 /**
  * Levenscyclus van templateversies.
@@ -180,6 +181,7 @@ export async function createDraftFromVersion(templateId: string, fromVersionId: 
           schemaJson: source.schemaJson as Prisma.InputJsonValue,
           exportFormats: source.exportFormats,
           sourcePsdAssetId: source.sourcePsdAssetId,
+          importReport: (source.importReport ?? undefined) as Prisma.InputJsonValue | undefined,
           assets: {
             create: source.assets
               .filter((a) => a.kind !== "SOURCE_PSD")
@@ -229,6 +231,7 @@ export async function activationIssues(versionId: string): Promise<VersionIssue[
     sortOrder: f.sortOrder,
   })) as TemplateFieldInput[];
   const issues = checkVersionDefinition(parsed.data, fields);
+  for (const message of reportErrors(version.importReport)) issues.push({ severity: "error", message: `Import: ${message}` });
   if (version.exportFormats.length === 0) issues.push({ severity: "error", message: "Kies minstens één exportformaat." });
   return issues;
 }

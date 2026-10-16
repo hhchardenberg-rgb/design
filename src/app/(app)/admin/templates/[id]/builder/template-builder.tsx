@@ -13,6 +13,8 @@ import { FieldEditorRow } from "./field-editor-row";
 import type { Layer, TemplateSchemaJson, TextLayer } from "@/lib/validations/template";
 import type { FontFaceInfo } from "@/lib/fonts/faces";
 import { TextFontPanel } from "./text-font-panel";
+import { ImportReportPanel } from "./import-report-panel";
+import type { ImportReport } from "@/lib/psd/parse";
 
 const DesignCanvas = dynamic(() => import("@/components/editor/design-canvas").then((m) => m.DesignCanvas), {
   ssr: false,
@@ -43,6 +45,7 @@ export interface BuilderVersion {
   width: number;
   height: number;
   schemaJson: TemplateSchemaJson;
+  importReport: ImportReport | null;
   exportFormats: string[];
   fields: BuilderField[];
 }
@@ -371,6 +374,10 @@ export function TemplateBuilder({
               />
             </CardContent>
           </Card>
+
+          {version.importReport && (
+            <ImportReportPanel report={version.importReport} templateId={template.id} versionId={version.id} schema={schema} />
+          )}
 
           {backgroundLayer && (
             <label className="flex items-start gap-2 rounded-md border border-border bg-surface-muted p-3 text-sm">
