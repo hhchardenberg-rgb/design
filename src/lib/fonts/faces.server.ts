@@ -33,7 +33,10 @@ export function fontFaceFromRecord(font: Font): FontFaceInfo {
     postscriptName: font.postscriptName,
     weight: font.weight,
     style: font.style === "italic" ? "italic" : "normal",
-    url: font.fileUrl,
+    // Via de eigen domeinnaam (CSP: font-src 'self'); de server leest het
+    // bestand rechtstreeks (zie fileUrl in ensureFaceRegistered).
+    url: `/api/fonts/${font.id}${font.sha256 ? `?v=${font.sha256}` : ""}`,
+    fileUrl: font.fileUrl,
     format: font.format,
     // Zonder ingelezen metrics een gangbare verhouding; wordt bij de eerste
     // keer laden alsnog uit het bestand gehaald (zie listFontFaces).

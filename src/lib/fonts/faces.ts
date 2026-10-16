@@ -21,7 +21,10 @@ export interface FontFaceInfo {
   postscriptName: string | null;
   weight: number;
   style: "normal" | "italic";
+  /** Adres voor de browser (eigen domein). */
   url: string;
+  /** Bronbestand voor de server; gelijk aan url bij meegeleverde fonts. */
+  fileUrl: string;
   format: string;
   /** Ascender en descender als fractie van de em (positief). */
   ascent: number;
@@ -57,6 +60,7 @@ export const BUILTIN_FONT_FACES: FontFaceInfo[] = INTER_WEIGHTS.map((weight) => 
   weight,
   style: "normal",
   url: `/fonts/inter/inter-${weight}.woff2`,
+  fileUrl: `/fonts/inter/inter-${weight}.woff2`,
   format: "woff2",
   ascent: INTER_ASCENT,
   descent: INTER_DESCENT,

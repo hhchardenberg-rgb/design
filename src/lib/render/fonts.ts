@@ -18,12 +18,12 @@ import { loadAssetBuffer } from "./loadAsset";
 const registered = new Map<string, Promise<FontFileMetadata | null>>();
 
 export function ensureFaceRegistered(face: FontFaceInfo): Promise<FontFileMetadata | null> {
-  const key = `${face.id}|${face.url}`;
+  const key = `${face.id}|${face.fileUrl}`;
   let pending = registered.get(key);
   if (!pending) {
     pending = (async () => {
       try {
-        const buffer = await loadAssetBuffer(face.url);
+        const buffer = await loadAssetBuffer(face.fileUrl);
         const meta = readFontMetadata(buffer);
         GlobalFonts.register(buffer, face.alias);
         return meta;

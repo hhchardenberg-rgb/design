@@ -67,7 +67,7 @@ export default function AdminFontsPage() {
     Promise.all(
       fonts.map(async (f) => {
         try {
-          const face = new FontFace(previewFamily(f.id), `url(${f.fileUrl})`);
+          const face = new FontFace(previewFamily(f.id), `url(/api/fonts/${f.id})`);
           const ready = await face.load();
           if (cancelled) return;
           document.fonts.add(ready);
