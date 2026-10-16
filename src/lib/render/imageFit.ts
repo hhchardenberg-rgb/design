@@ -7,6 +7,9 @@
  * (Konva) en server-export exact hetzelfde tekenen.
  */
 export interface ImageFieldValue {
+  /** Interne verwijzing (eigen upload of clubmedia); de server leidt hier de URL van af. */
+  asset?: { kind: "upload" | "opponent" | "team" | "club" | "player" | "stock"; id: string };
+  /** Weergave-URL, door de server ingevuld vanuit het record. */
   assetUrl?: string;
   /** Verschuiving t.o.v. gecentreerd, in pixels op templateresolutie. */
   panX?: number;

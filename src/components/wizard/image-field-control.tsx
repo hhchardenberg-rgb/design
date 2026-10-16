@@ -15,7 +15,7 @@ export function ImageFieldControl({
   fieldKey: string;
   label: string;
   value: ImageFieldValue | undefined;
-  onChange: (value: ImageFieldValue) => void;
+  onChange: (value: ImageFieldValue, coalesceKey?: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,7 +33,7 @@ export function ImageFieldControl({
         const res = await fetch("/api/uploads", { method: "POST", body: form });
         if (!res.ok) throw new Error("upload mislukt");
         const data = await res.json();
-        onChange({ assetUrl: data.asset.url, panX: 0, panY: 0, scale: 1 });
+        onChange({ asset: { kind: "upload", id: data.asset.id }, assetUrl: data.asset.url, panX: 0, panY: 0, scale: 1 });
       } catch {
         alert("Uploaden is niet gelukt. Probeer een ander bestand.");
       } finally {
@@ -52,8 +52,8 @@ export function ImageFieldControl({
           placeholder={isPlayer ? "Zoek speler..." : "Zoek tegenstander..."}
           fetchUrl={(q) => (isPlayer ? `/api/players/search?q=${encodeURIComponent(q)}` : `/api/opponents/search?q=${encodeURIComponent(q)}`)}
           onSelect={(item) => {
-            if (item.imageUrl) {
-              onChange({ assetUrl: item.imageUrl, panX: 0, panY: 0, scale: 1 });
+            if (item.imageUrl && item.asset) {
+              onChange({ asset: item.asset, assetUrl: item.imageUrl, panX: 0, panY: 0, scale: 1 });
             }
           }}
         />
@@ -107,7 +107,8 @@ export function ImageFieldControl({
               max={2.5}
               step={0.05}
               value={value.scale ?? 1}
-              onChange={(e) => onChange({ ...value, scale: Number(e.target.value) })}
+              onChange={(e) => onChange({ ...value, scale: Number(e.target.value) }, `zoom:${fieldKey}`)}
+              aria-label={`Zoom ${label}`}
               className="flex-1 accent-[var(--hhc-orange)]"
             />
           </div>

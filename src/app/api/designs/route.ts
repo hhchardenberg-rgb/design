@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { canDesign } from "@/lib/design/permissions";
+import { createDesign } from "@/lib/design/service.server";
+import { designErrorResponse } from "@/lib/design/api";
 
-/** Recente ontwerpen van de ingelogde gebruiker (dashboard, sectie 16). */
+/** Recente ontwerpen van de ingelogde gebruiker (dashboard). */
 export async function GET() {
   try {
     const user = await requireUser();
+    if (!canDesign(user.roles, "design:create")) throw new ApiError(403, "Je hebt geen toegang tot de designtool.");
     const designs = await prisma.generatedDesign.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
@@ -21,40 +25,23 @@ export async function GET() {
   }
 }
 
-/** Wizard stap 1: maak direct een concept aan zodat autosave iets heeft om naar te schrijven. */
+/**
+ * Maakt een concept aan. De wizard roept dit pas aan bij de eerste echte
+ * wijziging; alleen een template bekijken levert geen concept op.
+ */
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
-    const body = await req.json();
-    if (!body.templateVersionId) throw new ApiError(400, "templateVersionId is verplicht.");
-
-    const version = await prisma.templateVersion.findUniqueOrThrow({
-      where: { id: body.templateVersionId },
-      include: { template: true },
-    });
-    // Zelfde regel als /api/templates en /api/templates/[slug]: een
-    // conceptsjabloon dat een admin nog aan het bouwen is, mag geen
-    // gebruiker kunnen gebruiken (ook niet door het templateVersionId te
-    // raden) — dat zou de structuur van een nog niet gepubliceerde
-    // template lekken via het resulterende ontwerp.
-    if (version.template.status !== "PUBLISHED") {
-      throw new ApiError(404, "Sjabloon niet gevonden.");
-    }
-
-    const design = await prisma.generatedDesign.create({
-      data: {
-        templateVersionId: version.id,
-        userId: user.id,
-        matchId: body.matchId ?? undefined,
-        title: body.title ?? version.template.name,
-        formData: body.formData ?? {},
-        width: version.width,
-        height: version.height,
-        status: "DRAFT",
-      },
+    const body = await req.json().catch(() => ({}));
+    if (typeof body.templateVersionId !== "string") throw new ApiError(400, "templateVersionId is verplicht.");
+    const design = await createDesign(user, {
+      templateVersionId: body.templateVersionId,
+      matchId: typeof body.matchId === "string" ? body.matchId : null,
+      title: typeof body.title === "string" ? body.title : null,
+      formData: body.formData ?? {},
     });
     return NextResponse.json({ design });
   } catch (error) {
-    return apiErrorResponse(error);
+    return designErrorResponse(error);
   }
 }

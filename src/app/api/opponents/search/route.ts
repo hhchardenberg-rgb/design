@@ -12,7 +12,7 @@ export async function GET(req: Request) {
       take: 10,
     });
     return NextResponse.json({
-      items: opponents.map((o) => ({ id: o.id, label: o.name, imageUrl: o.logoUrl, sublabel: undefined, meta: o })),
+      items: opponents.map((o) => ({ id: o.id, label: o.name, imageUrl: o.logoUrl, asset: o.logoUrl ? { kind: "opponent", id: o.id } : null, sublabel: undefined, meta: o })),
     });
   } catch (error) {
     return apiErrorResponse(error);

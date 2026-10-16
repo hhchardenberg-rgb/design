@@ -7,6 +7,7 @@ import type { Layer as SchemaLayer, TemplateSchemaJson } from "@/lib/validations
 import { fitText } from "@/lib/render/textFit";
 import { measureBrowser } from "@/lib/render/measureBrowser";
 import { computeImageDraw, type ImageFieldValue } from "@/lib/render/imageFit";
+import { applyTextTransform } from "@/lib/render/textTransform";
 import { cn } from "@/lib/utils";
 import { useImage } from "./use-image";
 
@@ -21,6 +22,8 @@ export interface DesignCanvasProps {
   /** Sleep-interactie voor afbeeldingen toestaan (pan binnen kader). */
   editable?: boolean;
   onImageTransform?: (fieldKey: string, value: ImageFieldValue) => void;
+  /** Teksttransformatie per veld (veldinstelling uit de builder). */
+  textTransforms?: Record<string, string>;
   className?: string;
 }
 
@@ -37,6 +40,7 @@ export function DesignCanvas({
   maxHeight,
   editable = true,
   onImageTransform,
+  textTransforms,
   className,
 }: DesignCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,6 +81,7 @@ export function DesignCanvas({
               formData={formData}
               editable={editable}
               onImageTransform={onImageTransform}
+              textTransforms={textTransforms}
             />
           ))}
         </Layer>
@@ -90,11 +95,13 @@ function LayerNode({
   formData,
   editable,
   onImageTransform,
+  textTransforms,
 }: {
   layer: SchemaLayer;
   formData: DesignFormData;
   editable: boolean;
   onImageTransform?: (fieldKey: string, value: ImageFieldValue) => void;
+  textTransforms?: Record<string, string>;
 }) {
   if (layer.visibilityField) {
     const value = formData[layer.visibilityField];
@@ -124,7 +131,7 @@ function LayerNode({
     case "static_image":
       return <RasterLayer layer={layer} />;
     case "text":
-      return <TextLayerNode layer={layer} formData={formData} />;
+      return <TextLayerNode layer={layer} formData={formData} transform={textTransforms?.[layer.field]} />;
     case "color":
       return <ColorLayerNode layer={layer} formData={formData} />;
     case "image":
@@ -155,8 +162,17 @@ function RasterLayer({ layer }: { layer: Extract<SchemaLayer, { type: "backgroun
   return <KonvaImage image={img} x={layer.x} y={layer.y} width={layer.width} height={layer.height} listening={false} />;
 }
 
-function TextLayerNode({ layer, formData }: { layer: Extract<SchemaLayer, { type: "text" }>; formData: DesignFormData }) {
-  const raw = ((formData[layer.field] as string) ?? layer.text ?? "").trim();
+function TextLayerNode({
+  layer,
+  formData,
+  transform,
+}: {
+  layer: Extract<SchemaLayer, { type: "text" }>;
+  formData: DesignFormData;
+  transform?: string;
+}) {
+  const value = formData[layer.field];
+  const raw = applyTextTransform((typeof value === "string" ? value : layer.text ?? "").trim(), transform);
 
   const fit = useMemo(
     () =>
