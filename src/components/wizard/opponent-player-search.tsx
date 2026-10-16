@@ -8,6 +8,8 @@ export interface SearchItem {
   label: string;
   sublabel?: string;
   imageUrl?: string | null;
+  /** Interne verwijzing naar het clubmediabestand; de server bepaalt zelf de URL. */
+  asset?: { kind: "opponent" | "player" | "team" | "club" | "stock" | "upload"; id: string } | null;
   meta?: Record<string, unknown>;
 }
 

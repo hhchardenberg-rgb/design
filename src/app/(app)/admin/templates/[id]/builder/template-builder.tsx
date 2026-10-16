@@ -35,6 +35,9 @@ export interface BuilderVersion {
   id: string;
   versionNumber: number;
   status: string;
+  /** Ooit actief geweest: onveranderlijk, bewerken gaat via een nieuwe conceptversie. */
+  locked: boolean;
+  designCount: number;
   width: number;
   height: number;
   schemaJson: TemplateSchemaJson;
@@ -224,6 +227,11 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
     setMessage(null);
     try {
       await saveTemplateInfo();
+      if (version.locked) {
+        setMessage("Naam en categorie opgeslagen. Deze versie zelf kan niet meer worden gewijzigd.");
+        router.refresh();
+        return;
+      }
       const res = await fetch(`/api/admin/templates/${template.id}/versions/${version.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -246,19 +254,44 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
           publish,
         }),
       });
-      if (!res.ok) throw new Error();
-      setMessage(publish ? "Template gepubliceerd." : "Wijzigingen opgeslagen.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Opslaan is niet gelukt.");
+      const warnings = (data.warnings ?? []).map((w: { message: string }) => w.message).join(" ");
+      setMessage((publish ? "Opgeslagen en geactiveerd." : "Wijzigingen opgeslagen.") + (warnings ? ` Let op: ${warnings}` : ""));
       router.refresh();
-    } catch {
-      setMessage("Opslaan is niet gelukt.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Opslaan is niet gelukt.");
     } finally {
       setSaving(false);
     }
   }
 
   async function activateVersion(id: string) {
-    await fetch(`/api/admin/templates/${template.id}/versions/${id}/activate`, { method: "POST" });
+    setMessage(null);
+    const res = await fetch(`/api/admin/templates/${template.id}/versions/${id}/activate`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) setMessage(data.error ?? "Activeren is niet gelukt.");
     router.refresh();
+  }
+
+  async function createDraft() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/templates/${template.id}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromVersionId: version.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Nieuwe versie maken is niet gelukt.");
+      router.push(`/admin/templates/${template.id}/builder?versionId=${data.version.id}`);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Nieuwe versie maken is niet gelukt.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -271,7 +304,7 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
           <div className="mt-1 flex items-center gap-3">
             <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9 w-64 text-lg font-bold" />
             <Badge variant={isLive(version) ? "success" : "outline"}>
-              v{version.versionNumber} · {isLive(version) ? "gepubliceerd" : "concept"}
+              v{version.versionNumber} · {isLive(version) ? "actief" : version.locked ? "eerder actief" : "concept"}
             </Badge>
           </div>
         </div>
@@ -286,15 +319,31 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
           <Link href={`/admin/templates/new?templateId=${template.id}`}>
             <Button variant="outline">Nieuwe versie uploaden</Button>
           </Link>
-          <Button variant="outline" onClick={() => saveVersion(false)} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />} Opslaan
-          </Button>
-          <Button onClick={() => saveVersion(true)} disabled={saving}>
-            Publiceren
-          </Button>
+          {version.locked ? (
+            <Button onClick={createDraft} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />} Nieuwe conceptversie maken
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => saveVersion(false)} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />} Opslaan
+              </Button>
+              <Button onClick={() => saveVersion(true)} disabled={saving}>
+                Opslaan en activeren
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
+      {version.locked && (
+        <p className="rounded-md border border-border bg-surface-muted p-3 text-sm">
+          Versie {version.versionNumber} is al in gebruik geweest
+          {version.designCount > 0 ? ` (${version.designCount} ontwerp${version.designCount === 1 ? "" : "en"})` : ""} en kan
+          daarom niet meer worden gewijzigd. Bestaande ontwerpen blijven zo werken. Wil je iets aanpassen? Maak een nieuwe
+          conceptversie, test die en activeer hem daarna.
+        </p>
+      )}
       {message && <p className="text-sm text-hhc-orange-dark">{message}</p>}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
@@ -381,7 +430,9 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
                       v{v.versionNumber} {v.id === version.id && "(huidig getoond)"}
                     </button>
                     <div className="flex items-center gap-2">
-                      <Badge variant={isLive(v) ? "success" : "outline"}>{isLive(v) ? "PUBLISHED" : "DRAFT"}</Badge>
+                      <Badge variant={isLive(v) ? "success" : "outline"}>
+                        {isLive(v) ? "Actief" : v.locked ? "Eerder actief" : "Concept"}
+                      </Badge>
                       {!isLive(v) && (
                         <Button size="sm" variant="outline" onClick={() => activateVersion(v.id)}>
                           Activeren

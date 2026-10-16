@@ -25,7 +25,7 @@ export default async function TemplateBuilderPage({
     include: {
       versions: {
         orderBy: { versionNumber: "desc" },
-        include: { fields: { orderBy: { sortOrder: "asc" } } },
+        include: { fields: { orderBy: { sortOrder: "asc" } }, _count: { select: { generatedDesigns: true } } },
       },
     },
   });
@@ -43,6 +43,8 @@ export default async function TemplateBuilderPage({
       id: v.id,
       versionNumber: v.versionNumber,
       status: v.status,
+      locked: v.publishedAt !== null,
+      designCount: v._count.generatedDesigns,
       width: v.width,
       height: v.height,
       schemaJson: templateSchemaJson.parse(v.schemaJson),
@@ -65,5 +67,5 @@ export default async function TemplateBuilderPage({
     })),
   };
 
-  return <TemplateBuilder template={builderTemplate} initialVersionId={versionId} />;
+  return <TemplateBuilder key={versionId ?? "laatste"} template={builderTemplate} initialVersionId={versionId} />;
 }

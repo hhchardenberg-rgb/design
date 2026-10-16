@@ -12,32 +12,54 @@ export interface FieldDef {
   placeholder?: string | null;
   maxLength?: number | null;
   options?: { label: string; value: string }[] | null;
+  textTransform?: string;
+  defaultValue?: string | null;
 }
 
-export function applyTextTransform(value: string, transform: string): string {
-  switch (transform) {
-    case "UPPERCASE":
-      return value.toUpperCase();
-    case "LOWERCASE":
-      return value.toLowerCase();
-    case "CAPITALIZE":
-      return value.replace(/\b\w/g, (c) => c.toUpperCase());
-    default:
-      return value;
-  }
+export function FieldControl(props: {
+  field: FieldDef;
+  value: unknown;
+  onChange: (value: unknown, coalesceKey?: string) => void;
+  onReset?: () => void;
+  brandColors: { hex: string; name: string }[];
+}) {
+  const { field, value, onReset } = props;
+  const isDefault =
+    field.type === "CHECKBOX"
+      ? (value !== false && value !== "false") === (field.defaultValue !== "false")
+      : field.type === "IMAGE" || field.type === "LOGO"
+        ? !value || !(value as ImageFieldValue).assetUrl
+        : (value ?? "") === (field.defaultValue ?? "");
+  return (
+    <div className="relative">
+      <FieldInput {...props} />
+      {onReset && !isDefault && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="absolute right-0 top-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-[var(--hhc-orange)]"
+          aria-label={`${field.label} terugzetten naar standaard`}
+        >
+          Standaard
+        </button>
+      )}
+    </div>
+  );
 }
 
-export function FieldControl({
+function FieldInput({
   field,
   value,
-  onChange,
+  onChange: rawOnChange,
   brandColors,
 }: {
   field: FieldDef;
   value: unknown;
-  onChange: (value: unknown) => void;
+  onChange: (value: unknown, coalesceKey?: string) => void;
   brandColors: { hex: string; name: string }[];
 }) {
+  // Doortypen in één veld telt als één stap in ongedaan maken.
+  const onChange = (v: unknown) => rawOnChange(v, `field:${field.key}`);
   switch (field.type) {
     case "LONG_TEXT":
       return (
@@ -122,7 +144,7 @@ export function FieldControl({
     case "CHECKBOX":
       return (
         <label className="flex items-center gap-2 text-sm font-medium">
-          <Checkbox checked={value !== false && value !== "false"} onChange={(e) => onChange(e.target.checked)} />
+          <Checkbox checked={value !== false && value !== "false"} onChange={(e) => rawOnChange(e.target.checked)} />
           {field.label}
         </label>
       );
@@ -133,7 +155,7 @@ export function FieldControl({
           fieldKey={field.key}
           label={field.label}
           value={value as ImageFieldValue}
-          onChange={onChange}
+          onChange={(v, coalesceKey) => rawOnChange(v, coalesceKey)}
         />
       );
     case "BRAND_COLOR":
@@ -146,7 +168,9 @@ export function FieldControl({
                 key={c.hex}
                 type="button"
                 title={c.name}
-                onClick={() => onChange(c.hex)}
+                onClick={() => rawOnChange(c.hex)}
+                aria-label={c.name}
+                aria-pressed={value === c.hex}
                 className="h-8 w-8 rounded-full border-2 transition-transform hover:scale-110"
                 style={{ backgroundColor: c.hex, borderColor: value === c.hex ? "var(--hhc-orange)" : "transparent" }}
               />

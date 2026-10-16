@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
+import { activateVersion } from "@/lib/design/template-versions.server";
 
 /**
- * Zet een eerdere (of nieuwe) versie terug als actieve versie voor nieuwe
- * gebruikers. Bestaande GeneratedDesigns blijven gekoppeld aan de versie
- * waarmee ze gemaakt zijn (zie MASTERPROMPT sectie 18).
+ * Zet een versie actief voor nieuwe ontwerpen. Bestaande ontwerpen blijven
+ * aan hun eigen versie gekoppeld. Geblokkeerd bij kritieke fouten.
  */
 export async function POST(
   _req: Request,
@@ -14,17 +13,8 @@ export async function POST(
   try {
     await requireHubAdmin();
     const { id, versionId } = await params;
-
-    await prisma.templateVersion.update({
-      where: { id: versionId },
-      data: { status: "PUBLISHED", publishedAt: new Date() },
-    });
-    const template = await prisma.template.update({
-      where: { id },
-      data: { activeVersionId: versionId, status: "PUBLISHED" },
-    });
-
-    return NextResponse.json({ template });
+    const result = await activateVersion(id, versionId);
+    return NextResponse.json(result);
   } catch (error) {
     return apiErrorResponse(error);
   }

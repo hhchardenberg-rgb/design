@@ -745,10 +745,44 @@ model GeneratedDesign {
   width        Int?
   height       Int?
 
+  // Optimistische revisiecontrole: elke geslaagde opslag verhoogt dit getal.
+  // Een opslag die op een oudere revisie is gebaseerd wordt geweigerd
+  // (conflict tussen tabbladen/gebruikers) en een export rendert altijd een
+  // expliciet genoemde, opgeslagen revisie.
+  revision Int @default(0)
+
+  exports DesignExport[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("generated_designs")
+}
+
+// Definitieve export van één opgeslagen ontwerprevisie. `renderKey` is een
+// hash over alle invoer die het resultaat bepaalt (ontwerp, revisie,
+// templateversie, formaat, fonts, rendererversie): dezelfde invoer levert
+// hetzelfde bestand op in plaats van een tweede render.
+model DesignExport {
+  id       String          @id @default(cuid())
+  designId String
+  design   GeneratedDesign @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  revision          Int
+  templateVersionId String
+  renderKey         String @unique
+  rendererVersion   String
+  format            String
+  url               String
+  storageKey        String
+  width             Int
+  height            Int
+  bytes             Int
+
+  createdAt DateTime @default(now())
+
+  @@index([designId])
+  @@map("design_exports")
 }
 
 enum UploadedAssetKind {
@@ -766,6 +800,9 @@ model UploadedAsset {
   width    Int?
   height   Int?
   mimeType String?
+  // Opslagsleutel en omvang, voor referentiegebaseerd opruimen (leeg bij oudere uploads).
+  storageKey String?
+  bytes      Int?
 
   createdAt DateTime @default(now())
 

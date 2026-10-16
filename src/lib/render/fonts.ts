@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { GlobalFonts } from "@napi-rs/canvas";
 import { prisma } from "@/lib/prisma";
 import { loadAssetBuffer } from "./loadAsset";
@@ -42,4 +43,15 @@ export async function ensureFontsRegistered() {
       }
     })
   );
+}
+
+/**
+ * Vingerafdruk van de actieve lettertypen (id + bestand). Hoort in de
+ * renderkey: wordt een font vervangen of uitgezet, dan levert dezelfde
+ * ontwerprevisie een nieuwe export op in plaats van het oude bestand.
+ */
+export async function activeFontFingerprint(): Promise<string> {
+  const fonts = await prisma.font.findMany({ where: { isActive: true }, select: { id: true, fileUrl: true } });
+  const parts = fonts.map((f) => `${f.id}:${f.fileUrl}`).sort();
+  return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 16);
 }

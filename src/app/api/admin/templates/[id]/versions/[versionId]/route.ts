@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireHubAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { templateFieldInputSchema } from "@/lib/validations/template";
+import { activateVersion, updateDraftVersion } from "@/lib/design/template-versions.server";
 import { z } from "zod";
 
 const patchSchema = z.object({
-  fields: z.array(templateFieldInputSchema).optional(),
-  schemaJson: z.record(z.string(), z.unknown()).optional(),
+  fields: z.array(templateFieldInputSchema).max(200).optional(),
+  schemaJson: z.unknown().optional(),
   exportFormats: z.array(z.enum(["PNG", "JPG", "WEBP"])).optional(),
+  /** Na opslaan direct activeren (de knop "Opslaan en activeren"). */
   publish: z.boolean().optional(),
 });
 
@@ -17,17 +19,23 @@ export async function GET(
 ) {
   try {
     await requireHubAdmin();
-    const { versionId } = await params;
-    const version = await prisma.templateVersion.findUniqueOrThrow({
+    const { id, versionId } = await params;
+    const version = await prisma.templateVersion.findUnique({
       where: { id: versionId },
       include: { fields: { orderBy: { sortOrder: "asc" } }, template: true },
     });
+    if (!version || version.templateId !== id) throw new ApiError(404, "Versie niet gevonden.");
     return NextResponse.json({ version });
   } catch (error) {
     return apiErrorResponse(error);
   }
 }
 
+/**
+ * Bewerkt een conceptversie. Een versie die al actief is (geweest) is
+ * onveranderlijk; daarvoor maak je eerst een nieuwe conceptversie
+ * (POST /api/admin/templates/[id]/versions).
+ */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string; versionId: string }> }
@@ -35,57 +43,18 @@ export async function PATCH(
   try {
     await requireHubAdmin();
     const { id, versionId } = await params;
-    const body = patchSchema.parse(await req.json());
+    const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) throw new ApiError(400, "Ongeldige invoer.");
+    const body = parsed.data;
 
-    const existing = await prisma.templateVersion.findUniqueOrThrow({ where: { id: versionId } });
-    if (existing.templateId !== id) throw new ApiError(400, "Versie hoort niet bij deze template.");
-
-    await prisma.$transaction(async (tx) => {
-      if (body.fields) {
-        await tx.templateField.deleteMany({ where: { templateVersionId: versionId } });
-        await tx.templateField.createMany({
-          data: body.fields.map((f) => ({
-            templateVersionId: versionId,
-            key: f.key,
-            label: f.label,
-            type: f.type,
-            required: f.required,
-            defaultValue: f.defaultValue ?? undefined,
-            placeholder: f.placeholder ?? undefined,
-            maxLength: f.maxLength ?? undefined,
-            textTransform: f.textTransform,
-            options: f.options ?? undefined,
-            imageFit: f.imageFit ?? undefined,
-            imageAspectRatio: f.imageAspectRatio ?? undefined,
-            allowTransparency: f.allowTransparency,
-            sortOrder: f.sortOrder,
-          })),
-        });
-      }
-
-      await tx.templateVersion.update({
-        where: { id: versionId },
-        data: {
-          schemaJson: body.schemaJson ? (body.schemaJson as object) : undefined,
-          exportFormats: body.exportFormats,
-          status: body.publish ? "PUBLISHED" : undefined,
-          publishedAt: body.publish ? new Date() : undefined,
-        },
-      });
-
-      if (body.publish) {
-        await tx.template.update({
-          where: { id },
-          data: { activeVersionId: versionId, status: "PUBLISHED" },
-        });
-      }
+    const version = await updateDraftVersion(id, versionId, {
+      fields: body.fields,
+      schemaJson: body.schemaJson,
+      exportFormats: body.exportFormats,
     });
-
-    const version = await prisma.templateVersion.findUniqueOrThrow({
-      where: { id: versionId },
-      include: { fields: { orderBy: { sortOrder: "asc" } } },
-    });
-    return NextResponse.json({ version });
+    let warnings: { message: string }[] = [];
+    if (body.publish) warnings = (await activateVersion(id, versionId)).warnings;
+    return NextResponse.json({ version, warnings });
   } catch (error) {
     return apiErrorResponse(error);
   }

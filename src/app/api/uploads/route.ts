@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import { getStorage, buildKey } from "@/lib/storage";
 import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { canDesign } from "@/lib/design/permissions";
 
 const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -17,6 +18,7 @@ const MAX_DIMENSION = 4000;
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
+    if (!canDesign(user.roles, "design:create")) throw new ApiError(403, "Je hebt geen toegang tot de designtool.");
     const form = await req.formData();
     const file = form.get("file");
     const kind = String(form.get("kind") ?? "PHOTO").toUpperCase();
@@ -54,6 +56,8 @@ export async function POST(req: NextRequest) {
         width: finalMeta.width,
         height: finalMeta.height,
         mimeType: "image/png",
+        storageKey: stored.key,
+        bytes: png.length,
       },
     });
 

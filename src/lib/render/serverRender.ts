@@ -5,6 +5,7 @@ import { measureServer, cssFont } from "./measureServer";
 import { computeImageDraw, type ImageFieldValue } from "./imageFit";
 import { loadAssetBuffer } from "./loadAsset";
 import { ensureFontsRegistered } from "./fonts";
+import { applyTextTransform } from "./textTransform";
 
 export type DesignFormData = Record<string, unknown>;
 export type ExportFormat = "PNG" | "JPG" | "WEBP";
@@ -15,9 +16,12 @@ export type ExportFormat = "PNG" | "JPG" | "WEBP";
  * eindresultaat nooit verrast t.o.v. wat de gebruiker zag (zie
  * MASTERPROMPT sectie 10).
  */
+export class RenderError extends Error {}
+
 export async function renderDesign(
   schema: TemplateSchemaJson,
-  formData: DesignFormData
+  formData: DesignFormData,
+  options: { strict?: boolean; textTransforms?: Record<string, string> } = {}
 ): Promise<import("@napi-rs/canvas").Canvas> {
   await ensureFontsRegistered();
 
@@ -67,13 +71,18 @@ export async function renderDesign(
         const img = await getImage(layer.src);
         ctx.drawImage(img, layer.x, layer.y, layer.width, layer.height);
       } else if (layer.type === "text") {
-        drawTextLayer(ctx, layer, formData);
+        drawTextLayer(ctx, layer, formData, options.textTransforms?.[layer.field]);
       } else if (layer.type === "image") {
         await drawImageLayer(ctx, layer, formData, getImage);
       } else if (layer.type === "color") {
         drawColorLayer(ctx, layer, formData);
       }
     } catch (error) {
+      // Bij een definitieve export nooit een gedeeltelijk bestand opleveren:
+      // een ontbrekende afbeelding of kapotte laag breekt de export af.
+      if (options.strict) {
+        throw new RenderError(`Onderdeel "${layer.name ?? layer.id}" kon niet worden getekend.`, { cause: error });
+      }
       console.warn(`[render] laag "${layer.id}" overgeslagen:`, error);
     }
   }
@@ -99,9 +108,13 @@ function isHidden(layer: Layer, formData: DesignFormData): boolean {
 function drawTextLayer(
   ctx: SKRSContext2D,
   layer: Extract<Layer, { type: "text" }>,
-  formData: DesignFormData
+  formData: DesignFormData,
+  transform?: string
 ) {
-  const raw = (formData[layer.field] as string | undefined)?.trim() || layer.text?.trim() || "";
+  // Zelfde regel als de preview: niet ingevuld (undefined) toont de
+  // voorbeeldtekst, bewust leeggemaakt ("") toont niets.
+  const value = formData[layer.field];
+  const raw = applyTextTransform((typeof value === "string" ? value : layer.text ?? "").trim(), transform);
   if (!raw) return;
 
   const fit = fitText({

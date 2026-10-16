@@ -26,6 +26,7 @@ export async function GET(req: Request) {
         label: `${p.firstName} ${p.lastName}`,
         sublabel: p.team.shortName ?? p.team.name,
         imageUrl: p.photoUrl,
+        asset: p.photoUrl ? { kind: "player", id: p.id } : null,
         meta: p,
       })),
     });
