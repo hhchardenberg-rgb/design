@@ -13,8 +13,11 @@ export function applyTextTransform(value: string, transform: string | undefined)
     case "LOWERCASE":
       return value.toLocaleLowerCase("nl-NL");
     case "CAPITALIZE":
-      // Eerste letter van elk woord; letters met accenten tellen mee.
-      return value.replace(/(^|[\s\-‐/(“‘"'])(\p{L})/gu, (_m, sep: string, ch: string) => sep + ch.toLocaleUpperCase("nl-NL"));
+      // Eerste letter van elk woord; letters met accenten tellen mee. De
+      // Nederlandse "ij" aan het begin van een woord wordt samen "IJ".
+      return value.replace(/(^|[\s\-‐/(“‘"'])(ij|\p{L})/giu, (_m, sep: string, ch: string) =>
+        sep + (ch.toLowerCase() === "ij" ? "IJ" : ch.toLocaleUpperCase("nl-NL"))
+      );
     default:
       return value;
   }

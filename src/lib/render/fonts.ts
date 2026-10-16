@@ -1,57 +1,54 @@
 import { createHash } from "node:crypto";
 import { GlobalFonts } from "@napi-rs/canvas";
 import { prisma } from "@/lib/prisma";
+import type { FontFaceInfo } from "@/lib/fonts/faces";
+import { listFontFaces } from "@/lib/fonts/faces.server";
+import { readFontMetadata, type FontFileMetadata } from "@/lib/fonts/metadata";
 import { loadAssetBuffer } from "./loadAsset";
 
-const registered = new Set<string>();
-let builtinRegistered = false;
+/**
+ * Registreert fontbestanden bij de canvas-engine onder hun unieke alias
+ * (zie src/lib/fonts/faces.ts), zodat de export precies het bestand
+ * gebruikt waaraan een tekstlaag gebonden is. Vercel-functies hebben geen
+ * systeemfonts; Inter wordt daarom altijd uit public/fonts geladen.
+ *
+ * Begrensd: per serverproces wordt elk bestand één keer geladen, en de
+ * metadata (tekenset) blijft bewaard voor de controle op ontbrekende tekens.
+ */
+const registered = new Map<string, Promise<FontFileMetadata | null>>();
 
-// Inter als systeembrede fallback zodat exports altijd leesbaar zijn, ook
-// wanneer een template nog geen eigen lettertype heeft. Dit is nodig omdat
-// Vercel's serverless functies — anders dan een gewone developmentmachine —
-// geen systeemfonts hebben; zonder dit blijft ELKE tekstlaag die "Inter"
-// (of een niet-geüpload font) gebruikt onzichtbaar in de export, terwijl de
-// browserpreview wél gewoon "Inter" via Google Fonts toont.
-const BUILTIN_INTER_WEIGHTS = [400, 500, 600, 700, 800] as const;
-
-/** Registreert alle actieve, door admins geüploade fonts bij de canvas-engine. */
-export async function ensureFontsRegistered() {
-  if (!builtinRegistered) {
-    builtinRegistered = true;
-    await Promise.all(
-      BUILTIN_INTER_WEIGHTS.map(async (weight) => {
-        try {
-          const buffer = await loadAssetBuffer(`/fonts/inter/inter-${weight}.woff2`);
-          GlobalFonts.register(buffer, "Inter");
-        } catch (error) {
-          console.warn(`[fonts] kon ingebouwd fallback-font Inter ${weight} niet laden`, error);
-        }
-      })
-    );
-  }
-
-  const fonts = await prisma.font.findMany({ where: { isActive: true } });
-  await Promise.all(
-    fonts.map(async (font) => {
-      if (registered.has(font.id)) return;
+export function ensureFaceRegistered(face: FontFaceInfo): Promise<FontFileMetadata | null> {
+  const key = `${face.id}|${face.url}`;
+  let pending = registered.get(key);
+  if (!pending) {
+    pending = (async () => {
       try {
-        const buffer = await loadAssetBuffer(font.fileUrl);
-        const key = GlobalFonts.register(buffer, font.family);
-        if (key) registered.add(font.id);
+        const buffer = await loadAssetBuffer(face.url);
+        const meta = readFontMetadata(buffer);
+        GlobalFonts.register(buffer, face.alias);
+        return meta;
       } catch (error) {
-        console.warn(`[fonts] kon lettertype "${font.name}" niet laden`, error);
+        console.warn(`[fonts] kon lettertype "${face.family} ${face.subfamily}" niet laden`, error);
+        registered.delete(key);
+        return null;
       }
-    })
-  );
+    })();
+    registered.set(key, pending);
+  }
+  return pending;
+}
+
+export async function loadRenderFaces(): Promise<FontFaceInfo[]> {
+  return listFontFaces();
 }
 
 /**
- * Vingerafdruk van de actieve lettertypen (id + bestand). Hoort in de
+ * Vingerafdruk van alle lettertypen (id + bestand + aan/uit). Hoort in de
  * renderkey: wordt een font vervangen of uitgezet, dan levert dezelfde
  * ontwerprevisie een nieuwe export op in plaats van het oude bestand.
  */
 export async function activeFontFingerprint(): Promise<string> {
-  const fonts = await prisma.font.findMany({ where: { isActive: true }, select: { id: true, fileUrl: true } });
-  const parts = fonts.map((f) => `${f.id}:${f.fileUrl}`).sort();
+  const fonts = await prisma.font.findMany({ select: { id: true, fileUrl: true, isActive: true, sha256: true } });
+  const parts = fonts.map((f) => `${f.id}:${f.fileUrl}:${f.isActive ? 1 : 0}:${f.sha256 ?? ""}`).sort();
   return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 16);
 }

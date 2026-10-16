@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { templateSchemaJson } from "@/lib/validations/template";
 import { canAccessDesign } from "@/lib/design/permissions";
 import { Wizard } from "@/components/wizard/wizard";
+import { listFontFaces } from "@/lib/fonts/faces.server";
 import type { FormData } from "@/components/wizard/wizard";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -47,7 +48,10 @@ export default async function CreateDesignPage({
   if (!version || version.templateId !== template.id) notFound();
 
   const schema = templateSchemaJson.parse(version.schemaJson);
-  const brandColors = await prisma.brandColor.findMany({ orderBy: { sortOrder: "asc" } });
+  const [brandColors, fontFaces] = await Promise.all([
+    prisma.brandColor.findMany({ orderBy: { sortOrder: "asc" } }),
+    listFontFaces(),
+  ]);
 
   const defaults: FormData = {};
   for (const field of version.fields) {
@@ -138,6 +142,7 @@ export default async function CreateDesignPage({
             }
           : null
       }
+      fontFaces={fontFaces}
       matchId={matchId ?? null}
     />
   );

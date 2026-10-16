@@ -6,6 +6,9 @@ import {
   type TemplateFieldInput,
   type TemplateSchemaJson,
 } from "@/lib/validations/template";
+import { TEMPLATE_SCHEMA_VERSION } from "@/lib/validations/template";
+import { resolveFontFace, type FontFaceInfo } from "@/lib/fonts/faces";
+import { listFontFaces } from "@/lib/fonts/faces.server";
 
 /**
  * Levenscyclus van templateversies.
@@ -231,6 +234,34 @@ export async function activationIssues(versionId: string): Promise<VersionIssue[
 }
 
 /**
+ * Lettertypecontrole voor activeren: elk tekstveld moet een geüpload (of
+ * meegeleverd) fontbestand hebben. Geeft ook het schema terug waarin elke
+ * tekstlaag aan zijn concrete bestand is vastgelegd (fontFaceId).
+ */
+export function checkAndPinFonts(schema: TemplateSchemaJson, faces: FontFaceInfo[]) {
+  const issues: VersionIssue[] = [];
+  const layers = schema.layers.map((layer) => {
+    if (layer.type !== "text") return layer;
+    const { face, status, message } = resolveFontFace(layer, faces);
+    const name = layer.name ?? layer.id;
+    if (status === "missing") {
+      issues.push({ severity: "error", message: `Tekstlaag "${name}": ${message} Upload het lettertype of kies een ander.` });
+      return layer;
+    }
+    if (status === "substitute") issues.push({ severity: "warning", message: `Tekstlaag "${name}": ${message}` });
+    return {
+      ...layer,
+      fontFaceId: face.id,
+      fontPostscriptName: layer.fontPostscriptName ?? face.postscriptName ?? undefined,
+      fontFamily: face.family,
+      fontWeight: face.weight,
+      fontStyle: face.style,
+    };
+  });
+  return { issues, schema: { ...schema, schemaVersion: TEMPLATE_SCHEMA_VERSION, layers } as TemplateSchemaJson };
+}
+
+/**
  * Maakt een versie actief. Activeren is los van externe publicatie: het
  * betekent alleen dat nieuwe ontwerpen deze versie gebruiken. Bestaande
  * ontwerpen blijven op hun eigen versie.
@@ -239,12 +270,28 @@ export async function activateVersion(templateId: string, versionId: string) {
   const version = await prisma.templateVersion.findUnique({ where: { id: versionId } });
   if (!version || version.templateId !== templateId) throw new ApiError(404, "Versie niet gevonden.");
   const issues = await activationIssues(versionId);
+
+  // Eerste activering: lettertypen controleren en vastleggen. Een versie die
+  // al eerder actief was is onveranderlijk en wordt ongewijzigd teruggezet.
+  let pinnedSchema: TemplateSchemaJson | null = null;
+  if (!version.publishedAt) {
+    const parsed = templateSchemaJson.safeParse(version.schemaJson);
+    if (parsed.success) {
+      const pinned = checkAndPinFonts(parsed.data, await listFontFaces());
+      issues.push(...pinned.issues);
+      pinnedSchema = pinned.schema;
+    }
+  }
   throwOnErrors(issues);
 
   const template = await prisma.$transaction(async (tx) => {
     await tx.templateVersion.update({
       where: { id: versionId },
-      data: { status: "PUBLISHED", publishedAt: version.publishedAt ?? new Date() },
+      data: {
+        status: "PUBLISHED",
+        publishedAt: version.publishedAt ?? new Date(),
+        ...(pinnedSchema ? { schemaJson: pinnedSchema as unknown as Prisma.InputJsonValue } : {}),
+      },
     });
     return tx.template.update({ where: { id: templateId }, data: { activeVersionId: versionId, status: "PUBLISHED" } });
   });

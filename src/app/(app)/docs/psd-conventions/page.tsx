@@ -114,6 +114,21 @@ export default function PsdConventionsPage() {
               meegenomen in de achtergrond. Er is dus geen risico dat een vergeten laag verdwijnt.
             </li>
             <li>
+              <strong>Lettertypen</strong>: de importer leest per tekstlaag de PostScript-naam van het font (bijv.{" "}
+              <code className="rounded bg-surface-muted px-1 py-0.5">DIN-Black</code>) en zoekt het geüploade bestand
+              met diezelfde naam. Upload elk gebruikt gewicht als eigen bestand bij Lettertypen. Gebruik echte
+              vette/cursieve fonts, geen &ldquo;faux bold&rdquo; of &ldquo;faux italic&rdquo;; die worden niet
+              nagebootst. Eén opmaak per tekstlaag: verschillende fonts, groottes of kleuren in één laag worden
+              teruggebracht tot de opmaak van het eerste teken.
+            </li>
+            <li>
+              Vrij transformeren en draaien van tekst mag: grootte en rotatie worden overgenomen. Werk bij voorkeur
+              met alineatekst (een getekend tekstkader), dan is het kader exact. Ondersteunde tekstopmaak: All Caps,
+              letterafstand (tracking), regelafstand, uitlijning, en de laageffecten omlijning, kleurbedekking en
+              slagschaduw. Warp, tekst op een pad, verticale tekst en kleinkapitalen worden niet nagebootst; de import
+              meldt dat.
+            </li>
+            <li>
               Lever het bestand aan als platte <code className="rounded bg-surface-muted px-1 py-0.5">.psd</code>{" "}
               (geen Smart Objects met externe links, geen ontbrekende fonts). Niet-ondersteunde Photoshop-functies
               (geavanceerde laagstijlen, blendmodes) worden gerasterd — het eindresultaat blijft er zo dicht mogelijk

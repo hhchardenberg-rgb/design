@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { templateSchemaJson } from "@/lib/validations/template";
+import { listFontFaces } from "@/lib/fonts/faces.server";
 import { TemplateBuilder, type BuilderField, type BuilderTemplate } from "./template-builder";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -67,5 +68,14 @@ export default async function TemplateBuilderPage({
     })),
   };
 
-  return <TemplateBuilder key={versionId ?? "laatste"} template={builderTemplate} initialVersionId={versionId} />;
+  const fontFaces = await listFontFaces();
+
+  return (
+    <TemplateBuilder
+      key={versionId ?? "laatste"}
+      template={builderTemplate}
+      initialVersionId={versionId}
+      fontFaces={fontFaces}
+    />
+  );
 }

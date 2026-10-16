@@ -10,7 +10,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select } from "@/components/ui/input";
 import { FieldEditorRow } from "./field-editor-row";
-import type { Layer, TemplateSchemaJson } from "@/lib/validations/template";
+import type { Layer, TemplateSchemaJson, TextLayer } from "@/lib/validations/template";
+import type { FontFaceInfo } from "@/lib/fonts/faces";
+import { TextFontPanel } from "./text-font-panel";
 
 const DesignCanvas = dynamic(() => import("@/components/editor/design-canvas").then((m) => m.DesignCanvas), {
   ssr: false,
@@ -57,7 +59,15 @@ export interface BuilderTemplate {
 
 const EXPORT_FORMATS = ["PNG", "JPG", "WEBP"];
 
-export function TemplateBuilder({ template, initialVersionId }: { template: BuilderTemplate; initialVersionId?: string }) {
+export function TemplateBuilder({
+  template,
+  initialVersionId,
+  fontFaces,
+}: {
+  template: BuilderTemplate;
+  initialVersionId?: string;
+  fontFaces: FontFaceInfo[];
+}) {
   const router = useRouter();
   const sortedVersions = [...template.versions].sort((a, b) => b.versionNumber - a.versionNumber);
   const [versionId, setVersionId] = useState(initialVersionId ?? sortedVersions[0]?.id);
@@ -350,7 +360,15 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
         <div className="flex flex-col gap-4">
           <Card className="bg-hhc-black p-4">
             <CardContent className="flex justify-center p-0">
-              <DesignCanvas schema={schema} formData={previewFormData} maxWidth={520} maxHeight={640} editable={false} />
+              <DesignCanvas
+                schema={schema}
+                formData={previewFormData}
+                maxWidth={520}
+                maxHeight={640}
+                editable={false}
+                fontFaces={fontFaces}
+                textTransforms={Object.fromEntries(fields.map((f) => [f.key, f.textTransform]))}
+              />
             </CardContent>
           </Card>
 
@@ -401,6 +419,18 @@ export function TemplateBuilder({ template, initialVersionId }: { template: Buil
               )}
             </div>
           </div>
+
+          <TextFontPanel
+            layers={schema.layers.filter((l): l is TextLayer => l.type === "text")}
+            faces={fontFaces}
+            locked={version.locked}
+            onChange={(layerId, patch) =>
+              setSchema((prev) => ({
+                ...prev,
+                layers: prev.layers.map((l) => (l.id === layerId && l.type === "text" ? { ...l, ...patch } : l)),
+              }))
+            }
+          />
 
           <div>
             <Label>Exportformaten</Label>
