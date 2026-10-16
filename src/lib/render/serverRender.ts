@@ -91,7 +91,7 @@ export async function renderDesign(
           ctx.drawImage(img, layer.x, layer.y, layer.width, layer.height);
         }
       } else if (layer.type === "text") {
-        await drawTextLayer(ctx, layer, formData, faces, options, label);
+        await drawTextLayer(ctx, layer, formData, faces, options, label, (schema.schemaVersion ?? 1) >= 2);
       } else if (layer.type === "image") {
         await drawImageLayer(ctx, layer, formData, getImage);
       } else if (layer.type === "color") {
@@ -158,7 +158,8 @@ async function drawTextLayer(
   formData: DesignFormData,
   faces: FontFaceInfo[],
   options: RenderOptions,
-  label: string
+  label: string,
+  pinnedFonts: boolean
 ) {
   const text = resolveLayerText(layer, formData, options.textTransforms?.[layer.field]);
   if (!text) return;
@@ -166,7 +167,9 @@ async function drawTextLayer(
   const { face, status } = resolveFontFace(layer, faces);
   const meta = await ensureFaceRegistered(face);
   if (!meta) throw new RenderError(`Het lettertype voor ${label} kon niet worden geladen.`);
-  if (options.strict && status === "missing") {
+  // Oudere versies (zonder vastgelegde fonts) vielen altijd terug op Inter;
+  // dat blijft zo, zodat bestaande templates niet ineens weigeren.
+  if (options.strict && status === "missing" && pinnedFonts) {
     throw new RenderError(`Het lettertype voor ${label} ontbreekt.`);
   }
   const missing = missingGlyphs(meta, text);

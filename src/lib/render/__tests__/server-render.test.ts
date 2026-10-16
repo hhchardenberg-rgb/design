@@ -76,9 +76,11 @@ test("strikte export weigert tekst die niet past, een ontbrekend font en ontbrek
     (e: unknown) => e instanceof RenderError && /past niet/.test((e as Error).message)
   );
   await assert.rejects(
-    renderDesign(schemaWith({ fontFamily: "Gotham" }), { t: "HHC" }, { strict: true, faces }),
+    renderDesign(schemaWith({ fontFamily: "Gotham" }, { schemaVersion: 2 }), { t: "HHC" }, { strict: true, faces }),
     (e: unknown) => e instanceof RenderError && /ontbreekt/.test((e as Error).message)
   );
+  // Oudere versie zonder vastgelegde fonts: zoals voorheen terugvallen op Inter.
+  await renderDesign(schemaWith({ fontFamily: "Gotham" }), { t: "HHC" }, { strict: true, faces });
   await assert.rejects(
     renderDesign(schemaWith({}), { t: "漢字" }, { strict: true, faces }),
     (e: unknown) => e instanceof RenderError && /tekens/.test((e as Error).message)
