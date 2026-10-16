@@ -80,6 +80,7 @@ async function cleanup() {
   await db.generatedDesign.deleteMany({ where: { userId: { in: ids } } });
   await db.uploadedAsset.deleteMany({ where: { userId: { in: ids } } });
   await db.template.deleteMany({ where: { slug: { startsWith: "dtest-" } } });
+  await db.font.deleteMany({ where: { name: { startsWith: "dtest " } } });
   await db.opponent.deleteMany({ where: { name: "Testclub Designtest" } });
   await db.user.deleteMany({ where: { id: { in: ids } } });
 }
@@ -252,4 +253,44 @@ test("ontwerpen: nieuwe templateversie raakt bestaande ontwerpen niet; overstapp
   assert.deepEqual(switched.design.formData, { opponent: "Sparta 2" });
   const original = await db.generatedDesign.findUniqueOrThrow({ where: { id: design.id } });
   assert.equal(original.templateVersionId, t.version.id, "het origineel blijft bestaan");
+});
+
+test("lettertypen: metadata uit het bestand, vastleggen bij activeren, ontbrekend font blokkeert", { skip }, async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { readFontMetadata } = await import("@/lib/fonts/metadata");
+  const { fontMetadataColumns, versionsUsingFont } = await import("@/lib/fonts/faces.server");
+
+  const t = await mkTemplate("dtest-fonts");
+  const withFont = (fontFamily: string, fontWeight: number) => ({
+    ...t.schema,
+    layers: t.schema.layers.map((l) => (l.id === "opponent" ? { ...l, fontFamily, fontWeight } : l)),
+  });
+
+  await db.templateVersion.update({ where: { id: t.version.id }, data: { schemaJson: withFont("Gotham", 700) } });
+  await rejects(tv.activateVersion(t.template.id, t.version.id), 400, /niet geüpload/);
+
+  const buffer = await readFile(path.join(cwd, "public/fonts/ff-din/FF_DIN_Black.otf"));
+  const meta = readFontMetadata(buffer);
+  assert.equal(meta.weight, 900);
+  const stored = await storage.getStorage().put({ key: `fonts/dtest-${meta.sha256.slice(0, 8)}.otf`, data: buffer, contentType: "font/otf" });
+  const font = await db.font.create({
+    data: { name: "dtest DIN Black", family: "dtest FF DIN", format: "otf", fileUrl: stored.url, ...fontMetadataColumns(meta) },
+  });
+  try {
+    await db.templateVersion.update({ where: { id: t.version.id }, data: { schemaJson: withFont("dtest FF DIN", 900) } });
+    await tv.activateVersion(t.template.id, t.version.id);
+    const pinned = await db.templateVersion.findUniqueOrThrow({ where: { id: t.version.id } });
+    const layer = (pinned.schemaJson as { layers: Array<Record<string, unknown>>; schemaVersion?: number }).layers.find((l) => l.id === "opponent")!;
+    assert.equal(layer.fontFaceId, font.id, "tekstlaag is aan het concrete bestand gekoppeld");
+    assert.equal(layer.fontPostscriptName, meta.postscriptName);
+    assert.equal((pinned.schemaJson as { schemaVersion?: number }).schemaVersion, 2);
+    assert.equal((await versionsUsingFont(font)).length, 1);
+
+    const anna = await mkUser("anna-font", ["HUB"]);
+    const design = await svc.createDesign(anna, { templateVersionId: t.version.id, formData: { opponent: "Sparta" } });
+    const exported = await svc.exportDesign(anna, design.id, { revision: 1, format: "PNG" });
+    assert.equal(exported.export.width, 200);
+  } finally {
+    await db.font.delete({ where: { id: font.id } });
+  }
 });

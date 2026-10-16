@@ -16,8 +16,10 @@ initializeCanvas(((width: number, height: number) => {
     throw e;
   }
 }) as unknown as (width: number, height: number) => HTMLCanvasElement);
+import { textLayerFromPsd } from "./text";
 import { averageColorHex, compositeRegions, pixelDataToPng, type RasterRegion } from "./rasterize";
 import {
+  TEMPLATE_SCHEMA_VERSION,
   templateFieldInputSchema,
   type Layer as NormLayer,
   type TemplateFieldInput,
@@ -222,38 +224,20 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
 
   for (const info of dynamicText) {
     const textData = info.layer.text;
-    const style = textData?.styleRuns?.[0]?.style ?? textData?.style;
-    const paragraph = textData?.paragraphStyleRuns?.[0]?.style ?? textData?.paragraphStyle;
-    const fontSize = style?.fontSize ?? 32;
-    const fontFamily = style?.font?.name ?? "Inter";
-    const color = style?.fillColor ? rgbToHex(style.fillColor) : "#000000";
-    const align = justificationToAlign(paragraph?.justification);
-    const letterSpacing = style?.tracking ? Math.round((style.tracking / 1000) * fontSize) : 0;
-    const maxLines = info.height > fontSize * 1.8 ? 2 : 1;
-
-    layers.push({
-      id: info.key,
-      type: "text",
-      field: info.key,
-      x: info.left,
-      y: info.top,
-      width: info.width,
-      height: info.height,
-      text: textData?.text?.trim(),
-      fontFamily,
-      fontWeight: style?.fauxBold ? 700 : 400,
-      fontStyle: style?.fauxItalic ? "italic" : "normal",
-      fontSize,
-      minFontSize: Math.max(12, Math.round(fontSize * 0.4)),
-      color,
-      align,
-      uppercase: false,
-      letterSpacing,
-      lineHeight: 1.15,
-      maxLines,
-      allowTruncate: false,
-      visibilityField: info.visibilityField,
-    });
+    const { layer: textLayer, warnings: textWarnings } = textLayerFromPsd(
+      {
+        key: info.key,
+        name: info.label,
+        left: info.left,
+        top: info.top,
+        width: info.width,
+        height: info.height,
+        visibilityField: info.visibilityField,
+      },
+      info.layer
+    );
+    layers.push(textLayer);
+    warnings.push(...textWarnings.map((message) => ({ message })));
 
     fields.push(makeField({
       key: info.key,
@@ -330,6 +314,7 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
   }
 
   const schema: TemplateSchemaJson = {
+    schemaVersion: TEMPLATE_SCHEMA_VERSION,
     width,
     height,
     backgroundColor: "#ffffff",
@@ -369,29 +354,6 @@ function uniqueKey(base: string, used: Set<string>): string {
   }
   used.add(key);
   return key;
-}
-
-function rgbToHex(c: unknown): string {
-  const clamp = (v = 0) => Math.max(0, Math.min(255, Math.round(v)));
-  const obj = (c ?? {}) as Record<string, number>;
-  if (typeof obj.r === "number") {
-    return `#${[clamp(obj.r), clamp(obj.g), clamp(obj.b)]
-      .map((v) => v.toString(16).padStart(2, "0"))
-      .join("")}`.toUpperCase();
-  }
-  if (typeof obj.fr === "number") {
-    return `#${[clamp(obj.fr * 255), clamp(obj.fg * 255), clamp(obj.fb * 255)]
-      .map((v) => v.toString(16).padStart(2, "0"))
-      .join("")}`.toUpperCase();
-  }
-  return "#000000";
-}
-
-function justificationToAlign(j: string | undefined): "left" | "center" | "right" {
-  if (!j) return "left";
-  if (j.includes("right")) return "right";
-  if (j.includes("center")) return "center";
-  return "left";
 }
 
 function guessFieldTypeForText(key: string): TemplateFieldInput["type"] {

@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect } from "react";
-import { Stage, Layer, Image as KonvaImage, Text as KonvaText, Rect, Ellipse, Group } from "react-konva";
+import { Stage, Layer, Image as KonvaImage, Rect, Ellipse, Group, Shape } from "react-konva";
 import type Konva from "konva";
-import type { Layer as SchemaLayer, TemplateSchemaJson } from "@/lib/validations/template";
-import { fitText } from "@/lib/render/textFit";
-import { measureBrowser } from "@/lib/render/measureBrowser";
+import type { Layer as SchemaLayer, TemplateSchemaJson, TextLayer } from "@/lib/validations/template";
+import { BUILTIN_FONT_FACES, resolveFontFace, type FontFaceInfo, type FontResolution } from "@/lib/fonts/faces";
+import { drawTextLayout, type MeasureText, type TextCanvas, type TextLayout } from "@/lib/render/textLayout";
+import { layoutTextLayer, resolveLayerText, textPaint } from "@/lib/render/textLayer";
 import { computeImageDraw, type ImageFieldValue } from "@/lib/render/imageFit";
-import { applyTextTransform } from "@/lib/render/textTransform";
 import { cn } from "@/lib/utils";
 import { useImage } from "./use-image";
+import { useFontFaces } from "./use-font-faces";
 
 export type DesignFormData = Record<string, unknown>;
 
@@ -24,7 +25,32 @@ export interface DesignCanvasProps {
   onImageTransform?: (fieldKey: string, value: ImageFieldValue) => void;
   /** Teksttransformatie per veld (veldinstelling uit de builder). */
   textTransforms?: Record<string, string>;
+  /** Beschikbare fontbestanden (zie listFontFaces); standaard alleen Inter. */
+  fontFaces?: FontFaceInfo[];
+  /** Meldingen over tekst die niet past of een ontbrekend lettertype. */
+  onTextIssues?: (issues: TextIssue[]) => void;
   className?: string;
+}
+
+export interface TextIssue {
+  layerId: string;
+  field: string;
+  kind: "overflow" | "truncated" | "font-missing" | "font-substitute" | "font-failed";
+  message: string;
+}
+
+let measureCtx: CanvasRenderingContext2D | null = null;
+const measureBrowser: MeasureText = (text, font) => {
+  if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+  const c = measureCtx!;
+  c.font = font;
+  if ("letterSpacing" in c) c.letterSpacing = "0px";
+  return c.measureText(text).width;
+};
+
+interface TextRender {
+  layout: TextLayout;
+  resolution: FontResolution;
 }
 
 /**
@@ -41,8 +67,68 @@ export function DesignCanvas({
   editable = true,
   onImageTransform,
   textTransforms,
+  fontFaces = BUILTIN_FONT_FACES,
+  onTextIssues,
   className,
 }: DesignCanvasProps) {
+  const textLayers = useMemo(
+    () => schema.layers.filter((l): l is TextLayer => l.type === "text"),
+    [schema.layers]
+  );
+  const resolutions = useMemo(
+    () => new Map(textLayers.map((l) => [l.id, resolveFontFace(l, fontFaces)])),
+    [textLayers, fontFaces]
+  );
+  const neededFaces = useMemo(() => [...resolutions.values()].map((r) => r.face), [resolutions]);
+  const fonts = useFontFaces(neededFaces);
+
+  // Eén layout per tekstlaag, pas berekend als de fontbestanden geladen zijn.
+  const textRenders = useMemo(() => {
+    const map = new Map<string, TextRender>();
+    if (!fonts.ready) return map;
+    for (const layer of textLayers) {
+      const resolution = resolutions.get(layer.id)!;
+      const text = resolveLayerText(layer, formData, textTransforms?.[layer.field]);
+      map.set(layer.id, { resolution, layout: layoutTextLayer(layer, text, resolution.face, measureBrowser) });
+    }
+    return map;
+  }, [fonts.ready, textLayers, resolutions, formData, textTransforms]);
+
+  const issues = useMemo(() => {
+    const list: TextIssue[] = [];
+    for (const layer of textLayers) {
+      const render = textRenders.get(layer.id);
+      const name = layer.name ?? layer.field;
+      if (!render) continue;
+      const { resolution, layout } = render;
+      if (fonts.failed.includes(`${resolution.face.family} ${resolution.face.subfamily}`)) {
+        list.push({ layerId: layer.id, field: layer.field, kind: "font-failed", message: `Het lettertype van "${name}" kon niet worden geladen.` });
+      } else if (resolution.status === "missing" || resolution.status === "substitute") {
+        list.push({
+          layerId: layer.id,
+          field: layer.field,
+          kind: resolution.status === "missing" ? "font-missing" : "font-substitute",
+          message: resolution.message ?? "",
+        });
+      }
+      if (layout.overflow) {
+        list.push({ layerId: layer.id, field: layer.field, kind: "overflow", message: `De tekst in "${name}" past niet; maak hem korter.` });
+      } else if (layout.truncated) {
+        list.push({ layerId: layer.id, field: layer.field, kind: "truncated", message: `De tekst in "${name}" wordt afgekort.` });
+      }
+    }
+    return list;
+  }, [textLayers, textRenders, fonts.failed]);
+
+  const issuesKey = JSON.stringify(issues);
+  const issuesCallback = useRef(onTextIssues);
+  useEffect(() => {
+    issuesCallback.current = onTextIssues;
+  });
+  useEffect(() => {
+    if (fonts.ready) issuesCallback.current?.(JSON.parse(issuesKey) as TextIssue[]);
+  }, [issuesKey, fonts.ready]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(maxWidth);
 
@@ -81,7 +167,7 @@ export function DesignCanvas({
               formData={formData}
               editable={editable}
               onImageTransform={onImageTransform}
-              textTransforms={textTransforms}
+              textRender={textRenders.get(layer.id)}
             />
           ))}
         </Layer>
@@ -95,19 +181,41 @@ function LayerNode({
   formData,
   editable,
   onImageTransform,
-  textTransforms,
+  textRender,
 }: {
   layer: SchemaLayer;
   formData: DesignFormData;
   editable: boolean;
   onImageTransform?: (fieldKey: string, value: ImageFieldValue) => void;
-  textTransforms?: Record<string, string>;
+  textRender?: TextRender;
 }) {
   if (layer.visibilityField) {
     const value = formData[layer.visibilityField];
     if (value === false || value === "false") return null;
   }
 
+  const content = layerContent(layer, formData, editable, onImageTransform, textRender);
+  if (!content) return null;
+  const rotation = layer.rotation ?? 0;
+  const opacity = layer.opacity ?? 1;
+  if (!rotation && opacity >= 1) return content;
+  // Rotatie rond het midden van het kader en dekking: gelijk aan de export.
+  const cx = layer.x + layer.width / 2;
+  const cy = layer.y + layer.height / 2;
+  return (
+    <Group x={cx} y={cy} offsetX={cx} offsetY={cy} rotation={rotation} opacity={opacity}>
+      {content}
+    </Group>
+  );
+}
+
+function layerContent(
+  layer: SchemaLayer,
+  formData: DesignFormData,
+  editable: boolean,
+  onImageTransform: ((fieldKey: string, value: ImageFieldValue) => void) | undefined,
+  textRender: TextRender | undefined
+) {
   switch (layer.type) {
     case "background":
       return layer.field ? (
@@ -131,7 +239,7 @@ function LayerNode({
     case "static_image":
       return <RasterLayer layer={layer} />;
     case "text":
-      return <TextLayerNode layer={layer} formData={formData} transform={textTransforms?.[layer.field]} />;
+      return textRender ? <TextLayerNode layer={layer} render={textRender} /> : null;
     case "color":
       return <ColorLayerNode layer={layer} formData={formData} />;
     case "image":
@@ -162,58 +270,19 @@ function RasterLayer({ layer }: { layer: Extract<SchemaLayer, { type: "backgroun
   return <KonvaImage image={img} x={layer.x} y={layer.y} width={layer.width} height={layer.height} listening={false} />;
 }
 
-function TextLayerNode({
-  layer,
-  formData,
-  transform,
-}: {
-  layer: Extract<SchemaLayer, { type: "text" }>;
-  formData: DesignFormData;
-  transform?: string;
-}) {
-  const value = formData[layer.field];
-  const raw = applyTextTransform((typeof value === "string" ? value : layer.text ?? "").trim(), transform);
-
-  const fit = useMemo(
-    () =>
-      fitText({
-        text: raw,
-        maxWidth: layer.width,
-        maxHeight: layer.height,
-        fontFamily: layer.fontFamily,
-        fontWeight: layer.fontWeight,
-        fontStyle: layer.fontStyle,
-        startSize: layer.fontSize,
-        minSize: layer.minFontSize,
-        maxLines: layer.maxLines,
-        lineHeight: layer.lineHeight,
-        letterSpacing: layer.letterSpacing,
-        uppercase: layer.uppercase,
-        allowTruncate: layer.allowTruncate,
-        measure: measureBrowser,
-      }),
-    [raw, layer]
-  );
-
-  if (!raw) return null;
-
-  const totalHeight = fit.lines.length * fit.fontSize * layer.lineHeight;
-  const y = layer.y + Math.max(0, (layer.height - totalHeight) / 2);
-
+function TextLayerNode({ layer, render }: { layer: TextLayer; render: TextRender }) {
+  const { layout } = render;
+  if (layout.lines.length === 0) return null;
+  const paint = textPaint(layer);
   return (
-    <KonvaText
-      text={fit.lines.join("\n")}
+    <Shape
       x={layer.x}
-      y={y}
-      width={layer.width}
-      align={layer.align}
-      fontFamily={layer.fontFamily}
-      fontSize={fit.fontSize}
-      fontStyle={`${layer.fontStyle === "italic" ? "italic " : ""}${layer.fontWeight >= 700 ? "bold" : "normal"}`.trim()}
-      letterSpacing={layer.letterSpacing}
-      lineHeight={layer.lineHeight}
-      fill={layer.color}
+      y={layer.y}
       listening={false}
+      sceneFunc={(ctx) => {
+        // Zelfde tekenfunctie als de server-export, op de echte 2D-context.
+        drawTextLayout(ctx._context as unknown as TextCanvas, layout, paint);
+      }}
     />
   );
 }
@@ -286,14 +355,19 @@ function CroppableImageLayer({
   const imgRef = useRef<Konva.Image>(null);
 
   if (!img) {
+    // Zonder (geladen) afbeelding tekent de export niets; de preview ook
+    // niet, op een stippellijn na zodat de invuller het kader kan vinden.
+    if (!editable || !onImageTransform) return null;
     return (
       <Rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
+        x={x + 0.5}
+        y={y + 0.5}
+        width={width - 1}
+        height={height - 1}
         cornerRadius={shape === "circle" ? width / 2 : cornerRadius}
-        fill="#e4e1db"
+        stroke="rgba(255,255,255,0.6)"
+        strokeWidth={2}
+        dash={[8, 6]}
         listening={false}
       />
     );

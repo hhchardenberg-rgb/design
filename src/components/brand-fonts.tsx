@@ -12,7 +12,8 @@ const FORMAT_KEYWORDS: Record<string, string> = {
  * geüploade lettertypen (zie /admin/fonts) zodat ze niet alleen in de
  * server-side export (src/lib/render/fonts.ts) maar ook in de browser
  * — de live preview (Konva) én de rest van de UI — daadwerkelijk
- * worden geladen. Zonder dit valt elke tekst in bv. "FF DIN" in de
+ * worden geladen. De bestanden komen via /api/fonts/<id> (eigen domein),
+ * omdat de Content-Security-Policy alleen fonts van 'self' toestaat. Zonder dit valt elke tekst in bv. "FF DIN" in de
  * browser stilzwijgend terug op een systeemfont, terwijl de export
  * wél het echte lettertype toont.
  */
@@ -24,7 +25,7 @@ export async function BrandFontFaces() {
     .map((f) => {
       const family = f.family.replace(/["\\]/g, "");
       const format = FORMAT_KEYWORDS[f.format] ?? f.format;
-      return `@font-face{font-family:"${family}";src:url("${f.fileUrl}") format("${format}");font-weight:${f.weight};font-style:${f.style};font-display:swap;}`;
+      return `@font-face{font-family:"${family}";src:url("/api/fonts/${f.id}${f.sha256 ? `?v=${f.sha256}` : ""}") format("${format}");font-weight:${f.weight};font-style:${f.style};font-display:swap;}`;
     })
     .join("\n");
 

@@ -379,8 +379,21 @@ model Font {
   fileUrl  String
   isActive Boolean @default(true)
 
+  // Metadata uit het fontbestand zelf (zie src/lib/fonts/metadata.ts). Leeg
+  // bij fonts van vóór oktober 2026 tot ze opnieuw zijn ingelezen.
+  fileFamily     String?
+  subfamily      String?
+  postscriptName String?
+  sha256         String?
+  unitsPerEm     Int?
+  ascender       Int?
+  descender      Int?
+  capHeight      Int?
+  metadataReadAt DateTime?
+
   createdAt DateTime @default(now())
 
+  @@index([postscriptName])
   @@map("fonts")
 }
 

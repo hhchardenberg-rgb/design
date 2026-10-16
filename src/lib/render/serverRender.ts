@@ -1,34 +1,53 @@
 import { createCanvas, loadImage, type SKRSContext2D, type Image } from "@napi-rs/canvas";
-import type { Layer, TemplateSchemaJson } from "@/lib/validations/template";
-import { fitText } from "./textFit";
-import { measureServer, cssFont } from "./measureServer";
+import sharp from "sharp";
+import type { Layer, TemplateSchemaJson, TextLayer } from "@/lib/validations/template";
+import { resolveFontFace, type FontFaceInfo } from "@/lib/fonts/faces";
+import { missingGlyphs } from "@/lib/fonts/metadata";
 import { computeImageDraw, type ImageFieldValue } from "./imageFit";
 import { loadAssetBuffer } from "./loadAsset";
-import { ensureFontsRegistered } from "./fonts";
-import { applyTextTransform } from "./textTransform";
+import { ensureFaceRegistered, loadRenderFaces } from "./fonts";
+import { drawTextLayout, type MeasureText, type TextCanvas } from "./textLayout";
+import { layoutTextLayer, resolveLayerText, textPaint } from "./textLayer";
 
 export type DesignFormData = Record<string, unknown>;
 export type ExportFormat = "PNG" | "JPG" | "WEBP";
 
 /**
- * Rendert een GeneratedDesign op volledige templateresolutie. Gebruikt
- * hetzelfde `fitText`/`computeImageDraw` als de browser-preview zodat het
- * eindresultaat nooit verrast t.o.v. wat de gebruiker zag (zie
- * MASTERPROMPT sectie 10).
+ * Rendert een GeneratedDesign op volledige templateresolutie. Tekst gaat
+ * via hetzelfde layoutcontract als de browserpreview (textLayout.ts) met
+ * dezelfde fontbestanden; afbeeldingen via hetzelfde computeImageDraw.
  */
 export class RenderError extends Error {}
+
+export interface RenderOptions {
+  /** Definitieve export: elke fout breekt af, er komt geen gedeeltelijk bestand. */
+  strict?: boolean;
+  textTransforms?: Record<string, string>;
+  /** Voor tests; standaard alle faces uit de database plus Inter. */
+  faces?: FontFaceInfo[];
+}
+
+const measureCanvas = createCanvas(16, 16);
+const measureCtx = measureCanvas.getContext("2d");
+const measureServer: MeasureText = (text, font) => {
+  measureCtx.font = font;
+  measureCtx.letterSpacing = "0px";
+  return measureCtx.measureText(text).width;
+};
 
 export async function renderDesign(
   schema: TemplateSchemaJson,
   formData: DesignFormData,
-  options: { strict?: boolean; textTransforms?: Record<string, string> } = {}
+  options: RenderOptions = {}
 ): Promise<import("@napi-rs/canvas").Canvas> {
-  await ensureFontsRegistered();
+  const faces = options.faces ?? (await loadRenderFaces());
 
   const canvas = createCanvas(schema.width, schema.height);
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = schema.backgroundColor || "#ffffff";
-  ctx.fillRect(0, 0, schema.width, schema.height);
+  if (!schema.transparent) {
+    ctx.fillStyle = schema.backgroundColor || "#ffffff";
+    ctx.fillRect(0, 0, schema.width, schema.height);
+  }
 
   const imageCache = new Map<string, Image>();
   async function getImage(url: string): Promise<Image> {
@@ -42,8 +61,11 @@ export async function renderDesign(
 
   for (const layer of schema.layers) {
     if (isHidden(layer, formData)) continue;
+    const label = `"${layer.name ?? layer.id}"`;
 
     try {
+      ctx.save();
+      applyLayerTransform(ctx, layer);
       if (layer.type === "background" && layer.field) {
         await drawImageLayer(
           ctx,
@@ -55,9 +77,6 @@ export async function renderDesign(
             y: layer.y,
             width: layer.width,
             height: layer.height,
-            rotation: layer.rotation,
-            opacity: layer.opacity,
-            visibilityField: layer.visibilityField,
             fit: layer.fit ?? "cover",
             shape: "rect",
             cornerRadius: 0,
@@ -67,11 +86,12 @@ export async function renderDesign(
           getImage
         );
       } else if (layer.type === "background" || layer.type === "static_image") {
-        if (!layer.src) continue;
-        const img = await getImage(layer.src);
-        ctx.drawImage(img, layer.x, layer.y, layer.width, layer.height);
+        if (layer.src) {
+          const img = await getImage(layer.src);
+          ctx.drawImage(img, layer.x, layer.y, layer.width, layer.height);
+        }
       } else if (layer.type === "text") {
-        drawTextLayer(ctx, layer, formData, options.textTransforms?.[layer.field]);
+        await drawTextLayer(ctx, layer, formData, faces, options, label, (schema.schemaVersion ?? 1) >= 2);
       } else if (layer.type === "image") {
         await drawImageLayer(ctx, layer, formData, getImage);
       } else if (layer.type === "color") {
@@ -80,23 +100,36 @@ export async function renderDesign(
     } catch (error) {
       // Bij een definitieve export nooit een gedeeltelijk bestand opleveren:
       // een ontbrekende afbeelding of kapotte laag breekt de export af.
+      if (error instanceof RenderError) throw error;
       if (options.strict) {
-        throw new RenderError(`Onderdeel "${layer.name ?? layer.id}" kon niet worden getekend.`, { cause: error });
+        throw new RenderError(`Onderdeel ${label} kon niet worden getekend.`, { cause: error });
       }
       console.warn(`[render] laag "${layer.id}" overgeslagen:`, error);
+    } finally {
+      ctx.restore();
     }
   }
 
   return canvas;
 }
 
+/**
+ * Codeert naar het gevraagde formaat met een sRGB-profiel. JPG kent geen
+ * transparantie: transparante delen krijgen de achtergrondkleur van de
+ * template.
+ */
 export async function encodeCanvas(
   canvas: import("@napi-rs/canvas").Canvas,
-  format: ExportFormat
+  format: ExportFormat,
+  schema?: Pick<TemplateSchemaJson, "backgroundColor">
 ): Promise<Buffer> {
-  if (format === "JPG") return canvas.toBuffer("image/jpeg", 92);
-  if (format === "WEBP") return canvas.toBuffer("image/webp", 92);
-  return canvas.toBuffer("image/png");
+  const png = canvas.toBuffer("image/png");
+  const image = sharp(png).withIccProfile("srgb");
+  if (format === "JPG") {
+    return image.flatten({ background: schema?.backgroundColor || "#ffffff" }).jpeg({ quality: 92, chromaSubsampling: "4:4:4" }).toBuffer();
+  }
+  if (format === "WEBP") return image.webp({ quality: 92, alphaQuality: 100 }).toBuffer();
+  return image.png({ compressionLevel: 9 }).toBuffer();
 }
 
 function isHidden(layer: Layer, formData: DesignFormData): boolean {
@@ -105,64 +138,51 @@ function isHidden(layer: Layer, formData: DesignFormData): boolean {
   return value === false || value === "false";
 }
 
-function drawTextLayer(
+/** Rotatie (graden, rond het midden van het kader) en dekking; gelijk aan de preview. */
+function applyLayerTransform(ctx: SKRSContext2D, layer: Layer) {
+  const opacity = layer.opacity ?? 1;
+  if (opacity < 1) ctx.globalAlpha = Math.max(0, opacity);
+  const rotation = layer.rotation ?? 0;
+  if (rotation) {
+    const cx = layer.x + layer.width / 2;
+    const cy = layer.y + layer.height / 2;
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+  }
+}
+
+async function drawTextLayer(
   ctx: SKRSContext2D,
-  layer: Extract<Layer, { type: "text" }>,
+  layer: TextLayer,
   formData: DesignFormData,
-  transform?: string
+  faces: FontFaceInfo[],
+  options: RenderOptions,
+  label: string,
+  pinnedFonts: boolean
 ) {
-  // Zelfde regel als de preview: niet ingevuld (undefined) toont de
-  // voorbeeldtekst, bewust leeggemaakt ("") toont niets.
-  const value = formData[layer.field];
-  const raw = applyTextTransform((typeof value === "string" ? value : layer.text ?? "").trim(), transform);
-  if (!raw) return;
+  const text = resolveLayerText(layer, formData, options.textTransforms?.[layer.field]);
+  if (!text) return;
 
-  const fit = fitText({
-    text: raw,
-    maxWidth: layer.width,
-    maxHeight: layer.height,
-    fontFamily: layer.fontFamily,
-    fontWeight: layer.fontWeight,
-    fontStyle: layer.fontStyle,
-    startSize: layer.fontSize,
-    minSize: layer.minFontSize,
-    maxLines: layer.maxLines,
-    lineHeight: layer.lineHeight,
-    letterSpacing: layer.letterSpacing,
-    uppercase: layer.uppercase,
-    allowTruncate: layer.allowTruncate,
-    measure: measureServer,
-  });
-  if (fit.lines.length === 0) return;
+  const { face, status } = resolveFontFace(layer, faces);
+  const meta = await ensureFaceRegistered(face);
+  if (!meta) throw new RenderError(`Het lettertype voor ${label} kon niet worden geladen.`);
+  // Oudere versies (zonder vastgelegde fonts) vielen altijd terug op Inter;
+  // dat blijft zo, zodat bestaande templates niet ineens weigeren.
+  if (options.strict && status === "missing" && pinnedFonts) {
+    throw new RenderError(`Het lettertype voor ${label} ontbreekt.`);
+  }
+  const missing = missingGlyphs(meta, text);
+  if (options.strict && missing.length > 0) {
+    throw new RenderError(`Het lettertype van ${label} kan deze tekens niet tonen: ${missing.join(" ")}.`);
+  }
 
-  ctx.save();
-  ctx.font = cssFont({
-    family: layer.fontFamily,
-    size: fit.fontSize,
-    weight: layer.fontWeight,
-    style: layer.fontStyle,
-    letterSpacing: layer.letterSpacing,
-  });
-  ctx.letterSpacing = `${layer.letterSpacing}px`;
-  ctx.fillStyle = layer.color;
-  ctx.textBaseline = "alphabetic";
-  ctx.textAlign = layer.align;
-  ctx.globalAlpha = layer.opacity ?? 1;
-
-  const lineHeightPx = fit.fontSize * layer.lineHeight;
-  const totalHeight = fit.lines.length * lineHeightPx;
-  const startY = layer.y + Math.max(0, (layer.height - totalHeight) / 2) + fit.fontSize * 0.85;
-  const anchorX =
-    layer.align === "center"
-      ? layer.x + layer.width / 2
-      : layer.align === "right"
-        ? layer.x + layer.width
-        : layer.x;
-
-  fit.lines.forEach((line, i) => {
-    ctx.fillText(line, anchorX, startY + i * lineHeightPx);
-  });
-  ctx.restore();
+  const layout = layoutTextLayer(layer, text, face, measureServer);
+  if (options.strict && layout.overflow) {
+    throw new RenderError(`De tekst in ${label} past niet. Maak de tekst korter.`);
+  }
+  ctx.translate(layer.x, layer.y);
+  drawTextLayout(ctx as unknown as TextCanvas, layout, textPaint(layer));
 }
 
 async function drawImageLayer(
@@ -183,23 +203,15 @@ async function drawImageLayer(
     value
   );
 
-  ctx.save();
   clipLayerShape(ctx, layer);
   ctx.drawImage(img, layer.x + draw.drawX, layer.y + draw.drawY, draw.drawWidth, draw.drawHeight);
-  ctx.restore();
 }
 
-function drawColorLayer(
-  ctx: SKRSContext2D,
-  layer: Extract<Layer, { type: "color" }>,
-  formData: DesignFormData
-) {
+function drawColorLayer(ctx: SKRSContext2D, layer: Extract<Layer, { type: "color" }>, formData: DesignFormData) {
   const color = (formData[layer.field] as string | undefined) || layer.defaultColor;
-  ctx.save();
   clipLayerShape(ctx, layer, false);
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.restore();
 }
 
 function clipLayerShape(
@@ -209,15 +221,7 @@ function clipLayerShape(
 ) {
   ctx.beginPath();
   if (layer.shape === "circle") {
-    ctx.ellipse(
-      layer.x + layer.width / 2,
-      layer.y + layer.height / 2,
-      layer.width / 2,
-      layer.height / 2,
-      0,
-      0,
-      Math.PI * 2
-    );
+    ctx.ellipse(layer.x + layer.width / 2, layer.y + layer.height / 2, layer.width / 2, layer.height / 2, 0, 0, Math.PI * 2);
   } else if (layer.cornerRadius > 0) {
     ctx.roundRect(layer.x, layer.y, layer.width, layer.height, layer.cornerRadius);
   } else {

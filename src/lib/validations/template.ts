@@ -68,6 +68,20 @@ export const textLayerSchema = layerCommonSchema.extend({
   lineHeight: z.number().default(1.15),
   maxLines: z.number().min(1).max(4).default(1),
   allowTruncate: z.boolean().default(false),
+  /**
+   * Het concrete fontbestand (Font.id of "builtin-inter-<gewicht>"). Wordt
+   * bij activeren vastgelegd, zodat een later geüpload font met dezelfde
+   * familienaam een gepubliceerde versie niet verandert.
+   */
+  fontFaceId: z.string().optional(),
+  /** PostScript-naam uit de PSD; gebruikt om het juiste bestand te vinden. */
+  fontPostscriptName: z.string().optional(),
+  verticalAlign: z.enum(["top", "middle", "bottom"]).default("middle").optional(),
+  /** Omlijning buiten de letters (px op documentresolutie). */
+  stroke: z.object({ color: z.string(), width: z.number().min(0).max(200) }).optional(),
+  shadow: z
+    .object({ color: z.string(), blur: z.number().min(0).max(500), offsetX: z.number(), offsetY: z.number() })
+    .optional(),
 });
 
 export const imageLayerSchema = layerCommonSchema.extend({
@@ -97,10 +111,19 @@ export const layerSchema = z.discriminatedUnion("type", [
   colorLayerSchema,
 ]);
 
+export const TEMPLATE_SCHEMA_VERSION = 2;
+
 export const templateSchemaJson = z.object({
+  /**
+   * 1 (of afwezig): oorspronkelijk model. 2: tekstlagen met fontFaceId,
+   * verticalAlign, omlijning en schaduw; rotatie en dekking voor alle lagen.
+   */
+  schemaVersion: z.number().int().min(1).optional(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   backgroundColor: z.string().default("#ffffff"),
+  /** Transparante achtergrond (PNG/WebP); JPG krijgt dan `backgroundColor`. */
+  transparent: z.boolean().optional(),
   layers: z.array(layerSchema),
 });
 

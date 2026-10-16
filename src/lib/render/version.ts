@@ -5,4 +5,4 @@
  * nieuwe export als nieuwe revisie ontstaat in plaats van een oude te
  * vervangen. Historische exports blijven het bestand dat toen gemaakt is.
  */
-export const RENDERER_VERSION = "2026.10.1";
+export const RENDERER_VERSION = "2026.10.2";

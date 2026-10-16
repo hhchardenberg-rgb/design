@@ -224,7 +224,7 @@ export async function exportDesign(user: DesignUser, id: string, input: { revisi
   try {
     const textTransforms = Object.fromEntries(version.fields.map((f) => [f.key, f.textTransform]));
     const canvas = await renderDesign(schema, authorized, { strict: true, textTransforms });
-    buffer = await encodeCanvas(canvas, format);
+    buffer = await encodeCanvas(canvas, format, schema);
   } catch (error) {
     if (error instanceof RenderError) throw new ApiError(422, `${error.message} Er is geen bestand gemaakt.`);
     throw error;

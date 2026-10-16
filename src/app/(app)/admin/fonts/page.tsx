@@ -24,6 +24,10 @@ interface Font {
   format: string;
   fileUrl: string;
   isActive: boolean;
+  fileFamily: string | null;
+  subfamily: string | null;
+  postscriptName: string | null;
+  metadataReadAt: string | null;
 }
 
 export default function AdminFontsPage() {
@@ -31,8 +35,7 @@ export default function AdminFontsPage() {
   const [name, setName] = useState("");
   const [family, setFamily] = useState("");
   const [familyTouched, setFamilyTouched] = useState(false);
-  const [weight, setWeight] = useState("400");
-  const [style, setStyle] = useState("normal");
+  const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
@@ -64,7 +67,7 @@ export default function AdminFontsPage() {
     Promise.all(
       fonts.map(async (f) => {
         try {
-          const face = new FontFace(previewFamily(f.id), `url(${f.fileUrl})`);
+          const face = new FontFace(previewFamily(f.id), `url(/api/fonts/${f.id})`);
           const ready = await face.load();
           if (cancelled) return;
           document.fonts.add(ready);
@@ -86,32 +89,46 @@ export default function AdminFontsPage() {
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !name) return;
+    if (!file) return;
     setLoading(true);
+    setError(null);
     try {
-      await uploadOne(file, { name, family: family || name, weight: Number(weight), style });
+      await uploadOne(file, { name, family });
       setName("");
+      setFamily("");
+      setFamilyTouched(false);
       setFile(null);
       await load();
-    } catch {
-      // stil falen is hier acceptabel: het los-per-veld formulier had al geen foutmelding
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Uploaden mislukt.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function remove(id: string) {
-    await fetch(`/api/admin/fonts/${id}`, { method: "DELETE" });
+  async function patchFont(id: string, body: Record<string, unknown>) {
+    setError(null);
+    const res = await fetch(`/api/admin/fonts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Wijzigen is niet gelukt.");
     await load();
   }
 
-  async function uploadOne(fontFile: File, meta: { name: string; family: string; weight: number; style: string }) {
+  async function remove(id: string) {
+    setError(null);
+    const res = await fetch(`/api/admin/fonts/${id}`, { method: "DELETE" });
+    if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Verwijderen is niet gelukt.");
+    await load();
+  }
+
+  async function uploadOne(fontFile: File, meta: { name: string; family: string }) {
     const form = new FormData();
     form.append("file", fontFile);
-    form.append("name", meta.name);
-    form.append("family", meta.family);
-    form.append("weight", String(meta.weight));
-    form.append("style", meta.style);
+    if (meta.name) form.append("name", meta.name);
+    if (meta.family) form.append("family", meta.family);
     const res = await fetch("/api/admin/fonts", { method: "POST", body: form });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -148,8 +165,10 @@ export default function AdminFontsPage() {
           const blob = await entry.async("blob");
           const ext = filename.split(".").pop()!.toLowerCase();
           const fontFile = new File([blob], filename, { type: `font/${ext}` });
+          // Familie, gewicht en stijl komen uit het bestand zelf; de
+          // bestandsnaam levert alleen een CSS-familienaam voor oude templates.
           const meta = parseFontFilename(filename);
-          await uploadOne(fontFile, meta);
+          await uploadOne(fontFile, { name: "", family: meta.family });
           done++;
         } catch (err) {
           errors.push(`${filename}: ${err instanceof Error ? err.message : "onbekende fout"}`);
@@ -171,18 +190,17 @@ export default function AdminFontsPage() {
       <div>
         <h1 className="text-2xl font-bold">Lettertypen</h1>
         <p className="mt-1 text-muted-foreground">
-          Upload de huisstijl-fonts (WOFF2, WOFF, TTF of OTF) die templates mogen gebruiken. Heeft een lettertype
-          meerdere gewichten (Regular, Bold, Black, ...)? Upload elk gewicht apart, maar gebruik steeds dezelfde{" "}
-          <strong>CSS-familienaam</strong> — dan kan een template met één <code>fontFamily</code> automatisch het
-          juiste gewicht/stijl kiezen.
+          Upload de huisstijl-fonts (WOFF2, WOFF, TTF of OTF) die templates mogen gebruiken. Familie, gewicht, stijl
+          en PostScript-naam worden uit het bestand zelf gelezen. Upload elk gewicht als eigen bestand; een
+          tekstlaag wordt bij het activeren van een templateversie aan precies één bestand gekoppeld.
         </p>
       </div>
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={upload} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_120px_120px_auto] sm:items-end">
+          <form onSubmit={upload} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <div>
-              <Label htmlFor="fontname">Weergavenaam</Label>
+              <Label htmlFor="fontname">Weergavenaam (optioneel)</Label>
               <Input
                 id="fontname"
                 value={name}
@@ -194,7 +212,7 @@ export default function AdminFontsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="fontfamily">CSS-familienaam</Label>
+              <Label htmlFor="fontfamily">CSS-familienaam (optioneel)</Label>
               <Input
                 id="fontfamily"
                 value={family}
@@ -205,29 +223,12 @@ export default function AdminFontsPage() {
                 placeholder="FF DIN"
               />
             </div>
-            <div>
-              <Label>Gewicht</Label>
-              <Select value={weight} onChange={(e) => setWeight(e.target.value)}>
-                {[300, 400, 500, 600, 700, 800, 900].map((w) => (
-                  <option key={w} value={w}>
-                    {w}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label>Stijl</Label>
-              <Select value={style} onChange={(e) => setStyle(e.target.value)}>
-                <option value="normal">Normaal</option>
-                <option value="italic">Cursief</option>
-              </Select>
-            </div>
             <label className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-dashed border-border px-3 text-sm text-muted-foreground">
               <Upload className="h-4 w-4" />
               {file ? file.name : "Bestand kiezen"}
               <input type="file" accept=".woff2,.woff,.ttf,.otf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </label>
-            <Button type="submit" disabled={loading} className="sm:col-span-5 sm:w-fit">
+            <Button type="submit" disabled={loading || !file} className="sm:col-span-3 sm:w-fit">
               {loading ? "Bezig..." : "Uploaden"}
             </Button>
           </form>
@@ -270,6 +271,8 @@ export default function AdminFontsPage() {
         </CardContent>
       </Card>
 
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {fonts.map((f) => (
           <Card key={f.id}>
@@ -280,11 +283,20 @@ export default function AdminFontsPage() {
                 </p>
                 <p className="mt-1 text-sm font-medium">{f.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {f.weight} · {f.style} · {f.format.toUpperCase()}
+                  {f.fileFamily ?? f.family} {f.subfamily ?? ""} · {f.weight} · {f.style === "italic" ? "cursief" : "normaal"} ·{" "}
+                  {f.format.toUpperCase()}
                 </p>
+                {f.postscriptName && <p className="text-xs text-muted-foreground">PostScript: {f.postscriptName}</p>}
+                {!f.metadataReadAt && (
+                  <button className="text-xs text-hhc-orange-dark hover:underline" onClick={() => patchFont(f.id, { refreshMetadata: true })}>
+                    Gegevens uit bestand inlezen
+                  </button>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={f.isActive ? "success" : "outline"}>{f.isActive ? "Actief" : "Uit"}</Badge>
+              <div className="flex flex-col items-end gap-2">
+                <button onClick={() => patchFont(f.id, { isActive: !f.isActive })} title={f.isActive ? "Uitzetten" : "Aanzetten"}>
+                  <Badge variant={f.isActive ? "success" : "outline"}>{f.isActive ? "Actief" : "Uit"}</Badge>
+                </button>
                 <Button size="sm" variant="ghost" onClick={() => remove(f.id)}>
                   Verwijderen
                 </Button>

@@ -10,6 +10,8 @@ import { FieldControl, type FieldDef } from "./field-control";
 import { useDesignPersistence, type SaveState } from "./use-design-persistence";
 import type { TemplateSchemaJson } from "@/lib/validations/template";
 import type { ImageFieldValue } from "@/lib/render/imageFit";
+import type { FontFaceInfo } from "@/lib/fonts/faces";
+import type { TextIssue } from "@/components/editor/design-canvas";
 
 const DesignCanvas = dynamic(() => import("@/components/editor/design-canvas").then((m) => m.DesignCanvas), {
   ssr: false,
@@ -40,6 +42,7 @@ export interface WizardProps {
   initialFormData: FormData;
   initialDesign: { id: string; revision: number; title: string | null } | null;
   initialExport: ExportInfo | null;
+  fontFaces: FontFaceInfo[];
   matchId?: string | null;
 }
 
@@ -63,9 +66,14 @@ export function Wizard({
   initialFormData,
   initialDesign,
   initialExport,
+  fontFaces,
   matchId,
 }: WizardProps) {
   const router = useRouter();
+  const [textIssues, setTextIssues] = useState<TextIssue[]>([]);
+  // Alleen wat de invuller zelf kan oplossen; een ontbrekend lettertype is
+  // een templateprobleem en blokkeert de export op de server.
+  const blockingTextIssues = textIssues.filter((i) => i.kind === "overflow" || i.kind === "font-failed");
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [hist, setHist] = useState<{ entries: HistoryEntry[]; index: number }>({
     entries: [{ data: initialFormData, at: 0 }],
@@ -319,6 +327,11 @@ export function Wizard({
           {missingRequired.length > 0 && (
             <p className="text-xs text-destructive">Nog in te vullen: {missingRequired.map((f) => f.label).join(", ")}</p>
           )}
+          {blockingTextIssues.map((issue) => (
+            <p key={`${issue.layerId}-${issue.kind}`} className="text-xs text-destructive">
+              {issue.message}
+            </p>
+          ))}
           <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Bestandsformaat">
             {exportFormats.map((fmt) => (
               <button
@@ -334,9 +347,9 @@ export function Wizard({
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            {schema.width} × {schema.height} pixels{format === "JPG" ? ", transparante delen worden wit" : ""}.
+            {schema.width} × {schema.height} pixels{format === "JPG" ? ", transparante delen krijgen de achtergrondkleur" : ""}.
           </p>
-          <Button size="lg" onClick={handleExport} disabled={exporting || missingRequired.length > 0 || persistence.state === "conflict"}>
+          <Button size="lg" onClick={handleExport} disabled={exporting || missingRequired.length > 0 || blockingTextIssues.some((i) => i.kind === "overflow") || persistence.state === "conflict"}>
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             {exporting ? "Bezig met maken..." : resultIsCurrent ? "Opnieuw maken" : "Afbeelding maken"}
           </Button>
@@ -399,6 +412,8 @@ export function Wizard({
                 textTransforms={Object.fromEntries(fields.map((f) => [f.key, f.textTransform ?? "NONE"]))}
                 maxWidth={620}
                 maxHeight={760}
+                fontFaces={fontFaces}
+                onTextIssues={setTextIssues}
                 onImageTransform={(key, value) => updateField(key, value, `img:${key}`)}
               />
             </CardContent>
