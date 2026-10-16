@@ -277,6 +277,10 @@ model TemplateVersion {
   sourcePsdAssetId String?
   sourcePsdAsset   TemplateAsset? @relation("SourcePsd", fields: [sourcePsdAssetId], references: [id])
 
+  // Importrapport van de PSD (zie src/lib/psd/parse.ts, ImportReport):
+  // indeling per laag, meldingen en de vergelijking met Photoshop.
+  importReport Json?
+
   createdAt   DateTime  @default(now())
   publishedAt DateTime?
 
@@ -1510,4 +1514,26 @@ model CommercialInvoiceDelivery {
 
   @@index([invoiceId])
   @@map("commercial_invoice_deliveries")
+}
+
+// PSD-import als taak: blijft bestaan als de verwerking halverwege stopt
+// (time-out, herstart), en wordt dan na het verlopen van de lease opnieuw
+// opgepakt, maximaal drie keer.
+model TemplateImportJob {
+  id          String    @id @default(cuid())
+  status      String    @default("QUEUED") // QUEUED | RUNNING | DONE | FAILED
+  sourceUrl   String
+  name        String
+  category    String
+  templateId  String?
+  createdById String
+  attempts    Int       @default(0)
+  leaseUntil  DateTime?
+  error       String?
+  result      Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@map("template_import_jobs")
 }

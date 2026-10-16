@@ -41,7 +41,7 @@ const conventions = [
     example: "STATIC:FRAME",
     title: "Vaste (niet-bewerkbare) laag",
     description:
-      "Optioneel, puur ter documentatie voor andere designers: deze laag hoeft nooit aangepast te worden. Lagen zonder herkende prefix worden sowieso als vast onderdeel van de achtergrond behandeld — STATIC: maakt dat expliciet en overzichtelijk in het PSD-bestand.",
+      "Optioneel, puur ter documentatie voor andere designers: deze laag hoeft nooit aangepast te worden. Lagen zonder herkende prefix worden sowieso als vast onderdeel behandeld — STATIC: maakt dat expliciet en overzichtelijk in het PSD-bestand.",
     formLabel: "(verschijnt niet in het formulier)",
   },
 ];
@@ -111,7 +111,35 @@ export default function PsdConventionsPage() {
             </li>
             <li>
               Alles zonder herkende prefix — logo&apos;s, decoratie, achtergrondfoto&apos;s, kaders — wordt automatisch
-              meegenomen in de achtergrond. Er is dus geen risico dat een vergeten laag verdwijnt.
+              meegenomen als vaste laag. <strong>De lagenvolgorde blijft behouden</strong>: vaste lagen boven een{" "}
+              <code className="rounded bg-surface-muted px-1 py-0.5">IMAGE:</code>-laag liggen in de template ook boven
+              de foto (bijvoorbeeld een rand of verloop over een spelersfoto).
+            </li>
+            <li>
+              Invulbare lagen (<code className="rounded bg-surface-muted px-1 py-0.5">TEXT:</code>,{" "}
+              <code className="rounded bg-surface-muted px-1 py-0.5">IMAGE:</code>,{" "}
+              <code className="rounded bg-surface-muted px-1 py-0.5">COLOR:</code>) mogen in Photoshop verborgen zijn;
+              ze worden toch als veld geïmporteerd. Een zichtbare fotolaag wordt het voorbeeldbeeld dat getoond wordt zolang er niets is gekozen; een verborgen fotolaag laat het veld leeg. Zijn alle invulbare lagen verborgen en staan er geen vaste lagen
+              boven, dan wordt de samengestelde afbeelding uit Photoshop als achtergrond gebruikt, inclusief
+              laageffecten.
+            </li>
+            <li>
+              Sla op met <strong>Compatibiliteit maximaliseren</strong> aan. Dan kan de import zijn eigen samenstelling
+              vergelijken met Photoshop; de builder toont onder &ldquo;Importcontrole&rdquo; de afwijking en een
+              verschilbeeld. Wijkt meer dan 15% af, dan kan de versie niet geactiveerd worden.
+            </li>
+            <li>
+              Ondersteund bij vaste lagen: dekking en vuldekking, laagmaskers, uitknipmaskers, groepen (ook met eigen
+              dekking of masker) en de overvloeimodi van Photoshop. Niet nagebootst: laageffecten (schaduw, gloed,
+              omlijning) op vaste lagen boven een invulbare laag, en aanpassingslagen. Wil je die toch, voeg de laag
+              dan samen of maak er een slim object van.
+            </li>
+            <li>
+              Een ronde foto: knip de <code className="rounded bg-surface-muted px-1 py-0.5">IMAGE:</code>-laag uit op
+              een cirkelvorm (uitknipmasker). De import herkent een rond kader; andere vormen worden rechthoekig.
+            </li>
+            <li>
+              Grenzen: RGB, maximaal 8000 pixels per zijde en 1500 lagen.
             </li>
             <li>
               <strong>Lettertypen</strong>: de importer leest per tekstlaag de PostScript-naam van het font (bijv.{" "}

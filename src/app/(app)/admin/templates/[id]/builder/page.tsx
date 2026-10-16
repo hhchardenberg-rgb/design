@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { templateSchemaJson } from "@/lib/validations/template";
 import { listFontFaces } from "@/lib/fonts/faces.server";
+import type { ImportReport } from "@/lib/psd/parse";
 import { TemplateBuilder, type BuilderField, type BuilderTemplate } from "./template-builder";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -49,6 +50,7 @@ export default async function TemplateBuilderPage({
       width: v.width,
       height: v.height,
       schemaJson: templateSchemaJson.parse(v.schemaJson),
+      importReport: (v.importReport as unknown as ImportReport | null) ?? null,
       exportFormats: v.exportFormats,
       fields: v.fields.map(
         (f): BuilderField => ({
