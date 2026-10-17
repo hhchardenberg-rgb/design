@@ -72,13 +72,37 @@ test("verborgen lagen en meldingen voor wat niet wordt nagebootst", () => {
     dst,
     [
       { name: "weg", hidden: true, left: 0, top: 0, imageData: solid(1, 1, [255, 0, 0, 255]) },
-      { name: "schaduw", left: 0, top: 0, effects: { dropShadow: [{ enabled: true }] }, imageData: solid(1, 1, [0, 0, 255, 255]) },
+      { name: "gloed", left: 0, top: 0, effects: { outerGlow: { enabled: true } }, imageData: solid(1, 1, [0, 0, 255, 255]) },
       { name: "aanpassing", adjustment: { type: "brightness/contrast" } },
     ] as Layer[],
     { issues }
   );
   assert.deepEqual(px(dst, 0, 0), [0, 0, 255, 255]);
-  assert.deepEqual(issues.map((i) => i.layer), ["schaduw", "aanpassing"]);
+  assert.deepEqual(issues.map((i) => i.layer), ["gloed", "aanpassing"]);
+});
+
+test("slagschaduw onder de laag, verschoven over de lichthoek", () => {
+  const shadow = (size: number) => ({
+    enabled: true,
+    blendMode: "normal" as const,
+    color: { r: 255, g: 0, b: 0 },
+    opacity: 1,
+    angle: 90,
+    distance: { units: "Pixels" as const, value: 4 },
+    size: { units: "Pixels" as const, value: size },
+  });
+  const issues: { layer: string; message: string }[] = [];
+  const sharp = createBuffer(20, 20);
+  composeLayers(sharp, [{ name: "blok", left: 8, top: 8, effects: { dropShadow: [shadow(0)] }, imageData: solid(4, 4, [0, 0, 0, 255]) }] as Layer[], { issues });
+  assert.deepEqual(issues, [], "slagschaduw wordt nagebootst, geen melding");
+  assert.deepEqual(px(sharp, 9, 9), [0, 0, 0, 255], "de laag zelf ligt erboven");
+  assert.deepEqual(px(sharp, 9, 13), [255, 0, 0, 255], "licht van boven: schaduw eronder");
+  assert.equal(px(sharp, 9, 6)[3], 0, "niets boven de laag");
+
+  const soft = createBuffer(20, 20);
+  composeLayers(soft, [{ name: "blok", left: 8, top: 8, effects: { dropShadow: [shadow(6)] }, imageData: solid(4, 4, [0, 0, 0, 255]) }] as Layer[]);
+  const a = px(soft, 9, 16)[3];
+  assert.ok(a > 0 && a < 255, `vervaagde rand, alfa ${a}`);
 });
 
 test("verschilbeeld en kader van zichtbare pixels", () => {

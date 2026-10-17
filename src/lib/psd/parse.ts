@@ -10,6 +10,7 @@ import {
   createBuffer,
   diffBuffers,
   hasEffects,
+  hasUnsupportedEffects,
   stackNormal,
   toRgba8,
   type Canvas,
@@ -228,6 +229,7 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
 
   // --- 2. Vaste segmenten samenstellen -------------------------------------
   const composeIssues: ComposeIssue[] = [];
+  const globalAngle = psd.imageResources?.globalAngle ?? 30;
   const segmentIds = [...new Set([...staticSegment.values()])].sort((a, b) => a - b);
   const segmentBuffers = new Map<number, Canvas>();
   for (const id of segmentIds) {
@@ -235,6 +237,7 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
     composeLayers(buf, psd.children ?? [], {
       include: (l) => (l.children ? true : staticSegment.get(l) === id),
       issues: composeIssues,
+      globalAngle,
     });
     segmentBuffers.set(id, buf);
   }
@@ -246,7 +249,7 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
   // Alles wat zichtbaar is (ook invulbare lagen met hun voorbeeldinhoud),
   // in één doorlopende samenstelling.
   const full = createBuffer(width, height);
-  composeLayers(full, psd.children ?? [], {});
+  composeLayers(full, psd.children ?? [], { globalAngle });
   // Zonder "Compatibiliteit maximaliseren" staat er een lege (egale)
   // afbeelding in het bestand; die telt niet als samenstelling.
   const rawComposite = psd.imageData ? bufferFromPixels(psd.imageData) : null;
@@ -340,9 +343,11 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
     }
 
     const { layer, key, label } = item;
-    const box = layerBox(layer, width);
-    if (box.fallback) {
-      warnings.push({ message: `Laag "${layer.name}" had geen bruikbaar kader (puntentekst zonder alineakader of lege laag). Er is een standaardkader gebruikt; controleer het in de builder.` });
+    const box = layerBox(layer, width, height);
+    if (box.fallback === "canvas") {
+      warnings.push({ message: `Laag "${layer.name}" is leeg; het veld beslaat daarom de hele afbeelding. Pas het kader zo nodig aan in de builder.` });
+    } else if (box.fallback) {
+      warnings.push({ message: `Laag "${layer.name}" had geen bruikbaar kader (puntentekst zonder alineakader). Er is een standaardkader gebruikt; controleer het in de builder.` });
     }
     if (item.inGroupEffects) {
       warnings.push({ message: `Laag "${layer.name}" zit in een groep met dekking, overvloeimodus of masker; dat wordt voor deze invulbare laag niet nagebootst.` });
@@ -489,7 +494,8 @@ function markStatic(layers: Layer[], segment: number, map: Map<Layer, number>) {
 function staticNotes(layer: Layer): string[] {
   const notes: string[] = [];
   if (layer.adjustment) notes.push("aanpassingslaag (niet toegepast)");
-  if (hasEffects(layer)) notes.push("laageffecten");
+  if (hasUnsupportedEffects(layer)) notes.push("laageffecten");
+  else if (hasEffects(layer)) notes.push("slagschaduw");
   if (layer.clipping) notes.push("uitknipmasker");
   if (layer.mask && !layer.mask.disabled) notes.push("laagmasker");
   if (layer.blendMode && layer.blendMode !== "normal") notes.push(`overvloeimodus ${layer.blendMode}`);
@@ -507,17 +513,37 @@ function dedupeIssues(issues: ComposeIssue[]) {
   });
 }
 
-function layerBox(layer: Layer, docWidth: number) {
-  const left = layer.left ?? 0;
-  const top = layer.top ?? 0;
+/**
+ * Kader van een invulbare laag. Een lege pixellaag (vaak een losse, lege
+ * laag als plek voor een foto) heeft geen kader: dan het kader van zijn
+ * masker, of anders de hele afbeelding.
+ */
+function layerBox(layer: Layer, docWidth: number, docHeight: number) {
+  let left = layer.left ?? 0;
+  let top = layer.top ?? 0;
   let w = (layer.right ?? left) - left;
   let h = (layer.bottom ?? top) - top;
-  let fallback = false;
+  let fallback: false | "default" | "canvas" = false;
   if (w <= 0 || h <= 0) {
-    const isText = Boolean(layer.text);
-    w = Math.max(80, isText ? Math.min(docWidth - left - 40, 600) : 300);
-    h = Math.max(60, isText ? 120 : 300);
-    fallback = true;
+    const mask = layer.mask;
+    const mw = (mask?.right ?? 0) - (mask?.left ?? 0);
+    const mh = (mask?.bottom ?? 0) - (mask?.top ?? 0);
+    if (layer.text) {
+      w = Math.max(80, Math.min(docWidth - left - 40, 600));
+      h = 120;
+      fallback = "default";
+    } else if (mask && !mask.disabled && mw > 0 && mh > 0) {
+      left = mask.left ?? 0;
+      top = mask.top ?? 0;
+      w = mw;
+      h = mh;
+    } else {
+      left = 0;
+      top = 0;
+      w = docWidth;
+      h = docHeight;
+      fallback = "canvas";
+    }
   }
   return { left, top, width: w, height: h, fallback, rect: { x: left, y: top, width: w, height: h } };
 }

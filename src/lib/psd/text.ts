@@ -84,6 +84,15 @@ export function textLayerFromPsd(box: PsdTextBox, psdLayer: Pick<Layer, "text" |
   const letterSpacing = style.tracking ? round((style.tracking / 1000) * fontSize, 2) : 0;
   const text = (data?.text ?? "").replace(/\r\n?/g, "\n").trim();
   const textLines = Math.max(1, text.split("\n").length);
+  // Photoshop toont een regel ook als het kader lager is dan de regelhoogte
+  // (of als alleen de letterpixels bekend zijn). Hier zou de tekst dan
+  // kleiner worden gemaakt om te passen: maak het kader hoog genoeg, rond
+  // hetzelfde midden.
+  const needed = textLines * fontSize * lineHeight;
+  if (height < needed) {
+    y -= (needed - height) / 2;
+    height = needed;
+  }
   const fitLines = Math.max(1, Math.floor((height + 0.5) / (fontSize * lineHeight)));
   const maxLines = Math.min(4, Math.max(textLines, fitLines));
 
@@ -112,22 +121,25 @@ export function textLayerFromPsd(box: PsdTextBox, psdLayer: Pick<Layer, "text" |
   if (psdStroke) {
     if (psdStroke.fillType && psdStroke.fillType !== "color") warnings.push(`${label}: omlijning met verloop of patroon wordt effen getoond.`);
     if (psdStroke.position && psdStroke.position !== "outside") warnings.push(`${label}: omlijning wordt altijd buiten de letters getekend.`);
-    stroke = { color: colorToRgba(psdStroke.color, psdStroke.opacity ?? 1), width: round(px(psdStroke.size) * scaleY, 1) };
+    stroke = { color: colorToRgba(psdStroke.color, psdStroke.opacity ?? 1), width: round(px(psdStroke.size), 1) };
   }
 
   let shadow: TextLayer["shadow"];
   const psdShadow = effects?.dropShadow?.find((s) => s.enabled !== false);
   if (psdShadow) {
-    const distance = px(psdShadow.distance) * scaleY;
+    // Laageffecten staan in documentpixels, los van de tekstschaal.
+    const distance = px(psdShadow.distance);
     const angle = ((psdShadow.angle ?? 120) * Math.PI) / 180;
     shadow = {
       color: colorToRgba(psdShadow.color, psdShadow.opacity ?? 0.75),
-      blur: round(px(psdShadow.size) * scaleY, 1),
+      blur: round(px(psdShadow.size), 1),
       offsetX: round(-Math.cos(angle) * distance, 1),
       offsetY: round(Math.sin(angle) * distance, 1),
     };
   }
-  if (effects && (effects.gradientOverlay?.length || effects.outerGlow || effects.innerGlow || effects.bevel || effects.innerShadow?.length || effects.patternOverlay || effects.satin)) {
+  const on = (x: { enabled?: boolean } | undefined) => Boolean(x && x.enabled !== false);
+  const any = (xs: { enabled?: boolean }[] | undefined) => Boolean(xs?.some((x) => x.enabled !== false));
+  if (effects && (any(effects.gradientOverlay) || on(effects.outerGlow) || on(effects.innerGlow) || on(effects.bevel) || any(effects.innerShadow) || on(effects.patternOverlay) || on(effects.satin))) {
     warnings.push(`${label}: alleen de laageffecten omlijning, kleurbedekking en slagschaduw worden nagebootst.`);
   }
 
