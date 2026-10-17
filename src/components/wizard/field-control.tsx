@@ -3,6 +3,7 @@
 import { Input, Label, Select, Textarea, Checkbox } from "@/components/ui/input";
 import { ImageFieldControl } from "./image-field-control";
 import type { ImageFieldValue } from "@/lib/render/imageFit";
+import { formatDutchDate, parseDutchDate } from "@/lib/design/dutch-date";
 
 export interface FieldDef {
   key: string;
@@ -22,8 +23,10 @@ export function FieldControl(props: {
   onChange: (value: unknown, coalesceKey?: string) => void;
   onReset?: () => void;
   brandColors: { hex: string; name: string }[];
+  selected?: boolean;
+  onFocusField?: () => void;
 }) {
-  const { field, value, onReset } = props;
+  const { field, value, onReset, selected, onFocusField } = props;
   const isDefault =
     field.type === "CHECKBOX"
       ? (value !== false && value !== "false") === (field.defaultValue !== "false")
@@ -31,7 +34,11 @@ export function FieldControl(props: {
         ? !value || !(value as ImageFieldValue).assetUrl
         : (value ?? "") === (field.defaultValue ?? "");
   return (
-    <div className="relative">
+    <div
+      id={`field-${field.key}`}
+      onFocus={onFocusField}
+      className={`relative scroll-mt-24 rounded-md transition-shadow ${selected ? "ring-2 ring-primary ring-offset-4 ring-offset-background" : ""}`}
+    >
       <FieldInput {...props} />
       {onReset && !isDefault && (
         <button
@@ -100,17 +107,15 @@ function FieldInput({
           <Input
             id={field.key}
             type="date"
-            onChange={(e) => {
-              if (!e.target.value) return onChange("");
-              const date = new Date(`${e.target.value}T00:00:00`);
-              const formatted = new Intl.DateTimeFormat("nl-NL", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              }).format(date);
-              onChange(formatted.charAt(0).toUpperCase() + formatted.slice(1));
-            }}
+            value={parseDutchDate((value as string) ?? "") ?? ""}
+            onChange={(e) => onChange(e.target.value ? formatDutchDate(e.target.value) : "")}
           />
+          {typeof value === "string" && value && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Op de afbeelding: {value}
+              {!parseDutchDate(value) && " (kies een datum om dit te vervangen)"}
+            </p>
+          )}
         </div>
       );
     case "TIME":

@@ -29,6 +29,10 @@ export interface DesignCanvasProps {
   fontFaces?: FontFaceInfo[];
   /** Meldingen over tekst die niet past of een ontbrekend lettertype. */
   onTextIssues?: (issues: TextIssue[]) => void;
+  /** Klik/tik op een invulbare laag kiest het bijbehorende veld. */
+  onSelectField?: (fieldKey: string) => void;
+  /** Veld waarvan de laag gemarkeerd wordt. */
+  selectedField?: string | null;
   className?: string;
 }
 
@@ -69,6 +73,8 @@ export function DesignCanvas({
   textTransforms,
   fontFaces = BUILTIN_FONT_FACES,
   onTextIssues,
+  onSelectField,
+  selectedField,
   className,
 }: DesignCanvasProps) {
   const textLayers = useMemo(
@@ -168,6 +174,8 @@ export function DesignCanvas({
               editable={editable}
               onImageTransform={onImageTransform}
               textRender={textRenders.get(layer.id)}
+              onSelectField={editable ? onSelectField : undefined}
+              selected={Boolean(selectedField) && fieldOf(layer) === selectedField}
             />
           ))}
         </Layer>
@@ -176,25 +184,69 @@ export function DesignCanvas({
   );
 }
 
+/** Het invulveld dat bij een laag hoort (vaste lagen hebben er geen). */
+function fieldOf(layer: SchemaLayer): string | undefined {
+  if (layer.type === "text" || layer.type === "image" || layer.type === "color") return layer.field;
+  if (layer.type === "background") return layer.field;
+  return undefined;
+}
+
+function setCursor(e: Konva.KonvaEventObject<Event>, cursor: string) {
+  const container = e.target.getStage()?.container();
+  if (container) container.style.cursor = cursor;
+}
+
 function LayerNode({
   layer,
   formData,
   editable,
   onImageTransform,
   textRender,
+  onSelectField,
+  selected,
 }: {
   layer: SchemaLayer;
   formData: DesignFormData;
   editable: boolean;
   onImageTransform?: (fieldKey: string, value: ImageFieldValue) => void;
   textRender?: TextRender;
+  onSelectField?: (fieldKey: string) => void;
+  selected: boolean;
 }) {
   if (layer.visibilityField) {
     const value = formData[layer.visibilityField];
     if (value === false || value === "false") return null;
   }
 
-  const content = layerContent(layer, formData, editable, onImageTransform, textRender);
+  const field = fieldOf(layer);
+  const select = field && onSelectField ? () => onSelectField(field) : undefined;
+  let content = layerContent(layer, formData, editable, onImageTransform, textRender, select);
+  if (select && layer.type !== "image" && layer.type !== "background") {
+    // Onzichtbaar klikvlak over het hele kader, ook als de tekst kort is.
+    content = (
+      <>
+        {content}
+        <Rect
+          x={layer.x}
+          y={layer.y}
+          width={layer.width}
+          height={layer.height}
+          onClick={select}
+          onTap={select}
+          onMouseEnter={(e) => setCursor(e, "pointer")}
+          onMouseLeave={(e) => setCursor(e, "default")}
+        />
+      </>
+    );
+  }
+  if (selected) {
+    content = (
+      <>
+        {content}
+        <Rect x={layer.x} y={layer.y} width={layer.width} height={layer.height} stroke="#FF6F00" strokeWidth={4} strokeScaleEnabled={false} dash={[10, 6]} listening={false} />
+      </>
+    );
+  }
   if (!content) return null;
   const rotation = layer.rotation ?? 0;
   const opacity = layer.opacity ?? 1;
@@ -214,7 +266,8 @@ function layerContent(
   formData: DesignFormData,
   editable: boolean,
   onImageTransform: ((fieldKey: string, value: ImageFieldValue) => void) | undefined,
-  textRender: TextRender | undefined
+  textRender: TextRender | undefined,
+  onSelect: (() => void) | undefined
 ) {
   switch (layer.type) {
     case "background":
@@ -232,6 +285,7 @@ function layerContent(
           formData={formData}
           editable={editable}
           onImageTransform={onImageTransform}
+          onSelect={onSelect}
         />
       ) : (
         <RasterLayer layer={layer} />
@@ -257,6 +311,7 @@ function layerContent(
           formData={formData}
           editable={editable}
           onImageTransform={onImageTransform}
+          onSelect={onSelect}
         />
       );
     default:
@@ -335,6 +390,7 @@ function CroppableImageLayer({
   formData,
   editable,
   onImageTransform,
+  onSelect,
 }: {
   x: number;
   y: number;
@@ -348,8 +404,10 @@ function CroppableImageLayer({
   formData: DesignFormData;
   editable: boolean;
   onImageTransform?: (fieldKey: string, value: ImageFieldValue) => void;
+  onSelect?: () => void;
 }) {
   const value = (formData[field] ?? {}) as ImageFieldValue;
+  const pinch = useRef<{ distance: number; scale: number } | null>(null);
   const src = value.assetUrl || placeholderSrc;
   const img = useImage(src);
   const imgRef = useRef<Konva.Image>(null);
@@ -368,7 +426,11 @@ function CroppableImageLayer({
         stroke="rgba(255,255,255,0.6)"
         strokeWidth={2}
         dash={[8, 6]}
-        listening={false}
+        listening={Boolean(onSelect)}
+        hitStrokeWidth={0}
+        fillEnabled={false}
+        onClick={onSelect}
+        onTap={onSelect}
       />
     );
   }
@@ -391,11 +453,6 @@ function CroppableImageLayer({
 
   const interactive = editable && Boolean(onImageTransform);
 
-  function setCursor(e: Konva.KonvaEventObject<Event>, cursor: string) {
-    const container = e.target.getStage()?.container();
-    if (container) container.style.cursor = cursor;
-  }
-
   return (
     <Group x={x} y={y} clipFunc={clipFunc} clipWidth={clipFunc ? undefined : width} clipHeight={clipFunc ? undefined : height} clipX={clipFunc ? undefined : 0} clipY={clipFunc ? undefined : 0}>
       <KonvaImage
@@ -408,7 +465,29 @@ function CroppableImageLayer({
         draggable={interactive}
         onMouseEnter={(e) => interactive && setCursor(e, "grab")}
         onMouseLeave={(e) => interactive && setCursor(e, "default")}
-        onDragStart={(e) => setCursor(e, "grabbing")}
+        onClick={onSelect}
+        onTap={onSelect}
+        onDragStart={(e) => {
+          setCursor(e, "grabbing");
+          onSelect?.();
+        }}
+        onTouchMove={(e) => {
+          // Knijpen met twee vingers zoomt, net als de schuifregelaar.
+          const touches = e.evt.touches;
+          if (!interactive || !onImageTransform || touches.length !== 2) return;
+          e.evt.preventDefault();
+          const distance = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+          if (!pinch.current) {
+            imgRef.current?.stopDrag();
+            pinch.current = { distance, scale: value.scale ?? 1 };
+            return;
+          }
+          const next = Math.min(2.5, Math.max(1, (pinch.current.scale * distance) / pinch.current.distance));
+          onImageTransform(field, { ...value, scale: next });
+        }}
+        onTouchEnd={() => {
+          pinch.current = null;
+        }}
         onDragEnd={(e) => {
           if (interactive) setCursor(e, "grab");
           const node = imgRef.current;

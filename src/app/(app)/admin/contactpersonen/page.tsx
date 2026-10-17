@@ -1,5 +1,6 @@
 "use client";
 
+import { shrinkImageForUpload } from "@/lib/client/shrink-image";
 import { useEffect, useState } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,7 @@ export default function AdminContactpersonenPage() {
     if (!form.name || !form.role) return;
     const body = new FormData();
     Object.entries(form).forEach(([k, v]) => body.set(k, v));
-    if (photo) body.set("photo", photo);
+    if (photo) body.set("photo", await shrinkImageForUpload(photo));
 
     const res = await fetch("/api/admin/contacts", { method: "POST", body });
     const data = await res.json().catch(() => ({}));
@@ -73,7 +74,7 @@ export default function AdminContactpersonenPage() {
   async function saveEdit(id: string) {
     const body = new FormData();
     Object.entries(editForm).forEach(([k, v]) => body.set(k, v));
-    if (editPhoto) body.set("photo", editPhoto);
+    if (editPhoto) body.set("photo", await shrinkImageForUpload(editPhoto));
     if (editRemovePhoto) body.set("removePhoto", "true");
 
     const res = await fetch(`/api/admin/contacts/${id}`, { method: "PATCH", body });

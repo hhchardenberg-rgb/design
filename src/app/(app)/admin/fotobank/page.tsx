@@ -1,5 +1,6 @@
 "use client";
 
+import { shrinkImageForUpload } from "@/lib/client/shrink-image";
 import { useEffect, useState } from "react";
 import { Upload, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ export default function AdminFotobankPage() {
     setError(null);
     try {
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", await shrinkImageForUpload(file));
       form.append("title", title);
       form.append("category", category);
       const res = await fetch("/api/admin/stock-photos", { method: "POST", body: form });

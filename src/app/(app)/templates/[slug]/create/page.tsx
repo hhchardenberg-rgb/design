@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { templateSchemaJson } from "@/lib/validations/template";
 import { canAccessDesign } from "@/lib/design/permissions";
+import { matchPrefill } from "@/lib/design/match-prefill";
 import { Wizard } from "@/components/wizard/wizard";
 import { listFontFaces } from "@/lib/fonts/faces.server";
 import type { FormData } from "@/components/wizard/wizard";
@@ -70,28 +71,7 @@ export default async function CreateDesignPage({
       where: { id: matchId },
       include: { team: true, opponent: true },
     });
-    if (match) {
-      const fieldKeys = new Set(version.fields.map((f) => f.key));
-      const opponentName = match.isHome ? match.opponent.name : match.team.name;
-      const opponentLogo = match.isHome
-        ? match.opponent.logoUrl && { asset: { kind: "opponent" as const, id: match.opponent.id }, assetUrl: match.opponent.logoUrl }
-        : match.team.logoUrl && { asset: { kind: "team" as const, id: match.team.id }, assetUrl: match.team.logoUrl };
-      if (fieldKeys.has("opponent")) initialFormData.opponent = opponentName;
-      if (fieldKeys.has("opponent_logo") && opponentLogo) {
-        initialFormData.opponent_logo = { ...opponentLogo, scale: 1 };
-      }
-      if (fieldKeys.has("competition") && match.competition) initialFormData.competition = match.competition;
-      if (fieldKeys.has("location") && match.location) initialFormData.location = match.location;
-      if (fieldKeys.has("date")) {
-        const formatted = new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Amsterdam" }).format(match.date);
-        initialFormData.date = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-      }
-      if (fieldKeys.has("time")) {
-        initialFormData.time = new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" }).format(match.date);
-      }
-      if (fieldKeys.has("score_home") && match.scoreHome !== null) initialFormData.score_home = String(match.scoreHome);
-      if (fieldKeys.has("score_away") && match.scoreAway !== null) initialFormData.score_away = String(match.scoreAway);
-    }
+    if (match) initialFormData = { ...defaults, ...matchPrefill(version.fields, match) };
   }
 
   const isActiveVersion = template.status === "PUBLISHED" && template.activeVersionId === version.id;

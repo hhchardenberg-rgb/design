@@ -1,5 +1,6 @@
 "use client";
 
+import { shrinkImageForUpload } from "@/lib/client/shrink-image";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Pin, Upload } from "lucide-react";
@@ -135,7 +136,7 @@ export function NewsAdmin({ rights, enabled: initialEnabled }: { rights: NewsRig
     form.set("category", category);
     form.set("pinned", String(pinned));
     for (const s of sections) form.append("sections", s);
-    if (image) form.set("image", image);
+    if (image) form.set("image", await shrinkImageForUpload(image));
 
     const res = await fetch("/api/news", { method: "POST", body: form });
     const data = await res.json().catch(() => ({}));
@@ -181,7 +182,7 @@ export function NewsAdmin({ rights, enabled: initialEnabled }: { rights: NewsRig
     for (const s of editSections) form.append("sections", s);
     // Leeg "sections" betekent: weghalen bij al jouw onderdelen (de andere blijven staan).
     if (editSections.length === 0) form.set("sections", "");
-    if (editImage) form.set("image", editImage);
+    if (editImage) form.set("image", await shrinkImageForUpload(editImage));
     if (editRemoveImage) form.set("removeImage", "true");
 
     const res = await fetch(`/api/news/${post.id}`, { method: "PATCH", body: form });

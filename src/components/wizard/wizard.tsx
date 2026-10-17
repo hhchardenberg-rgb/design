@@ -86,6 +86,18 @@ export function Wizard({
     initialExport ? { ...initialExport, forSeq: 0 } : null
   );
   const [busy, setBusy] = useState(false);
+  const [selectedField, setSelectedField] = useState<string | null>(null);
+  const narrow = useNarrowViewport();
+
+  /** Klik in de preview: naar het veld en de invoer focussen. */
+  const selectFromCanvas = useCallback((key: string) => {
+    setSelectedField(key);
+    const el = document.getElementById(`field-${key}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: narrow.active ? "center" : "nearest" });
+    const input = el.querySelector<HTMLElement>("input:not([type=hidden]):not(.hidden), textarea, select, button");
+    input?.focus({ preventScroll: true });
+  }, [narrow.active]);
 
   const persistence = useDesignPersistence({
     templateVersionId,
@@ -270,6 +282,8 @@ export function Wizard({
       onChange={(v, coalesceKey) => updateField(f.key, v, coalesceKey)}
       onReset={() => resetField(f)}
       brandColors={brandColors}
+      selected={selectedField === f.key}
+      onFocusField={() => setSelectedField(f.key)}
     />
   );
 
@@ -391,8 +405,9 @@ export function Wizard({
         </section>
       </div>
 
-      <div className="order-1 lg:order-2">
-        <div className="sticky top-20 flex flex-col gap-3">
+      {/* Op een telefoon blijft de preview bovenaan staan tijdens het invullen. */}
+      <div className="sticky top-[65px] z-10 order-1 -mx-4 border-b border-border bg-background/95 px-4 pb-2 pt-1 backdrop-blur lg:static lg:order-2 lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+        <div className="flex flex-col gap-2 lg:sticky lg:top-20 lg:gap-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-muted-foreground">Live preview</p>
             <div className="flex gap-1">
@@ -404,22 +419,24 @@ export function Wizard({
               </Button>
             </div>
           </div>
-          <Card className="overflow-hidden bg-hhc-black p-4">
+          <Card className="overflow-hidden bg-hhc-black p-2 lg:p-4">
             <CardContent className="flex items-center justify-center p-0">
               <DesignCanvas
                 schema={schema}
                 formData={formData}
                 textTransforms={Object.fromEntries(fields.map((f) => [f.key, f.textTransform ?? "NONE"]))}
                 maxWidth={620}
-                maxHeight={760}
+                maxHeight={narrow.active ? narrow.previewHeight : 760}
                 fontFaces={fontFaces}
                 onTextIssues={setTextIssues}
                 onImageTransform={(key, value) => updateField(key, value, `img:${key}`)}
+                onSelectField={selectFromCanvas}
+                selectedField={selectedField}
               />
             </CardContent>
           </Card>
-          <p className="text-xs text-muted-foreground">
-            De preview is een snelle weergave. Het gemaakte bestand onder &ldquo;Controleren en downloaden&rdquo; is wat je
+          <p className="hidden text-xs text-muted-foreground lg:block">
+            Tik op een tekst of foto in de preview om die aan te passen. De preview is een snelle weergave. Het gemaakte bestand onder &ldquo;Controleren en downloaden&rdquo; is wat je
             downloadt.
           </p>
         </div>
@@ -472,4 +489,22 @@ function SaveBanner({
       {label}
     </p>
   );
+}
+
+/** Smal scherm (telefoon): preview beperkt tot ruim een derde van de hoogte. */
+function useNarrowViewport() {
+  const [state, setState] = useState({ active: false, previewHeight: 300 });
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1023px)");
+    const update = () =>
+      setState({ active: query.matches, previewHeight: Math.max(200, Math.round(window.innerHeight * 0.4)) });
+    update();
+    query.addEventListener("change", update);
+    window.addEventListener("resize", update);
+    return () => {
+      query.removeEventListener("change", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+  return state;
 }
