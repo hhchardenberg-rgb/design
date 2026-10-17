@@ -5,6 +5,7 @@ import { Upload } from "lucide-react";
 import type { ImageFieldValue } from "@/lib/render/imageFit";
 import { EntitySearch } from "./opponent-player-search";
 import { Button } from "@/components/ui/button";
+import { shrinkImageForUpload } from "@/lib/client/shrink-image";
 
 export function ImageFieldControl({
   fieldKey,
@@ -28,14 +29,14 @@ export function ImageFieldControl({
       setUploading(true);
       try {
         const form = new FormData();
-        form.append("file", file);
+        form.append("file", await shrinkImageForUpload(file));
         form.append("kind", isLogo ? "LOGO" : "PHOTO");
         const res = await fetch("/api/uploads", { method: "POST", body: form });
-        if (!res.ok) throw new Error("upload mislukt");
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Uploaden is niet gelukt.");
         const data = await res.json();
         onChange({ asset: { kind: "upload", id: data.asset.id }, assetUrl: data.asset.url, panX: 0, panY: 0, scale: 1 });
-      } catch {
-        alert("Uploaden is niet gelukt. Probeer een ander bestand.");
+      } catch (error) {
+        alert(`${error instanceof Error ? error.message : "Uploaden is niet gelukt."} Probeer een ander bestand.`);
       } finally {
         setUploading(false);
       }
@@ -115,7 +116,18 @@ export function ImageFieldControl({
         )}
       </div>
       {value?.assetUrl && (
-        <p className="text-xs text-muted-foreground">Sleep de afbeelding in de preview om te verschuiven.</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">Sleep de afbeelding in de preview om te verschuiven; knijp om te zoomen.</p>
+          {(value.panX || value.panY || (value.scale ?? 1) !== 1) && (
+            <button
+              type="button"
+              onClick={() => onChange({ ...value, panX: 0, panY: 0, scale: 1 })}
+              className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Uitsnede herstellen
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

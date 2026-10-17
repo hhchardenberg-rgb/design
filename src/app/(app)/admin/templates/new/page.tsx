@@ -45,12 +45,26 @@ function NewTemplateForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return setError("Kies een PSD-bestand.");
+    const chosen = file;
+    if (!chosen) return setError("Kies een PSD-bestand.");
     if (!templateId && !name) return setError("Geef een naam voor de template op.");
     setLoading(true);
     setError(null);
     try {
       const meta = { name, category, templateId };
+      // Eerst het hele bestand inlezen. Kan de browser het niet lezen (in
+      // Photoshop opnieuw opgeslagen na het kiezen, of een OneDrive-/iCloud-
+      // bestand dat nog niet lokaal staat), dan mislukt elke upload met een
+      // nietszeggende "Failed to fetch"; nu krijgt de beheerder een uitleg.
+      let file: File;
+      try {
+        file = new File([await chosen.arrayBuffer()], chosen.name, { type: chosen.type || "application/octet-stream" });
+      } catch {
+        throw new Error(
+          "Het bestand kon niet worden gelezen. Is het na het kiezen nog gewijzigd, of staat het in OneDrive, iCloud of Google Drive? " +
+            "Kopieer het naar je computer (bijvoorbeeld het bureaublad), kies het opnieuw en probeer het nog eens."
+        );
+      }
 
       let blobUrl: string | null = null;
       let blobFailure: string | null = null;
@@ -72,6 +86,9 @@ function NewTemplateForm() {
         // vóórdat onze eigen code ooit draait.
         data = await uploadDirectly(file, meta).catch((directErr: unknown) => {
           const directMessage = directErr instanceof Error ? directErr.message : String(directErr);
+          if (/failed to fetch|networkerror|load failed/i.test(directMessage)) {
+            throw new Error("De verbinding met de server viel weg tijdens het uploaden. Controleer je internetverbinding en probeer het opnieuw.");
+          }
           throw new Error(
             blobFailure ? `Blob-upload: ${blobFailure} — Fallback: ${directMessage}` : directMessage
           );
