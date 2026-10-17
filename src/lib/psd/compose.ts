@@ -11,7 +11,10 @@ import type { BlendMode, Layer, LayerMaskData, PixelData } from "ag-psd";
  *  - overvloeimodi: de scheidbare modi en tint/verzadiging/kleur/helderheid;
  *  - lagen deels buiten het canvas worden bijgesneden (niet verschoven).
  *
- * Wat niet kan (laageffecten, aanpassingslagen, enkele exotische modi)
+ *  - slagschaduw van een laag (kleur, hoek, afstand, grootte, spreiding,
+ *    overvloeimodus en dekking), onder de laag zelf.
+ *
+ * Wat niet kan (overige laageffecten, aanpassingslagen, exotische modi)
  * komt als melding terug, zodat het importrapport het kan tonen.
  *
  * Buffers zijn Float32 RGBA, niet-voorvermenigvuldigd, 0..1.
@@ -237,6 +240,8 @@ export interface ComposeOptions {
   include?: (layer: Layer) => boolean;
   /** Groepsmaskers en -dekking van bovenliggende groepen (intern). */
   issues?: ComposeIssue[];
+  /** Algemene lichthoek van het document (voor "algemeen licht gebruiken"). */
+  globalAngle?: number;
 }
 
 const opacityOf = (layer: Layer) => (layer.opacity ?? 1) * (layer.fillOpacity ?? 1);
@@ -269,7 +274,7 @@ export function composeLayers(dst: Canvas, layers: Layer[], options: ComposeOpti
       continue;
     }
     if (!layer.imageData) continue;
-    if (hasEffects(layer)) issues.push({ layer: name, message: "laageffecten (schaduw, gloed, omlijning) worden niet nagebootst" });
+    if (hasUnsupportedEffects(layer)) issues.push({ layer: name, message: "laageffecten (gloed, omlijning, bedekking) worden niet nagebootst" });
     const mode = layer.blendMode ?? "normal";
     if (!isSupportedBlendMode(mode)) issues.push({ layer: name, message: `overvloeimodus "${mode}" wordt als normaal getoond` });
 
@@ -277,9 +282,125 @@ export function composeLayers(dst: Canvas, layers: Layer[], options: ComposeOpti
     const clip = clipped ? layerAlpha(base!) : null;
     const group = inherited?.mask ?? null;
     const factors = [own, clip, group].filter(Boolean) as ((x: number, y: number) => number)[];
-    const alphaAt = factors.length === 0 ? null : (x: number, y: number) => factors.reduce((acc, f) => acc * f(x, y), 1);
+    const alphaAt = product(factors);
+    // De schaduw volgt de vorm van de laag (met masker) en valt binnen het
+    // uitknipmasker en groepsmasker. Effecten volgen de laagdekking, niet de
+    // vuldekking.
+    const outer = product([clip, group].filter(Boolean) as ((x: number, y: number) => number)[]);
+    // Effecten volgen de laagdekking, niet de vuldekking.
+    for (const shadow of dropShadowsOf(layer)) {
+      const src = dropShadowSource(layer, shadow, options.globalAngle ?? 30);
+      if (!src) continue;
+      const shadowMode = shadow.blendMode ?? "multiply";
+      blendOnto(dst, src, isSupportedBlendMode(shadowMode) ? shadowMode : "multiply", (shadow.opacity ?? 0.75) * (layer.opacity ?? 1) * (inherited?.opacity ?? 1), outer);
+    }
     blendOnto(dst, pixelSource(layer), isSupportedBlendMode(mode) ? mode : "normal", opacityOf(layer) * (inherited?.opacity ?? 1), alphaAt);
   }
+}
+
+function product(factors: ((x: number, y: number) => number)[]): ((x: number, y: number) => number) | null {
+  if (factors.length === 0) return null;
+  if (factors.length === 1) return factors[0];
+  return (x, y) => factors.reduce((acc, f) => acc * f(x, y), 1);
+}
+
+type DropShadow = NonNullable<NonNullable<Layer["effects"]>["dropShadow"]>[number];
+
+function dropShadowsOf(layer: Layer): DropShadow[] {
+  const e = layer.effects;
+  if (!e || e.disabled) return [];
+  // Photoshop tekent de onderste schaduw uit de lijst het eerst.
+  return (e.dropShadow ?? []).filter((d) => d.enabled !== false).reverse();
+}
+
+const unitPx = (v: { value: number; units: string } | undefined) => (v && v.units === "Pixels" ? v.value : v?.value ?? 0);
+
+/**
+ * Slagschaduw als bron voor blendOnto: de alfa van de laag (met masker),
+ * verschoven over de lichthoek, verbreed met de spreiding en vervaagd met
+ * de grootte. Drie keer een kastfilter benadert de vervaging van Photoshop.
+ */
+function dropShadowSource(layer: Layer, shadow: DropShadow, globalAngle: number) {
+  const img = layer.imageData;
+  if (!img || img.width === 0 || img.height === 0) return null;
+  const angle = (((shadow.useGlobalLight ? globalAngle : shadow.angle ?? 120) ?? 120) * Math.PI) / 180;
+  const distance = unitPx(shadow.distance);
+  const size = Math.max(0, unitPx(shadow.size));
+  const spread = Math.min(1, Math.max(0, unitPx(shadow.choke) / 100));
+  const dx = Math.round(-Math.cos(angle) * distance);
+  const dy = Math.round(Math.sin(angle) * distance);
+  const pad = Math.ceil(size) + 1;
+  const left = (layer.left ?? 0) + dx - pad;
+  const top = (layer.top ?? 0) + dy - pad;
+  const w = img.width + 2 * pad;
+  const h = img.height + 2 * pad;
+  const shape = layerAlpha(layer)!;
+  let a: Float32Array = new Float32Array(w * h);
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      a[(y + pad) * w + x + pad] = shape(x + (layer.left ?? 0), y + (layer.top ?? 0));
+    }
+  }
+  // Spreiding maakt de rand harder vóór het vervagen.
+  const blurRadius = size * (1 - spread);
+  if (blurRadius >= 0.5) a = boxBlur3(a, w, h, blurRadius);
+  if (spread > 0) for (let i = 0; i < a.length; i++) a[i] = Math.min(1, a[i] / (1 - spread + 1e-6));
+  const r = (shadow.color && "r" in shadow.color ? shadow.color.r : 0) / 255;
+  const g = (shadow.color && "g" in shadow.color ? shadow.color.g : 0) / 255;
+  const b = (shadow.color && "b" in shadow.color ? shadow.color.b : 0) / 255;
+  return { left, top, width: w, height: h, at: (i: number): [number, number, number, number] => [r, g, b, a[i]] };
+}
+
+/** Drie kastfilters (horizontaal en verticaal) ≈ gaussische vervaging. */
+function boxBlur3(src: Float32Array, w: number, h: number, size: number): Float32Array {
+  // Photoshop's grootte is ongeveer de afstand waarover de rand uitloopt:
+  // drie kasten van samen die breedte.
+  const r = Math.max(1, Math.round(size / 3));
+  const a = Float32Array.from(src);
+  const tmp = new Float32Array(src.length);
+  for (let pass = 0; pass < 3; pass++) {
+    boxPass(a, tmp, w, h, r, true);
+    boxPass(tmp, a, w, h, r, false);
+  }
+  return a;
+}
+
+function boxPass(src: Float32Array, dst: Float32Array, w: number, h: number, r: number, horizontal: boolean) {
+  const len = horizontal ? w : h;
+  const lines = horizontal ? h : w;
+  const step = horizontal ? 1 : w;
+  const scale = 1 / (2 * r + 1);
+  for (let line = 0; line < lines; line++) {
+    const start = horizontal ? line * w : line;
+    let sum = 0;
+    for (let i = -r; i <= r; i++) if (i >= 0 && i < len) sum += src[start + i * step];
+    for (let i = 0; i < len; i++) {
+      dst[start + i * step] = sum * scale;
+      const out = i - r;
+      const inn = i + r + 1;
+      if (out >= 0) sum -= src[start + out * step];
+      if (inn < len) sum += src[start + inn * step];
+    }
+  }
+}
+
+/** Effecten die de compositor (nog) niet nabootst. */
+export function hasUnsupportedEffects(layer: Layer): boolean {
+  const e = layer.effects;
+  if (!e || e.disabled) return false;
+  const on = (x: { enabled?: boolean } | undefined) => Boolean(x && x.enabled !== false);
+  const any = (xs: { enabled?: boolean }[] | undefined) => Boolean(xs?.some((x) => x.enabled !== false));
+  return (
+    any(e.innerShadow) ||
+    on(e.outerGlow) ||
+    on(e.innerGlow) ||
+    on(e.bevel) ||
+    any(e.solidFill) ||
+    on(e.satin) ||
+    any(e.stroke) ||
+    any(e.gradientOverlay) ||
+    on(e.patternOverlay)
+  );
 }
 
 interface InheritedGroup {

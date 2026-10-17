@@ -90,6 +90,18 @@ test("Photoshop-samenstelling wordt alleen achtergrond als er aantoonbaar niets 
   assert.equal(noComposite.report.match, null);
 });
 
+test("lege fotolaag krijgt de hele afbeelding als kader", async () => {
+  const result = await importPsd(
+    buildPsd([
+      layer("Achtergrond", 0, 0, W, H, [0, 0, 0, 255]),
+      { name: "IMAGE: foto", opened: true, children: [{ name: "IMAGE: foto" }] },
+    ])
+  );
+  const foto = result.schema.layers.find((l) => l.id === "foto") as { x: number; y: number; width: number; height: number };
+  assert.deepEqual([foto.x, foto.y, foto.width, foto.height], [0, 0, W, H]);
+  assert.ok(result.report.issues.some((i) => i.message.includes("is leeg")));
+});
+
 test("afwijking van Photoshop wordt gemeten en blokkeert boven 15%", async () => {
   const psd: Psd = { width: W, height: H, children: [layer("Achtergrond", 0, 0, W, H, [0, 0, 0, 255])] };
   psd.imageData = rect(W, H, [255, 255, 255, 255]); // samenstelling klopt niet

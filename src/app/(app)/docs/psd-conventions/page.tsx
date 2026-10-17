@@ -107,7 +107,8 @@ export default function PsdConventionsPage() {
             <li>
               Voor <code className="rounded bg-surface-muted px-1 py-0.5">IMAGE:</code>-lagen bepaalt de vorm van de
               laag (rechthoek of cirkel/ellipsmasker) hoe de foto wordt bijgesneden. Werk bij voorkeur met een
-              rechthoekig kader; ronde kaders kun je na import in de template-builder alsnog instellen.
+              rechthoekig kader; ronde kaders kun je na import in de template-builder alsnog instellen. Een lege
+              fotolaag (zonder pixels) beslaat de hele afbeelding.
             </li>
             <li>
               Alles zonder herkende prefix — logo&apos;s, decoratie, achtergrondfoto&apos;s, kaders — wordt automatisch
@@ -130,8 +131,8 @@ export default function PsdConventionsPage() {
             </li>
             <li>
               Ondersteund bij vaste lagen: dekking en vuldekking, laagmaskers, uitknipmaskers, groepen (ook met eigen
-              dekking of masker) en de overvloeimodi van Photoshop. Niet nagebootst: laageffecten (schaduw, gloed,
-              omlijning) op vaste lagen boven een invulbare laag, en aanpassingslagen. Wil je die toch, voeg de laag
+              dekking of masker), de overvloeimodi van Photoshop en slagschaduw. Niet nagebootst: andere laageffecten
+              (gloed, omlijning, bedekkingen) op vaste lagen boven een invulbare laag, en aanpassingslagen. Wil je die toch, voeg de laag
               dan samen of maak er een slim object van.
             </li>
             <li>

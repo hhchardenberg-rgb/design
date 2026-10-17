@@ -44,7 +44,8 @@ test("rotatie uit de transform; het kader blijft het niet-gedraaide kader", () =
   });
   assert.equal(layer.rotation, 10);
   assert.equal(layer.width, 200);
-  assert.equal(layer.height, 30);
+  // 30 px kader, maar één regel van 30 px × 1,2: het kader groeit rond het midden.
+  assert.equal(layer.height, 36);
   // midden van het kader = (300, 230)
   assert.equal(layer.x + layer.width / 2, 300);
   assert.equal(layer.y + layer.height / 2, 230);
