@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { normalizeFamilyKey } from "@/lib/design/families";
 import { prisma } from "@/lib/prisma";
 import { requireHubAdmin, apiErrorResponse } from "@/lib/api-guards";
 
@@ -45,6 +46,8 @@ export async function PATCH(req: Request) {
         status,
         sortOrder: data.sortOrder,
         thumbnailUrl: data.thumbnailUrl,
+        ...("familyKey" in data ? { familyKey: normalizeFamilyKey(data.familyKey) } : {}),
+        ...("formatLabel" in data ? { formatLabel: typeof data.formatLabel === "string" ? data.formatLabel.trim().slice(0, 40) || null : null } : {}),
       },
     });
     return NextResponse.json({ template });

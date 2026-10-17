@@ -84,6 +84,7 @@ model User {
   uploadedAssets    UploadedAsset[]
   templatesCreated  Template[]         @relation("TemplateCreatedBy")
   templateFavorites TemplateFavorite[]
+  designBatches     DesignBatch[]
   newsPosts         NewsPost[]
   pressReleases     PressRelease[]
 
@@ -245,6 +246,11 @@ model Template {
   status       TemplateStatus @default(DRAFT)
   sortOrder    Int            @default(0)
 
+  // Templatefamilie: templates met dezelfde familie zijn formaatvarianten
+  // van één ontwerp (bv. feed en story) en delen hun invoer.
+  familyKey   String?
+  formatLabel String?
+
   activeVersionId String?          @unique
   activeVersion   TemplateVersion? @relation("ActiveVersion", fields: [activeVersionId], references: [id])
 
@@ -257,6 +263,7 @@ model Template {
   versions  TemplateVersion[]  @relation("TemplateVersions")
   favorites TemplateFavorite[]
 
+  @@index([familyKey])
   @@map("templates")
 }
 
@@ -835,6 +842,8 @@ model UploadedAsset {
   // Opslagsleutel en omvang, voor referentiegebaseerd opruimen (leeg bij oudere uploads).
   storageKey String?
   bytes      Int?
+  // Eerste keer dat het opruimen zag dat niets dit bestand nog gebruikt.
+  orphanedAt DateTime?
 
   createdAt DateTime @default(now())
 
@@ -1551,4 +1560,57 @@ model TemplateImportJob {
 
   @@index([status])
   @@map("template_import_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Batchproductie (designtool fase C): één template (of meerdere formaten van
+// een familie) voor een reeks wedstrijden of spelers, met ZIP.
+// ---------------------------------------------------------------------------
+
+model DesignBatch {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title  String
+  format String // PNG | JPG | WEBP
+  // QUEUED | RUNNING | DONE | FAILED
+  status String @default("QUEUED")
+
+  leaseUntil DateTime?
+  zipUrl     String?
+  zipKey     String?
+  zipBytes   Int?
+  error      String?
+
+  items DesignBatchItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@map("design_batches")
+}
+
+model DesignBatchItem {
+  id        String      @id @default(cuid())
+  batchId   String
+  batch     DesignBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  sortOrder Int
+
+  templateId String
+  // match | player
+  sourceKind String
+  sourceId   String
+  label      String
+
+  // QUEUED | RUNNING | DONE | FAILED
+  status     String    @default("QUEUED")
+  attempts   Int       @default(0)
+  leaseUntil DateTime?
+  error      String?
+  designId   String?
+  exportId   String?
+
+  @@index([batchId, sortOrder])
+  @@map("design_batch_items")
 }

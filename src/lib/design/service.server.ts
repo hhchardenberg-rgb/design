@@ -16,6 +16,8 @@ import {
   type ValidationField,
 } from "./form-data";
 import { resolveDesignImages } from "./assets.server";
+import { carryOverFormData, fieldDefaults } from "./families";
+import { matchPrefill } from "./match-prefill";
 
 /**
  * Ontwerpen aanmaken, opslaan en exporteren, met alle controles die niet in
@@ -369,4 +371,36 @@ export async function duplicateDesign(user: DesignUser, id: string) {
       revision: 1,
     },
   });
+}
+
+/**
+ * Hetzelfde ontwerp in een ander formaat van de templatefamilie: een nieuw
+ * concept op de actieve versie van die template, met de invoer die past.
+ */
+export async function createFormatVariant(user: DesignUser, id: string, templateId: string) {
+  const design = await loadDesign(user, id);
+  const family = design.templateVersion.template.familyKey;
+  const target = await prisma.template.findUnique({
+    where: { id: templateId },
+    include: { activeVersion: { include: { fields: true } } },
+  });
+  if (!family || !target || target.familyKey !== family || target.status !== "PUBLISHED" || !target.activeVersion) {
+    throw new ApiError(404, "Dit formaat is niet beschikbaar.");
+  }
+  // Velden die het andere formaat anders noemt, vullen we uit de wedstrijd.
+  const match = design.matchId
+    ? await prisma.match.findUnique({ where: { id: design.matchId }, include: { team: true, opponent: true } })
+    : null;
+  const formData = {
+    ...fieldDefaults(target.activeVersion.fields),
+    ...(match ? matchPrefill(target.activeVersion.fields, match) : {}),
+    ...carryOverFormData((design.formData ?? {}) as Record<string, unknown>, design.templateVersion.fields, target.activeVersion.fields),
+  };
+  const created = await createDesign(user, {
+    templateVersionId: target.activeVersion.id,
+    matchId: design.matchId,
+    title: design.title ?? target.name,
+    formData,
+  });
+  return { design: created, slug: target.slug };
 }

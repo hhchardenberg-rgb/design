@@ -91,6 +91,9 @@ export function MediaLibrary({
             </Button>
           ))}
         </div>
+        {source === "uploads" && (
+          <p className="text-xs text-muted-foreground">Uploads die vijf weken in geen enkel ontwerp gebruikt worden, worden opgeruimd.</p>
+        )}
         {source !== "uploads" && (
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

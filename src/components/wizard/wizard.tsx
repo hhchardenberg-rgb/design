@@ -47,6 +47,8 @@ export interface WizardProps {
   initialExport: ExportInfo | null;
   fontFaces: FontFaceInfo[];
   matchId?: string | null;
+  /** Andere formaten uit dezelfde templatefamilie. */
+  formatVariants?: { templateId: string; slug: string; label: string }[];
 }
 
 const HISTORY_LIMIT = 100;
@@ -71,6 +73,7 @@ export function Wizard({
   initialExport,
   fontFaces,
   matchId,
+  formatVariants = [],
 }: WizardProps) {
   const router = useRouter();
   const [textIssues, setTextIssues] = useState<TextIssue[]>([]);
@@ -266,6 +269,27 @@ export function Wizard({
     }
   }
 
+  async function makeVariant(variant: { templateId: string; label: string }) {
+    if (!designId) return;
+    setBusy(true);
+    try {
+      const flushed = await saver.flush();
+      if (!flushed) throw new Error("Sla eerst je wijzigingen op.");
+      const res = await fetch(`/api/designs/${designId}/variant`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: variant.templateId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `${variant.label} maken is niet gelukt.`);
+      router.push(`/templates/${data.slug}/create?designId=${data.design.id}`);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : `${variant.label} maken is niet gelukt.`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function takeTheirs() {
     const data = saver.takeTheirs();
     if (!data) return;
@@ -444,6 +468,20 @@ export function Wizard({
             <Button variant="outline" size="sm" onClick={duplicate} disabled={busy}>
               <Copy className="h-4 w-4" /> Dupliceren als nieuw ontwerp
             </Button>
+          )}
+          {formatVariants.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground">
+                Ook nodig in een ander formaat? Je gegevens gaan mee{designId ? "" : " zodra het concept bewaard is"}.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {formatVariants.map((v) => (
+                  <Button key={v.templateId} variant="outline" size="sm" onClick={() => makeVariant(v)} disabled={busy || !designId}>
+                    <Copy className="h-4 w-4" /> {v.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
           {!designId && <p className="text-center text-xs text-muted-foreground">Het concept wordt bewaard zodra je iets wijzigt.</p>}
           {designId && <p className="text-center text-xs text-muted-foreground">Revisie {revision}</p>}
