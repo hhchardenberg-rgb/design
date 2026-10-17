@@ -77,6 +77,12 @@ export const textLayerSchema = layerCommonSchema.extend({
   /** PostScript-naam uit de PSD; gebruikt om het juiste bestand te vinden. */
   fontPostscriptName: z.string().optional(),
   verticalAlign: z.enum(["top", "middle", "bottom"]).default("middle").optional(),
+  /**
+   * Plek van de eerste basislijn zoals in Photoshop (px vanaf de bovenkant
+   * van het kader), bij `fontSize` en `lines` regels. De opmaak schuift de
+   * tekst zo dat die basislijn exact klopt, los van de lettertypemetriek.
+   */
+  psdBaseline: z.object({ y: z.number(), lines: z.number().int().min(1), fontSize: z.number().positive() }).optional(),
   /** Omlijning buiten de letters (px op documentresolutie). */
   stroke: z.object({ color: z.string(), width: z.number().min(0).max(200) }).optional(),
   shadow: z

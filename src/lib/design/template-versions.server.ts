@@ -69,7 +69,9 @@ export function checkVersionDefinition(schema: TemplateSchemaJson, fields: Templ
         issues.push({ severity: "error", message: `Laag "${label}" gebruikt "${layer.visibilityField}" als aan/uit-veld, maar dat is geen aan/uit-veld.` });
       }
     }
-    if ((layer.type === "background" || layer.type === "static_image") && !layer.src && !(layer.type === "background" && layer.field)) {
+    // Een lege achtergrond mag: niet elke PSD heeft er een (dan is het
+    // ontwerp daar doorzichtig). Een vaste laag zonder afbeelding niet.
+    if (layer.type === "static_image" && !layer.src) {
       issues.push({ severity: "error", message: `Laag "${label}" heeft geen afbeelding.` });
     }
   }
