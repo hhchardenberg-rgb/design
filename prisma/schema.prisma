@@ -1135,22 +1135,26 @@ model CommercialTask {
 /// Bestanden bij een sponsordossier. De inhoud staat in de opslag onder een willekeurige sleutel;
 /// de opslag-URL wordt nooit aan de browser gegeven, downloaden loopt via een beveiligde route.
 model CommercialFile {
-  id           String            @id @default(cuid())
-  companyId    String
-  company      CommercialCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  category     String            @default("OTHER") // LOGO | CONTRACT | QUOTE | AD | PROOF | OTHER
-  name         String
-  mimeType     String
-  sizeBytes    Int
-  sha256       String
-  storageKey   String
+  id            String            @id @default(cuid())
+  companyId     String
+  company       CommercialCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  category      String            @default("OTHER") // LOGO | CONTRACT | QUOTE | AD | PROOF | OTHER
+  name          String
+  mimeType      String
+  sizeBytes     Int
+  sha256        String
+  storageKey    String
   // Versies van "hetzelfde" bestand delen een groep; hoogste versie is de actuele.
-  versionGroup String
-  version      Int               @default(1)
-  note         String?
-  uploadedById String?
-  archivedAt   DateTime?
-  createdAt    DateTime          @default(now())
+  versionGroup  String
+  version       Int               @default(1)
+  note          String?
+  uploadedById  String?
+  // Voorbeeldafbeelding (PNG) voor in de Hub, bv. van een EPS-, AI-, PDF- of SVG-logo. Het origineel blijft ongewijzigd.
+  previewKey    String?
+  // AUTO (uit het bestand zelf gemaakt) of MANUAL (los toegevoegd omdat het bestand geen bruikbaar voorbeeld bevatte).
+  previewSource String?
+  archivedAt    DateTime?
+  createdAt     DateTime          @default(now())
 
   @@index([companyId, category])
   @@index([versionGroup])
@@ -1354,6 +1358,37 @@ model CommercialReminderMute {
   @@unique([userId, companyId])
   @@index([companyId])
   @@map("commercial_reminder_mutes")
+}
+
+/// Wie een e-mail krijgt bij een gebeurtenis in Commerciële Zaken, bv. een nieuw afgesloten sponsorcontract.
+/// Een Hub-gebruiker (userId) of een los e-mailadres (email), ingesteld door beheerders.
+model CommercialNotificationRecipient {
+  id          String   @id @default(cuid())
+  event       String // CONTRACT_ACTIVATED
+  userId      String?
+  email       String?
+  name        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@unique([event, userId])
+  @@unique([event, email])
+  @@map("commercial_notification_recipients")
+}
+
+/// Verzonden (of overgeslagen) meldingen; voorkomt dubbele mails over hetzelfde contract.
+model CommercialNotificationLog {
+  id        String   @id @default(cuid())
+  event     String
+  refId     String
+  address   String
+  status    String // SENT | FAILED | SKIPPED_PREVIEW
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@unique([event, refId, address])
+  @@index([refId])
+  @@map("commercial_notification_logs")
 }
 
 /// Welke herinneringen al verstuurd zijn; voorkomt dubbele mails bij herhaalde cron-runs.

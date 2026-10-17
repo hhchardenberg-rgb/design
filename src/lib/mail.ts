@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { unsubscribeParams } from "@/lib/commercial/mail-security";
-import { renderMailing } from "@/lib/commercial/mail-render";
+import { renderContractNotice, renderMailing, type ContractNotice } from "@/lib/commercial/mail-render";
 import { formatDay } from "@/lib/date-format";
 
 // Zelfde manier van URL-opbouw als src/lib/webauthn/rp.ts: afgeleid van
@@ -95,6 +95,15 @@ export async function sendMailingEmail(mail: { to: string; name: string | null; 
   });
   if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
   return { providerMessageId: data?.id ?? null };
+}
+
+/** Melding dat er een nieuw sponsorcontract is afgesloten (zie src/lib/commercial/notifications.server.ts). */
+export async function sendContractNoticeEmail(to: string, notice: Omit<ContractNotice, "url"> & { path: string }): Promise<void> {
+  const resend = getClient();
+  const { path, ...rest } = notice;
+  const { subject, html, text } = renderContractNotice({ ...rest, url: `${APP_URL}${path}` }, { logoUrl: `${APP_URL}/branding/hhc-logo.png` });
+  const { error } = await resend.emails.send({ from: FROM_EMAIL, to, subject, html, text });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
 }
 
 /**

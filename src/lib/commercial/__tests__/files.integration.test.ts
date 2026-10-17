@@ -85,7 +85,9 @@ test("bestanden: validatie, versies, bereik, bevoegdheden en audit", { skip }, a
   const company = await co.createCompany(cRel, { name: "Dossier met bestanden" });
 
   // Validatie: type, inhoud en grootte.
-  await rejects(fl.uploadFile(cRel, company.id, { name: "logo.svg", data: Buffer.from("<svg onload=alert(1)/>"), category: "LOGO" }), 400);
+  // Vectorbestanden (SVG, EPS, AI) alleen bij logo's en advertentiemateriaal.
+  await rejects(fl.uploadFile(cRel, company.id, { name: "logo.svg", data: Buffer.from("<svg onload=alert(1)/>"), category: "OTHER" }), 400);
+  await rejects(fl.uploadFile(cRel, company.id, { name: "logo.eps", data: pdf, category: "LOGO" }), 400); // geen PostScript
   await rejects(fl.uploadFile(cRel, company.id, { name: "nep.pdf", data: png, category: "OTHER" }), 400); // inhoud past niet bij extensie
   await rejects(fl.uploadFile(cRel, company.id, { name: "leeg.pdf", data: Buffer.alloc(0), category: "OTHER" }), 400);
   await rejects(fl.uploadFile(cRel, company.id, { name: "groot.pdf", data: Buffer.concat([pdf, Buffer.alloc(fl.MAX_FILE_BYTES)]), category: "OTHER" }), 413);
@@ -127,3 +129,51 @@ test("bestanden: validatie, versies, bereik, bevoegdheden en audit", { skip }, a
   await rejects(fl.readFileForDownload(cRel, v2.id, false), 404);
   assert.ok((await fl.listFiles(cRel, company.id, { history: true })).some((f) => f.id === v2.id));
 });
+
+test("logo's: vectorbestanden met voorbeeld, SVG nooit inline, los voorbeeld bij EPS zonder voorbeeld", { skip }, async () => {
+  const sharp = (await import("sharp")).default;
+  const role = async (key: string) => (await db.commercialRole.findUniqueOrThrow({ where: { key } })).id;
+  const admin = await svc.buildActor({ ...(await mkUser("adm2")), roles: ["ADMIN", "HUB"] });
+  const rel = await mkUser("rel2");
+  const lid = await mkUser("lid2");
+  await svc.grantMembership(admin, rel.id, await role("relatiebeheerder"));
+  await svc.grantMembership(admin, lid.id, await role("sponsorcommissielid"));
+  const cRel = await ctxMod.buildRecordCtx(rel);
+  const cLid = await ctxMod.buildRecordCtx(lid);
+  const company = await co.createCompany(cRel, { name: "Sponsor met logo" });
+  const lg = await import("../logos.server");
+
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"><script>alert(1)</script><rect width="100" height="50" fill="#ff6f00"/></svg>');
+  const s = await fl.uploadFile(cRel, company.id, { name: "logo.svg", data: svg, category: "LOGO" });
+  assert.equal(s.mimeType, "image/svg+xml");
+  assert.equal(s.previewable, true);
+  assert.equal(s.previewSource, "AUTO");
+  assert.equal((await fl.readFileForDownload(cRel, s.id, true)).inline, false, "SVG nooit inline openen");
+  const pv = await fl.readPreview(cLid, s.id); // lezen is genoeg voor het voorbeeld
+  assert.equal(pv.mime, "image/png");
+  assert.equal((await sharp(pv.data).metadata()).format, "png");
+  assert.equal((await lg.currentLogoIds(cRel, [company.id])).get(company.id), s.id);
+
+  // EPS zonder ingebouwd voorbeeld: geüpload, maar zonder voorbeeld; daarna los een voorbeeld toevoegen.
+  const eps = Buffer.from("%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 40 20\nshowpage\n");
+  const e = await fl.uploadFile(cRel, company.id, { name: "logo.eps", data: eps, category: "LOGO" });
+  assert.equal(e.previewable, false);
+  assert.equal(e.previewMissing, true);
+  await rejects(fl.readPreview(cRel, e.id), 404);
+  assert.equal((await lg.currentLogoIds(cRel, [company.id])).get(company.id), s.id, "zonder voorbeeld blijft het vorige logo zichtbaar");
+  const png = await sharp({ create: { width: 30, height: 30, channels: 4, background: "#ff6f00" } }).png().toBuffer();
+  await rejects(fl.setManualPreview(cLid, e.id, { name: "v.png", data: png }), 403);
+  await rejects(fl.setManualPreview(cRel, e.id, { name: "v.docx", data: Buffer.from("PK") }), 400);
+  const m = await fl.setManualPreview(cRel, e.id, { name: "voorbeeld.png", data: png });
+  assert.equal(m.previewable, true);
+  assert.equal(m.previewSource, "MANUAL");
+  assert.equal((await fl.readPreview(cRel, e.id)).mime, "image/png");
+  assert.equal((await lg.currentLogoIds(cRel, [company.id])).get(company.id), e.id);
+  // Het origineel is ongewijzigd te downloaden.
+  assert.deepEqual((await fl.readFileForDownload(cRel, e.id, false)).data, eps);
+
+  // Ook in de sponsorlijst en het dossier.
+  assert.equal((await co.getCompany(cRel, company.id)).logoFileId, e.id);
+  assert.equal((await co.listCompanies(cRel, { q: "Sponsor met logo" })).rows[0].logoFileId, e.id);
+});
+

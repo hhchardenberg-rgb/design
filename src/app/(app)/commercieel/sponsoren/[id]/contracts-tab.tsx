@@ -119,8 +119,16 @@ function ContractCard({ c, seasons, can, onChanged }: { c: Contract; seasons: Se
 
   async function status(to: string, label: string) {
     if (!window.confirm(`Contract ${label}?`)) return;
-    const r = await api(`/api/commercial/contracts/${c.id}/status`, "POST", { status: to });
-    if (r.ok) await onChanged(); else toast.error(r.error);
+    const r = await api<{ notified: { recipients: number; sent: number; failed: number; skipped: number; live: boolean } | null }>(`/api/commercial/contracts/${c.id}/status`, "POST", { status: to });
+    if (!r.ok) { toast.error(r.error); return; }
+    const n = r.data.notified;
+    if (n && n.recipients > 0) {
+      const people = (k: number) => `${k} ${k === 1 ? "persoon" : "personen"}`;
+      if (!n.live) toast.success(`Contract actief. In deze testomgeving is geen melding verstuurd (zou naar ${people(n.skipped)} gaan).`);
+      else if (n.failed > 0) toast.error(`Contract actief, maar de melding kwam bij ${people(n.failed)} niet aan.`);
+      else if (n.sent > 0) toast.success(`Contract actief. Melding verstuurd naar ${people(n.sent)}.`);
+    }
+    await onChanged();
   }
   async function setCp(id: string, st: string) {
     const r = await api(`/api/commercial/counterparts/${id}`, "PUT", { status: st });
