@@ -10,6 +10,8 @@ Beschermde sectie van de HHC Hub voor de sponsorcommissie. Alles hieronder is ge
 | Sponsoren (dossiers) | Aanmaken, zoeken, filteren, archiveren, dubbelen herkennen, samenvoegen, CSV-import met controle vooraf |
 | Contacten en historie | Contacten per dossier, contactmomenten (gesprek, bezoek, mail, offerte…) met vervolgtaak in één stap |
 | Bestanden | Uploaden bij een dossier, versies, beveiligd downloaden (de opslag-URL komt nooit in de browser) |
+| Logo's | Logo's bij een sponsor, liefst als vectorbestand (EPS, AI, SVG, PDF; PNG en JPG kan ook), met voorbeeld in de Hub en het origineel downloadbaar |
+| Meldingen | E-mail aan aangewezen mensen zodra er een nieuw sponsorcontract is afgesloten |
 | Taken | Eigen en teamtaken, afvinken, bereik eigen/team/alles |
 | Seizoenen en pakketten | Seizoenen, pakketten met onderdelen; een contract bewaart een momentopname van het pakket |
 | Contracten | Concept, lopend, afgelopen, geannuleerd; verlengen (nieuw concept op basis van het vorige); opzegdatum |
@@ -17,7 +19,7 @@ Beschermde sectie van de HHC Hub voor de sponsorcommissie. Alles hieronder is ge
 | Pijplijn | Kansen per fase, verloren-reden, winnen maakt in één keer een concept-contract |
 | Indexatie | Percentage op concept-verlengingen met voorbeeld; één keer per verlenging; geschiedenis |
 | Rapportages | Contracten per status en pakket, pijplijnstand; CSV-export van contracten en sponsoren |
-| Herinneringen | Dagelijkse mail met verlopen taken en naderende opzegdata (30/14/7 dagen) |
+| Herinneringen | Mail met verlopen en naderende taken en opzegdata (30/14/7 dagen); dagelijks, twee keer per week, wekelijks, om de week, maandelijks of uit |
 | Mailings | Bericht aan sponsorcontacten, ontvangerslijst, versturen, resultaat per ontvanger, afmelden |
 | Facturen | Concept, definitief maken (doorlopend nummer), btw per regel, creditnota, betalingen, pdf op het briefpapier van het persbericht, versturen per e-mail met pdf-bijlage |
 | Rechten | Rollen als sjabloon, per persoon toestaan/weigeren, bereik, audit, delegatiegrens; alles in Beheer > Gebruikers en rechten |
@@ -118,12 +120,41 @@ Menu Financiën → **Doelen en prognose**. Kies een seizoen: je ziet per sponso
 
 ## Herinneringen aan contactmomenten
 
-Menu Relaties → **Contactmomenten**. Per sponsorvorm (en voor sponsoren zonder vorm) stel je in na hoeveel dagen zonder contactmoment een sponsor gemeld wordt. Leeg laten = geen herinnering; er is geen standaardtermijn.
+Menu Instellingen → **Herinneringen** (alleen beheerders kunnen wijzigen; niet persoonlijk aan te passen). Per sponsorvorm (en voor sponsoren zonder vorm) stellen beheerders in na hoeveel dagen zonder contactmoment een sponsor gemeld wordt. Het overzicht staat onder Relaties → **Contactmomenten**. Iedereen kan daar of in het sponsordossier een sponsor voor zichzelf **op stil** zetten: dan geen herinneringen meer over contactmomenten en opzegdata van die sponsor (toegewezen taken komen wel). Beheerders zien onder Instellingen → Herinneringen wie welke sponsor op stil zette en kunnen dat weer aanzetten. Leeg laten = geen herinnering; er is geen standaardtermijn.
 
 - Alleen sponsoren met status "Actief" tellen mee. Een vastgelegd contactmoment in het verleden telt; een geplande afspraak niet. Staat er een afspraak in de toekomst gepland, dan wordt de sponsor niet gemeld.
 - Sponsoren zonder enig contactmoment worden gemeten vanaf het aanmaken van het dossier.
-- De eigenaar van het dossier krijgt het in de dagelijkse herinneringsmail (zelfde cron als taken en opzegdata; uit te zetten in het eigen profiel), eenmalig per sponsor en daarna bij aanhoudende stilte opnieuw na elke 30 dagen. De mail bevat geen bedragen.
+- De eigenaar van het dossier krijgt het in de herinneringsmail (zelfde cron als taken en opzegdata; frequentie in te stellen in het eigen profiel), eenmalig per sponsor en daarna bij aanhoudende stilte opnieuw na elke 30 dagen. De mail bevat geen bedragen.
 - Het dashboard toont een kaart "Contactmoment nodig" met jouw sponsoren. Termijnen wijzigen vraagt "Instellingen beheren" en wordt gelogd.
+
+## Logo's
+
+In het sponsordossier, tab **Bestanden**: kies categorie **Logo** en upload het bestand. Liefst een vectorbestand: **EPS**,
+**AI**, **SVG** of **PDF**; PNG, JPG en WEBP kan ook. Maximaal 4 MB per bestand. EPS, AI en SVG kun je alleen als Logo of
+Advertentie of materiaal toevoegen.
+
+- Een browser kan EPS en AI niet tonen. De Hub maakt daarom bij het uploaden zelf een **voorbeeld** (PNG) om te bekijken; het
+  origineel blijft ongewijzigd bewaard en download je met **Origineel**. Gebruik voor drukwerk en de designtool altijd het origineel.
+- Het voorbeeld komt uit het bestand zelf: bij PDF en AI de eerste pagina, bij SVG de tekening, bij EPS het ingebouwde voorbeeld
+  dat programma's als Illustrator meestal meesturen. Zit er in een EPS geen voorbeeld, dan staat er "Geen voorbeeld beschikbaar"
+  en kun je met **Voorbeeld toevoegen** los een PNG, JPG, PDF of SVG kiezen die alleen als voorbeeld dient.
+- Het nieuwste logo met voorbeeld staat naast de naam bovenin het dossier en als klein plaatje in het overzicht Sponsoren.
+  Een nieuwe versie uploaden gaat met **Nieuwe versie** in de bestandenlijst; oude versies blijven in de geschiedenis.
+- Het voorbeeld bekijken kan iedereen die bestanden mag lezen; het origineel downloaden vraagt het downloadrecht en komt in het logboek.
+  SVG-bestanden worden nooit rechtstreeks in de browser geopend (ze kunnen scripts bevatten), alleen gedownload of als voorbeeld getoond.
+
+## Meldingen bij een nieuw contract
+
+Menu Instellingen → **Meldingen**. Beheerders (Instellingen beheren) wijzen aan wie een e-mail krijgt zodra er een nieuw
+sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvoorbeeld bestuursleden zonder account.
+
+- "Afgesloten" betekent: een contract gaat van **concept** naar **lopend** (Activeren in de tab Contracten). Een verlenging
+  telt dus ook mee zodra die wordt geactiveerd.
+- De mail noemt sponsor, sponsorvorm, seizoen (huidig, afgelopen of aankomend seizoen), pakket, looptijd (dd/mm/jjjj) en wie
+  het afsloot, met een knop naar het dossier. Er staan **nooit bedragen** in.
+- Iedereen krijgt per contract hooguit één melding. Na het activeren zie je in beeld naar hoeveel mensen de melding ging.
+- In een preview (testomgeving) wordt nooit echt gemaild: je ziet dan alleen naar hoeveel mensen de melding zou gaan.
+- Wie wordt toegevoegd of verwijderd komt in het logboek.
 
 ## 4. Beheer
 
@@ -140,6 +171,7 @@ Menu Relaties → **Contactmomenten**. Per sponsorvorm (en voor sponsoren zonder
   Een CZ-team wissen kan ook (rechtenbeheer vereist): dossiers en taken blijven bestaan maar horen dan bij geen team, dus wie ze
   alleen via dat team zag, ziet ze niet meer. De naam komt daarna weer vrij.
 - **Seizoenen en pakketten**: Instellingen > Seizoenen en pakketten.
+- **Meldingen**: Instellingen > Meldingen: wie een e-mail krijgt bij een nieuw afgesloten sponsorcontract (zie hierboven).
 - Wie alleen toegang heeft tot Commerciële Zaken (geen hub-/ticketingrol) wordt na het inloggen automatisch naar
   `/commercieel` gestuurd.
 
@@ -149,8 +181,9 @@ Menu Relaties → **Contactmomenten**. Per sponsorvorm (en voor sponsoren zonder
   contracten, facturen, mailings, bestanden, exports) met filter op persoon, soort en datum. Beide zijn bewust niet
   beperkt door het eigen recordbereik van de beheerder, en bevatten nooit bedragen.
 
-- **Profiel**: onder Profiel (rechtsboven) pas je je naam, functie en telefoonnummer aan, zet je de dagelijkse
-  herinneringsmail van Commerciële Zaken aan of uit, zie je waar je bij aangesloten bent en wijzig je je wachtwoord
+- **Profiel**: onder Profiel (rechtsboven) pas je je naam, functie en telefoonnummer aan, kies je hoe vaak je de
+  herinneringsmail van Commerciële Zaken krijgt (standaard, dagelijks, twee keer per week op maandag en donderdag, wekelijks
+  op maandag, om de week op maandag, op de eerste maandag van de maand, of uit), zie je waar je bij aangesloten bent en wijzig je je wachtwoord
   (huidig wachtwoord vereist). Tweestapsverificatie en passkeys staan op het tabblad Beveiliging. Een gewijzigde naam is in de
   balk bovenin pas na opnieuw inloggen zichtbaar.
 
@@ -200,13 +233,19 @@ Menu Relaties → **Contactmomenten**. Per sponsorvorm (en voor sponsoren zonder
   vrijstellingen. Een bestaande rol "Financieel medewerker" in productie krijgt de nieuwe rechten
   `credit_notes:approve` en `credit_notes:send` niet automatisch; vink ze zo nodig aan.
 - **Antwoorden op mailings registreren**: niet gebouwd (vraagt een inkomende mailbox).
-- **Herinneringen** gaan naar de taakhouder en naar de eigenaar van het dossier; een eigen voorkeur om dit uit te
-  zetten is er (nog) niet.
+- **Herinneringen** gaan naar de taakhouder en naar de eigenaar van het dossier; iedereen kiest zelf de
+  frequentie in het profiel. De standaard voor wie niets koos staat onder Instellingen → **Herinneringsmail** (zonder
+  instelling: dagelijks). Bij een lagere frequentie bevat de mail ook taken die vóór de volgende verzenddag vervallen.
 - Vercel Blob wordt als openbaar type opslag gebruikt; de bescherming van bestanden berust op onraadbare sleutels
   en op het feit dat de URL nooit aan de browser wordt gegeven. Overweeg een privé-opslag voor vertrouwelijke contracten.
 - Een mailing die halverwege crasht kan ontvangers in de status "bezig" achterlaten; die worden bewust niet
   automatisch opnieuw verstuurd om dubbele mails te voorkomen.
 - Nieuwe tabellen met een `companyId` moeten worden opgenomen in het samenvoegen van dossiers (`mergeCompanies`).
+- **Logo's**: een EPS zonder ingebouwd voorbeeld kan de Hub niet zelf tonen (daarvoor is een PostScript-programma nodig dat
+  niet op Vercel draait); voeg dan los een voorbeeld toe. Bestanden zijn maximaal 4 MB. Logo's die vóór deze versie als PNG of
+  JPG zijn geüpload, worden gewoon getoond; oudere bestanden krijgen niet achteraf een voorbeeld.
+- **Meldingen** gaan alleen uit vanaf productie (`VERCEL_ENV=production`) en via Resend; een mislukte melding wordt
+  vastgelegd maar niet automatisch opnieuw verstuurd, en houdt het activeren van het contract niet tegen.
 
 ## 8. Tests
 
@@ -216,4 +255,5 @@ financiële zichtbaarheid (ook in totalen, export, audit en snapshots), versieco
 samenvoegen, contracten en verlengen, pijplijn, indexatie, rapportages en export (inclusief formule-injectie),
 herinneringen (eenmalig, geen bedragen), mailings (afmelden, eenmalig versturen, foutherstel, webhook-handtekening
 en idempotentie) en een bewaking dat elke commerciële API-route de centrale toegangscontrole gebruikt.
+Ook gedekt: logo's (EPS met TIFF- of EPSI-voorbeeld, AI en PDF, SVG zonder scripts, los voorbeeld) en meldingen bij een nieuw contract (alleen beheerders wijzen aan, eenmalig per adres, nooit mailen buiten productie, geen bedragen).
 Facturatie is gedekt (instellingen, nummering bij gelijktijdig uitgeven, onveranderlijkheid, creditnota's, betalingen, bereik, versturen met mislukte poging). Er is in geen enkele test echt gemaild.

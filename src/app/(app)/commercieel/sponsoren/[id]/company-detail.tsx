@@ -21,6 +21,7 @@ interface Company {
   version: number;
   name: string;
   tradeName: string | null;
+  logoFileId: string | null;
   status: string;
   street: string | null;
   postalCode: string | null;
@@ -104,6 +105,10 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
     <div className="space-y-5">
       <Link href="/commercieel/sponsoren" className="inline-flex items-center gap-1 text-sm text-hhc-orange-dark"><ArrowLeft className="h-4 w-4" /> Alle sponsoren</Link>
       <div className="flex flex-wrap items-center gap-3">
+        {company.logoFileId && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`/api/commercial/files/${company.logoFileId}/preview`} alt={`Logo ${company.name}`} className="h-12 max-w-32 rounded border border-border bg-white object-contain p-1" />
+        )}
         <h1 className="text-2xl font-bold">{company.name}</h1>
         <Badge variant={company.status === "ACTIVE" ? "success" : company.status === "PROSPECT" ? "primary" : "outline"}>{STATUS[company.status] ?? company.status}</Badge>
         {company.sponsorTier && <TierBadge tier={company.sponsorTier} />}
@@ -130,7 +135,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
       {tab === "history" && <History companyId={id} can={can} />}
       {tab === "tasks" && <CompanyTasks companyId={id} can={can} />}
       {tab === "contracts" && <ContractsTab companyId={id} can={can} />}
-      {tab === "files" && <FilesTab companyId={id} can={can} />}
+      {tab === "files" && <FilesTab companyId={id} can={can} onChange={load} />}
     </div>
   );
 }

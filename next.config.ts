@@ -37,7 +37,8 @@ const nextConfig: NextConfig = {
   // Deze packages bevatten native (.node) bindings en moeten niet door de
   // bundler worden verwerkt, maar op runtime als gewone Node-module worden
   // geladen (PSD-import, lettertype-rendering en beeldbewerking).
-  serverExternalPackages: ["@napi-rs/canvas", "sharp", "ag-psd"],
+  // pdfjs-dist maakt voorbeelden van PDF- en AI-logo's in Commerciële Zaken.
+  serverExternalPackages: ["@napi-rs/canvas", "sharp", "ag-psd", "pdfjs-dist"],
   // Houdt de functiebundels op Vercel klein (Vercel telt de bundels van elke
   // bewaarde deployment mee als "Functions Storage"). Vercel draait op glibc-
   // Linux, dus de musl- en wasm-varianten van canvas/sharp worden nooit
