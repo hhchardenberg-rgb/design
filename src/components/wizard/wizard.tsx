@@ -13,6 +13,7 @@ import type { ImageFieldValue } from "@/lib/render/imageFit";
 import type { FontFaceInfo } from "@/lib/fonts/faces";
 import type { TextIssue } from "@/components/editor/design-canvas";
 import { LayerAdjustPanel } from "./layer-adjust-panel";
+import { MatchRefresh } from "./match-refresh";
 import { allows, applyLayerOverrides, LAYER_OVERRIDES_KEY, type LayerOverride, type LayerOverrides } from "@/lib/design/layer-overrides";
 
 const DesignCanvas = dynamic(() => import("@/components/editor/design-canvas").then((m) => m.DesignCanvas), {
@@ -335,6 +336,16 @@ export function Wizard({
           onKeepMine={() => saver.keepMine()}
           onTakeTheirs={takeTheirs}
         />
+
+        {matchId && (
+          <MatchRefresh
+            matchId={matchId}
+            templateVersionId={templateVersionId}
+            fields={fields}
+            formData={formData}
+            onApply={(values) => commit({ ...formData, ...values })}
+          />
+        )}
 
         {adjustLayer && (
           <LayerAdjustPanel

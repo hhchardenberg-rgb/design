@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getStorage, buildKey } from "@/lib/storage";
 import { loadAssetBuffer } from "@/lib/render/loadAsset";
 import { nanoid } from "nanoid";
+import sharp from "sharp";
 import { importPsd, PsdImportError, ASSET_PREFIX, type ImportReport } from "./parse";
 import { slugify } from "./naming";
 import type { TemplateSchemaJson } from "@/lib/validations/template";
@@ -118,6 +119,13 @@ async function processImport(job: {
   }
   const report: ImportReport = { ...result.report, referenceUrl: urls.reference, diffUrl: urls.diff };
 
+  // Kleine voorbeeldafbeelding voor de templatebibliotheek (uit de Photoshop-samenstelling).
+  let thumbnailUrl: string | null = null;
+  if (result.images.reference) {
+    const thumb = await sharp(result.images.reference).resize({ width: 600, height: 750, fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+    thumbnailUrl = (await storage.put({ key: buildKey(prefix, "thumbnail.webp"), data: thumb, contentType: "image/webp" })).url;
+  }
+
   let template = job.templateId ? await prisma.template.findUnique({ where: { id: job.templateId } }) : null;
   if (job.templateId && !template) throw new PsdImportError("De template waarvoor deze import bedoeld was, bestaat niet meer.");
   if (!template) {
@@ -126,8 +134,10 @@ async function processImport(job: {
     let i = 2;
     while (await prisma.template.findUnique({ where: { slug } })) slug = `${baseSlug}-${i++}`;
     template = await prisma.template.create({
-      data: { slug, name: job.name, category: job.category, status: "DRAFT", createdById: job.createdById },
+      data: { slug, name: job.name, category: job.category, status: "DRAFT", createdById: job.createdById, thumbnailUrl },
     });
+  } else if (!template.thumbnailUrl && thumbnailUrl) {
+    template = await prisma.template.update({ where: { id: template.id }, data: { thumbnailUrl } });
   }
 
   for (let attempt = 0; ; attempt++) {

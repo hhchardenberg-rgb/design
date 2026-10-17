@@ -123,7 +123,7 @@ export default async function CreateDesignPage({
           : null
       }
       fontFaces={fontFaces}
-      matchId={matchId ?? null}
+      matchId={design ? design.matchId : (matchId ?? null)}
     />
   );
 }
