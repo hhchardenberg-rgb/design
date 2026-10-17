@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { Images, Upload } from "lucide-react";
 import type { ImageFieldValue } from "@/lib/render/imageFit";
 import { EntitySearch } from "./opponent-player-search";
 import { Button } from "@/components/ui/button";
 import { shrinkImageForUpload } from "@/lib/client/shrink-image";
+import { MediaLibrary } from "./media-library";
 
 export function ImageFieldControl({
   fieldKey,
@@ -19,6 +20,7 @@ export function ImageFieldControl({
   onChange: (value: ImageFieldValue, coalesceKey?: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const isOpponent = /opponent|tegenstander/i.test(fieldKey);
   const isPlayer = /player|speler/i.test(fieldKey) && !/logo/i.test(fieldKey);
@@ -95,12 +97,15 @@ export function ImageFieldControl({
           }}
         />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="button" size="sm" variant="outline" disabled={uploading} onClick={() => inputRef.current?.click()}>
-          {uploading ? "Bezig..." : value?.assetUrl ? "Andere foto kiezen" : "Bestand kiezen"}
+          {uploading ? "Bezig..." : value?.assetUrl ? "Ander bestand" : "Bestand kiezen"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => setLibraryOpen(true)}>
+          <Images className="h-4 w-4" /> Bibliotheek
         </Button>
         {value?.assetUrl && (
-          <div className="flex flex-1 items-center gap-2">
+          <div className="flex min-w-[160px] flex-1 items-center gap-2">
             <span className="text-xs text-muted-foreground">Zoom</span>
             <input
               type="range"
@@ -129,6 +134,15 @@ export function ImageFieldControl({
           )}
         </div>
       )}
+      <MediaLibrary
+        open={libraryOpen}
+        initialSource={isLogo ? "logos" : isPlayer ? "players" : "uploads"}
+        onClose={() => setLibraryOpen(false)}
+        onPick={(item) => {
+          setLibraryOpen(false);
+          onChange({ asset: item.asset, assetUrl: item.url, panX: 0, panY: 0, scale: 1 });
+        }}
+      />
     </div>
   );
 }

@@ -300,5 +300,33 @@ export async function activateVersion(templateId: string, versionId: string) {
     });
     return tx.template.update({ where: { id: templateId }, data: { activeVersionId: versionId, status: "PUBLISHED" } });
   });
-  return { template, warnings: issues.filter((i) => i.severity === "warning") };
+  const thumbnailUrl = await renderThumbnail(versionId).catch((error) => {
+    console.error("[templates] miniatuur maken mislukt", error);
+    return null;
+  });
+  const updated = thumbnailUrl ? await prisma.template.update({ where: { id: templateId }, data: { thumbnailUrl } }) : template;
+  return { template: updated, warnings: issues.filter((i) => i.severity === "warning") };
+}
+
+/**
+ * Miniatuur voor de templatebibliotheek: de actieve versie met de
+ * voorbeeldwaarden, zoals een invuller hem ziet voordat hij iets wijzigt.
+ */
+async function renderThumbnail(versionId: string): Promise<string | null> {
+  const version = await prisma.templateVersion.findUnique({ where: { id: versionId }, include: { fields: true } });
+  if (!version) return null;
+  const schema = templateSchemaJson.parse(version.schemaJson);
+  const formData: Record<string, unknown> = {};
+  for (const f of version.fields) {
+    if (f.type === "CHECKBOX") formData[f.key] = f.defaultValue !== "false";
+    else if (f.defaultValue) formData[f.key] = f.defaultValue;
+  }
+  const { renderDesign } = await import("@/lib/render/serverRender");
+  const canvas = await renderDesign(schema, formData, { strict: false });
+  const png = await canvas.encode("png");
+  const sharp = (await import("sharp")).default;
+  const thumb = await sharp(png).resize({ width: 600, height: 750, fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+  const { getStorage, buildKey } = await import("@/lib/storage");
+  const stored = await getStorage().put({ key: buildKey("templates", "thumbnails", `${versionId}.webp`), data: thumb, contentType: "image/webp" });
+  return stored.url;
 }
