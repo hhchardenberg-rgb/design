@@ -11,6 +11,8 @@ import { computeImageDraw, type ImageFieldValue } from "@/lib/render/imageFit";
 import { cn } from "@/lib/utils";
 import { useImage } from "./use-image";
 import { useFontFaces } from "./use-font-faces";
+import { applyLayerOverrides } from "@/lib/design/layer-overrides";
+import { BuilderOverlay, type BuilderCanvasProps } from "./builder-overlay";
 
 export type DesignFormData = Record<string, unknown>;
 
@@ -33,6 +35,8 @@ export interface DesignCanvasProps {
   onSelectField?: (fieldKey: string) => void;
   /** Veld waarvan de laag gemarkeerd wordt. */
   selectedField?: string | null;
+  /** Templatebuilder: lagen kiezen, verplaatsen, schalen en draaien. */
+  builder?: BuilderCanvasProps;
   className?: string;
 }
 
@@ -64,7 +68,7 @@ interface TextRender {
  * gebruiker ziet exact is wat er wordt gedownload.
  */
 export function DesignCanvas({
-  schema,
+  schema: templateSchema,
   formData,
   maxWidth = 480,
   maxHeight,
@@ -75,8 +79,11 @@ export function DesignCanvas({
   onTextIssues,
   onSelectField,
   selectedField,
+  builder,
   className,
 }: DesignCanvasProps) {
+  // Met de aanpassingen van de invuller (in de builder zijn die er niet).
+  const schema = useMemo(() => applyLayerOverrides(templateSchema, formData), [templateSchema, formData]);
   const textLayers = useMemo(
     () => schema.layers.filter((l): l is TextLayer => l.type === "text"),
     [schema.layers]
@@ -163,9 +170,9 @@ export function DesignCanvas({
     // meten dan maxWidth (de canvas ZOU immers al zo breed zijn als maxWidth
     // op het eerste render), waardoor de preview op smalle schermen buiten
     // de viewport uitsteekt in plaats van mee te krimpen.
-    <div ref={containerRef} className={cn("w-full", className)} style={{ maxWidth }}>
+    <div ref={containerRef} className={cn("flex w-full justify-center", className)} style={{ maxWidth }}>
       <Stage width={stageWidth} height={stageHeight} scaleX={scale} scaleY={scale}>
-        <Layer listening={editable}>
+        <Layer listening={editable && !builder}>
           {schema.layers.map((layer) => (
             <LayerNode
               key={layer.id}
@@ -179,6 +186,7 @@ export function DesignCanvas({
             />
           ))}
         </Layer>
+        {builder && <BuilderOverlay schema={schema} scale={scale} builder={builder} />}
       </Stage>
     </div>
   );

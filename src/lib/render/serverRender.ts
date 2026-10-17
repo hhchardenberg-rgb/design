@@ -1,3 +1,4 @@
+import { applyLayerOverrides } from "@/lib/design/layer-overrides";
 import { createCanvas, loadImage, type SKRSContext2D, type Image } from "@napi-rs/canvas";
 import sharp from "sharp";
 import type { Layer, TemplateSchemaJson, TextLayer } from "@/lib/validations/template";
@@ -40,6 +41,8 @@ export async function renderDesign(
   formData: DesignFormData,
   options: RenderOptions = {}
 ): Promise<import("@napi-rs/canvas").Canvas> {
+  // Wat de invuller zelf aan lagen heeft aangepast (binnen wat de template toestaat).
+  schema = applyLayerOverrides(schema, formData);
   const faces = options.faces ?? (await loadRenderFaces());
 
   const canvas = createCanvas(schema.width, schema.height);

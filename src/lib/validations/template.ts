@@ -30,7 +30,14 @@ export const layerCommonSchema = z.object({
    * zichtbaarheidsveld verwijzen (bv. alle thuis-specifieke lagen).
    */
   visibilityField: z.string().optional(),
+  /**
+   * Wat een invuller aan deze laag zelf mag aanpassen (ingesteld in de
+   * builder). De aanpassingen staan per ontwerp in formData.__layers.
+   */
+  allow: z.array(z.enum(["move", "resize", "color", "fontSize", "align"])).optional(),
 });
+
+export type LayerPermission = "move" | "resize" | "color" | "fontSize" | "align";
 
 export const backgroundLayerSchema = layerCommonSchema.extend({
   type: z.literal("background"),

@@ -56,6 +56,8 @@ async function allowedColors(fields: TemplateField[], schema: TemplateSchemaJson
   for (const c of await prisma.brandColor.findMany({ select: { hex: true } })) colors.add(c.hex.toUpperCase());
   for (const f of fields) if (f.type === "BRAND_COLOR" && f.defaultValue) colors.add(f.defaultValue.toUpperCase());
   for (const l of schema.layers) if (l.type === "color") colors.add(l.defaultColor.toUpperCase());
+  // De oorspronkelijke tekstkleuren mag een invuller altijd terugzetten.
+  for (const l of schema.layers) if (l.type === "text" && /^#[0-9a-fA-F]{6}$/.test(l.color)) colors.add(l.color.toUpperCase());
   return colors;
 }
 
@@ -68,7 +70,7 @@ export async function prepareFormData(
   const schema = templateSchemaJson.parse(version.schemaJson);
   const fields = toValidationFields(version.fields);
   try {
-    const normalized = normalizeFormData(fields, input, { allowedColors: await allowedColors(version.fields, schema) });
+    const normalized = normalizeFormData(fields, input, { allowedColors: await allowedColors(version.fields, schema), schema });
     return await resolveDesignImages(fields, normalized, { ownerId, schema });
   } catch (error) {
     if (error instanceof FormDataError) throw new ApiError(400, error.message);
