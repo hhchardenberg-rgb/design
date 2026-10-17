@@ -20,6 +20,7 @@ interface Row {
   status: string;
   city: string | null;
   ownerName: string | null;
+  logoFileId: string | null;
   tags: string[];
   sponsorTier: string | null;
   lastContactAt: string | null;
@@ -210,8 +211,18 @@ export function SponsorList({ canCreate, canExportContacts = false }: { canCreat
               {data?.rows.map((r) => (
                 <tr key={r.id} className="hover:bg-surface-muted/50">
                   <td className="px-3 py-2">
-                    <Link href={`/commercieel/sponsoren/${r.id}`} className="font-medium text-hhc-orange-dark hover:underline">{r.name}</Link>
-                    {r.tradeName && <div className="text-xs text-muted-foreground">{r.tradeName}</div>}
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-12 shrink-0 items-center justify-center">
+                        {r.logoFileId && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={`/api/commercial/files/${r.logoFileId}/preview`} alt="" loading="lazy" className="max-h-8 max-w-12 object-contain" />
+                        )}
+                      </span>
+                      <div>
+                        <Link href={`/commercieel/sponsoren/${r.id}`} className="font-medium text-hhc-orange-dark hover:underline">{r.name}</Link>
+                        {r.tradeName && <div className="text-xs text-muted-foreground">{r.tradeName}</div>}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-3 py-2"><Badge variant={STATUS[r.status]?.variant ?? "outline"}>{STATUS[r.status]?.label ?? r.status}</Badge></td>
                   <td className="px-3 py-2"><TierBadge tier={r.sponsorTier} /></td>

@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { auditRecord, need, notFound, type RecordCtx } from "./ctx.server";
 import { canSeeOwned, companyScopeWhere, normalizeNameKey } from "./scope";
 import { isSponsorTier } from "./sponsor-tiers";
+import { currentLogoIds } from "./logos.server";
 
 export const COMPANY_STATUSES = ["PROSPECT", "ACTIVE", "FORMER"] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
@@ -142,6 +143,7 @@ export async function listCompanies(ctx: RecordCtx, query: CompanyListQuery) {
     prisma.user.findMany({ where: { id: { in: rows.map((r) => r.ownerId).filter((x): x is string => !!x) } }, select: { id: true, name: true } }),
   ]);
   const ownerName = new Map(owners.map((o) => [o.id, o.name]));
+  const logos = await currentLogoIds(ctx, ids);
   return {
     total,
     page,
@@ -150,6 +152,7 @@ export async function listCompanies(ctx: RecordCtx, query: CompanyListQuery) {
       ...r,
       updatedAt: r.updatedAt.toISOString(),
       ownerName: r.ownerId ? (ownerName.get(r.ownerId) ?? null) : null,
+      logoFileId: logos.get(r.id) ?? null,
       lastContactAt: lastContacts.find((l) => l.companyId === r.id)?._max.occurredAt?.toISOString() ?? null,
       openTasks: openTasks.find((t) => t.companyId === r.id)?._count._all ?? 0,
       nextActionDue: openTasks.find((t) => t.companyId === r.id)?._min.dueAt?.toISOString() ?? null,
@@ -210,7 +213,8 @@ export async function getCompany(ctx: RecordCtx, id: string) {
     ? (await prisma.commercialMembership.findMany({ include: { user: { select: { id: true, name: true } } } })).map((m) => ({ id: m.user.id, name: m.user.name }))
     : [];
   const remindersMuted = (await prisma.commercialReminderMute.count({ where: { userId: ctx.userId, companyId: id } })) > 0;
-  return { ...company, ownerName: owner?.name ?? null, ownerOptions, canChangeOwner, remindersMuted };
+  const logoFileId = (await currentLogoIds(ctx, [id])).get(id) ?? null;
+  return { ...company, ownerName: owner?.name ?? null, ownerOptions, canChangeOwner, remindersMuted, logoFileId };
 }
 
 export async function updateCompany(
