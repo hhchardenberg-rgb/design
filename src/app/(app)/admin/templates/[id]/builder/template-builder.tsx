@@ -15,6 +15,7 @@ import type { FontFaceInfo } from "@/lib/fonts/faces";
 import { TextFontPanel } from "./text-font-panel";
 import { ImportReportPanel } from "./import-report-panel";
 import { LayerList, LayerProperties } from "./layer-panel";
+import { formatName } from "@/lib/design/families";
 import { useBuilderHistory } from "./use-builder-history";
 import type { LayerGeometry } from "@/components/editor/builder-overlay";
 import type { ImportReport } from "@/lib/psd/parse";
@@ -57,6 +58,8 @@ export interface BuilderTemplate {
   id: string;
   name: string;
   category: string;
+  familyKey: string | null;
+  formatLabel: string | null;
   description: string | null;
   status: string;
   activeVersionId: string | null;
@@ -69,10 +72,12 @@ export function TemplateBuilder({
   template,
   initialVersionId,
   fontFaces,
+  families = [],
 }: {
   template: BuilderTemplate;
   initialVersionId?: string;
   fontFaces: FontFaceInfo[];
+  families?: string[];
 }) {
   const router = useRouter();
   const sortedVersions = [...template.versions].sort((a, b) => b.versionNumber - a.versionNumber);
@@ -94,6 +99,8 @@ export function TemplateBuilder({
   const [exportFormats, setExportFormats] = useState<string[]>(version.exportFormats);
   const [name, setName] = useState(template.name);
   const [category, setCategory] = useState(template.category);
+  const [familyKey, setFamilyKey] = useState(template.familyKey ?? "");
+  const [formatLabel, setFormatLabel] = useState(template.formatLabel ?? "");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -376,7 +383,7 @@ export function TemplateBuilder({
     await fetch("/api/admin/templates", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: template.id, name, category }),
+      body: JSON.stringify({ id: template.id, name, category, familyKey, formatLabel }),
     });
   }
 
@@ -474,6 +481,28 @@ export function TemplateBuilder({
               </option>
             ))}
           </Select>
+          <Input
+            value={familyKey}
+            onChange={(e) => setFamilyKey(e.target.value)}
+            onBlur={saveTemplateInfo}
+            list="template-families"
+            placeholder="Familie (optioneel)"
+            title="Templates in dezelfde familie zijn formaten van één ontwerp en delen hun invoer."
+            className="w-48"
+          />
+          <datalist id="template-families">
+            {families.map((f) => (
+              <option key={f} value={f} />
+            ))}
+          </datalist>
+          <Input
+            value={formatLabel}
+            onChange={(e) => setFormatLabel(e.target.value)}
+            onBlur={saveTemplateInfo}
+            placeholder={formatName(null, schema.width, schema.height)}
+            title="Naam van dit formaat binnen de familie"
+            className="w-36"
+          />
           <Link href={`/admin/templates/new?templateId=${template.id}`}>
             <Button variant="outline">Nieuwe versie uploaden</Button>
           </Link>

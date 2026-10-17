@@ -48,3 +48,32 @@ test("thuiswedstrijd in het Engels", () => {
   assert.equal(out.home, true);
   assert.equal(out.competition, "Hoofdklasse");
 });
+
+test("speler vult naam, nummer en foto", async () => {
+  const { playerPrefill } = await import("../match-prefill");
+  const out = playerPrefill(
+    [
+      { key: "speler", type: "SHORT_TEXT" },
+      { key: "Rugnummer", type: "NUMBER" },
+      { key: "speler_foto", type: "IMAGE" },
+      { key: "foto", type: "IMAGE" },
+      { key: "positie", type: "SHORT_TEXT" },
+      { key: "tegenstander", type: "SHORT_TEXT" },
+    ],
+    {
+      id: "p1",
+      firstName: "Jan",
+      lastName: "Jansen",
+      number: 9,
+      position: null,
+      photoUrl: "https://x/p1.png",
+      team: { id: "t1", name: "HHC 1", logoUrl: null },
+    }
+  );
+  assert.equal(out.speler, "Jan Jansen");
+  assert.equal((out.speler_foto as { asset: { id: string } }).asset.id, "p1");
+  assert.equal(out.Rugnummer, "9");
+  assert.deepEqual(out.foto, { asset: { kind: "player", id: "p1" }, assetUrl: "https://x/p1.png", panX: 0, panY: 0, scale: 1 });
+  assert.equal("positie" in out, false);
+  assert.equal("tegenstander" in out, false);
+});

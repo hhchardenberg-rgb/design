@@ -114,3 +114,55 @@ export function matchPrefill(fields: { key: string; type: string }[], match: Pre
   }
   return out;
 }
+
+/** Speler voor het vullen van een ontwerp (batch "per speler"). */
+export interface PrefillPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  number: number | null;
+  position: string | null;
+  photoUrl: string | null;
+  team: { id: string; name: string; logoUrl: string | null };
+}
+
+type PlayerBinding = "player_name" | "first_name" | "last_name" | "number" | "position" | "player_photo" | "team" | "team_logo";
+
+const PLAYER_ALIASES: Record<PlayerBinding, string[]> = {
+  player_name: ["player", "player_name", "speler", "spelersnaam", "speler_naam", "naam", "name", "naam_speler"],
+  first_name: ["first_name", "voornaam"],
+  last_name: ["last_name", "achternaam"],
+  number: ["number", "nummer", "rugnummer", "shirtnummer", "player_number"],
+  position: ["position", "positie", "linie"],
+  player_photo: ["player", "player_photo", "photo", "foto", "speler", "spelersfoto", "speler_foto", "foto_speler"],
+  team: ALIASES.team,
+  team_logo: ALIASES.team_logo,
+};
+
+export function playerPrefill(fields: { key: string; type: string }[], player: PrefillPlayer): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const field of fields) {
+    const k = normalize(field.key);
+    const isImage = field.type === "IMAGE" || field.type === "LOGO";
+    const candidates = (Object.keys(PLAYER_ALIASES) as PlayerBinding[]).filter(
+      (b) => (b === "player_photo" || b === "team_logo") === isImage
+    );
+    const binding = candidates.find((b) => PLAYER_ALIASES[b].includes(k));
+    let value: unknown;
+    switch (binding) {
+      case "player_name": value = `${player.firstName} ${player.lastName}`.trim(); break;
+      case "first_name": value = player.firstName; break;
+      case "last_name": value = player.lastName; break;
+      case "number": value = player.number ?? undefined; break;
+      case "position": value = player.position ?? undefined; break;
+      case "team": value = player.team.name; break;
+      case "player_photo":
+        value = player.photoUrl ? { asset: { kind: "player", id: player.id }, assetUrl: player.photoUrl, panX: 0, panY: 0, scale: 1 } : undefined;
+        break;
+      case "team_logo": value = logo("team", player.team); break;
+    }
+    if (value === undefined || value === null) continue;
+    out[field.key] = typeof value === "number" ? String(value) : value;
+  }
+  return out;
+}

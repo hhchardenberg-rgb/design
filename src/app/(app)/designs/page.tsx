@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Palette } from "lucide-react";
+import { Layers, Palette } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,9 +20,17 @@ export default async function DesignsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Mijn ontwerpen</h1>
-        <p className="mt-1 text-muted-foreground">Concepten en eerder gedownloade afbeeldingen.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Mijn ontwerpen</h1>
+          <p className="mt-1 text-muted-foreground">Concepten en eerder gedownloade afbeeldingen.</p>
+        </div>
+        <Link
+          href="/designs/batch"
+          className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-surface-muted"
+        >
+          <Layers className="h-4 w-4" /> Meerdere tegelijk maken
+        </Link>
       </div>
 
       {designs.length === 0 ? (

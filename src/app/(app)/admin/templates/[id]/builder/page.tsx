@@ -33,11 +33,19 @@ export default async function TemplateBuilderPage({
   });
 
   if (!template || template.versions.length === 0) notFound();
+  const families = await prisma.template.findMany({
+    where: { familyKey: { not: null } },
+    distinct: ["familyKey"],
+    select: { familyKey: true },
+    orderBy: { familyKey: "asc" },
+  });
 
   const builderTemplate: BuilderTemplate = {
     id: template.id,
     name: template.name,
     category: template.category,
+    familyKey: template.familyKey,
+    formatLabel: template.formatLabel,
     description: template.description,
     status: template.status,
     activeVersionId: template.activeVersionId,
@@ -78,6 +86,7 @@ export default async function TemplateBuilderPage({
       template={builderTemplate}
       initialVersionId={versionId}
       fontFaces={fontFaces}
+      families={families.map((f) => f.familyKey!)}
     />
   );
 }

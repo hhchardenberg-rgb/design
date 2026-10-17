@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { templateSchemaJson } from "@/lib/validations/template";
 import { canAccessDesign } from "@/lib/design/permissions";
 import { matchPrefill } from "@/lib/design/match-prefill";
+import { fieldDefaults, formatName } from "@/lib/design/families";
 import { Wizard } from "@/components/wizard/wizard";
 import { listFontFaces } from "@/lib/fonts/faces.server";
 import type { FormData } from "@/components/wizard/wizard";
@@ -54,14 +55,7 @@ export default async function CreateDesignPage({
     listFontFaces(),
   ]);
 
-  const defaults: FormData = {};
-  for (const field of version.fields) {
-    if (field.type === "CHECKBOX") {
-      defaults[field.key] = field.defaultValue !== "false";
-    } else if (field.defaultValue) {
-      defaults[field.key] = field.defaultValue;
-    }
-  }
+  const defaults: FormData = fieldDefaults(version.fields);
 
   let initialFormData: FormData = { ...defaults };
   if (design) {
@@ -79,6 +73,14 @@ export default async function CreateDesignPage({
     !isActiveVersion && template.status === "PUBLISHED" && template.activeVersionId
       ? await prisma.templateVersion.findUnique({ where: { id: template.activeVersionId }, select: { versionNumber: true } })
       : null;
+
+  const variants = template.familyKey
+    ? await prisma.template.findMany({
+        where: { familyKey: template.familyKey, status: "PUBLISHED", id: { not: template.id }, activeVersionId: { not: null } },
+        include: { activeVersion: { select: { width: true, height: true } } },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      })
+    : [];
 
   const lastExport = design
     ? await prisma.designExport.findFirst({ where: { designId: design.id, revision: design.revision }, orderBy: { createdAt: "desc" } })
@@ -124,6 +126,11 @@ export default async function CreateDesignPage({
       }
       fontFaces={fontFaces}
       matchId={design ? design.matchId : (matchId ?? null)}
+      formatVariants={variants.map((v) => ({
+        templateId: v.id,
+        slug: v.slug,
+        label: formatName(v.formatLabel, v.activeVersion!.width, v.activeVersion!.height),
+      }))}
     />
   );
 }
