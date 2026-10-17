@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Image as ImageIcon, Loader2, Redo2, Square, Type, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,9 @@ import type { Layer, TemplateSchemaJson, TextLayer } from "@/lib/validations/tem
 import type { FontFaceInfo } from "@/lib/fonts/faces";
 import { TextFontPanel } from "./text-font-panel";
 import { ImportReportPanel } from "./import-report-panel";
+import { LayerList, LayerProperties } from "./layer-panel";
+import { useBuilderHistory } from "./use-builder-history";
+import type { LayerGeometry } from "@/components/editor/builder-overlay";
 import type { ImportReport } from "@/lib/psd/parse";
 
 const DesignCanvas = dynamic(() => import("@/components/editor/design-canvas").then((m) => m.DesignCanvas), {
@@ -82,8 +85,12 @@ export function TemplateBuilder({
   // dan een misleidend badge dat niet overeenkwam met het overzicht.
   const isLive = (v: { id: string }) => template.status === "PUBLISHED" && template.activeVersionId === v.id;
 
-  const [fields, setFields] = useState<BuilderField[]>(version.fields);
-  const [schema, setSchema] = useState<TemplateSchemaJson>(version.schemaJson);
+  const { schema, fields, setSchema, setFields, reset, undo, redo, canUndo, canRedo } = useBuilderHistory({
+    schema: version.schemaJson,
+    fields: version.fields,
+  });
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const selectedLayer = schema.layers.find((l) => l.id === selectedLayerId) ?? null;
   const [exportFormats, setExportFormats] = useState<string[]>(version.exportFormats);
   const [name, setName] = useState(template.name);
   const [category, setCategory] = useState(template.category);
@@ -105,8 +112,8 @@ export function TemplateBuilder({
     const v = sortedVersions.find((x) => x.id === id);
     if (!v) return;
     setVersionId(id);
-    setFields(v.fields);
-    setSchema(v.schemaJson);
+    reset({ schema: v.schemaJson, fields: v.fields });
+    setSelectedLayerId(null);
     setExportFormats(v.exportFormats);
   }
 
@@ -226,6 +233,144 @@ export function TemplateBuilder({
       }
     }
   }
+
+  const locked = version.locked;
+
+  const updateLayer = useCallback(
+    (layerId: string, patch: Partial<Layer>) => {
+      setSchema((prev) => ({
+        ...prev,
+        layers: prev.layers.map((l) => {
+          if (l.id !== layerId) return l;
+          const next = { ...l, ...patch } as Layer & { psdBaseline?: unknown };
+          for (const [k, v] of Object.entries(patch)) if (v === undefined) delete (next as Record<string, unknown>)[k];
+          return next as Layer;
+        }),
+      }));
+    },
+    [setSchema]
+  );
+
+  function changeGeometry(layerId: string, g: LayerGeometry) {
+    const layer = schema.layers.find((l) => l.id === layerId);
+    if (!layer) return;
+    const patch: Record<string, unknown> = { ...g };
+    // Een ander kaderformaat: de tekst volgt weer de uitlijning in het kader.
+    if (layer.type === "text" && layer.psdBaseline && Math.abs(g.height - layer.height) > 0.5) patch.psdBaseline = undefined;
+    updateLayer(layerId, patch as Partial<Layer>);
+  }
+
+  function moveLayer(layerId: string, direction: "up" | "down") {
+    setSchema((prev) => {
+      const layers = [...prev.layers];
+      const i = layers.findIndex((l) => l.id === layerId);
+      const j = direction === "up" ? i + 1 : i - 1;
+      if (i < 0 || j < 0 || j >= layers.length || layers[j].type === "background") return prev;
+      [layers[i], layers[j]] = [layers[j], layers[i]];
+      return { ...prev, layers };
+    });
+  }
+
+  function deleteLayer(layerId: string) {
+    const layer = schema.layers.find((l) => l.id === layerId);
+    if (!layer || layer.type === "background") return;
+    if (!window.confirm(`Laag "${layerLabel(layer)}" verwijderen?`)) return;
+    const field = "field" in layer ? layer.field : undefined;
+    const remaining = schema.layers.filter((l) => l.id !== layerId);
+    const stillUsed = (key?: string) =>
+      Boolean(key) && remaining.some((l) => ("field" in l && l.field === key) || l.visibilityField === key);
+    setSchema((prev) => ({ ...prev, layers: prev.layers.filter((l) => l.id !== layerId) }));
+    const drop = [field, layer.visibilityField].filter((k): k is string => Boolean(k) && !stillUsed(k));
+    if (drop.length) setFields((prev) => prev.filter((f) => !drop.includes(f.key)));
+    setSelectedLayerId(null);
+  }
+
+  /** Nieuwe invulbare laag met bijbehorend veld, midden op het canvas. */
+  function addLayer(kind: "text" | "image" | "color") {
+    const base = { text: "tekst", image: "foto", color: "kleur" }[kind];
+    let n = 1;
+    const taken = (key: string) => fields.some((f) => f.key === key) || schema.layers.some((l) => l.id === key);
+    while (taken(`${base}_${n}`)) n++;
+    const key = `${base}_${n}`;
+    const label = { text: "Tekst", image: "Foto", color: "Kleur" }[kind] + ` ${n}`;
+    const w = Math.round(schema.width * (kind === "text" ? 0.6 : 0.3));
+    const h = Math.round(kind === "text" ? Math.max(40, schema.height * 0.08) : w);
+    const box = { id: key, name: label, x: Math.round((schema.width - w) / 2), y: Math.round((schema.height - h) / 2), width: w, height: h, rotation: 0, opacity: 1 };
+    const layer: Layer =
+      kind === "text"
+        ? {
+            ...box,
+            type: "text",
+            field: key,
+            text: "Voorbeeldtekst",
+            fontFamily: "Inter",
+            fontWeight: 700,
+            fontStyle: "normal",
+            fontSize: Math.round(h * 0.7),
+            minFontSize: Math.max(12, Math.round(h * 0.3)),
+            color: "#FFFFFF",
+            align: "center",
+            verticalAlign: "middle",
+            uppercase: false,
+            letterSpacing: 0,
+            lineHeight: 1.15,
+            maxLines: 1,
+            allowTruncate: false,
+          }
+        : kind === "image"
+          ? { ...box, type: "image", field: key, fit: "cover", shape: "rect", cornerRadius: 0 }
+          : { ...box, type: "color", field: key, shape: "rect", cornerRadius: 0, defaultColor: "#FF6F00" };
+    setSchema((prev) => ({ ...prev, layers: [...prev.layers, layer] }));
+    setFields((prev) => [
+      ...prev,
+      {
+        key,
+        label,
+        type: kind === "text" ? "SHORT_TEXT" : kind === "image" ? "IMAGE" : "BRAND_COLOR",
+        required: false,
+        defaultValue: kind === "color" ? "#FF6F00" : null,
+        placeholder: null,
+        maxLength: kind === "text" ? 60 : null,
+        textTransform: "NONE",
+        options: null,
+        imageFit: kind === "image" ? "cover" : null,
+        sortOrder: prev.length,
+      },
+    ]);
+    setSelectedLayerId(key);
+  }
+
+  // Sneltoetsen: ongedaan maken/opnieuw, pijltjes verschuiven, Delete verwijdert.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.closest("input, textarea, select, [contenteditable=true]") || target.isContentEditable)) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if (locked || !selectedLayer) return;
+      const step = e.shiftKey ? 10 : 1;
+      const delta: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      if (delta[e.key]) {
+        e.preventDefault();
+        const [dx, dy] = delta[e.key];
+        updateLayer(selectedLayer.id, { x: selectedLayer.x + dx, y: selectedLayer.y + dy });
+      } else if (e.key === "Escape") {
+        setSelectedLayerId(null);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [locked, selectedLayer, undo, redo, updateLayer]);
 
   async function saveTemplateInfo() {
     await fetch("/api/admin/templates", {
@@ -361,19 +506,55 @@ export function TemplateBuilder({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
         <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {!locked && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => addLayer("text")}>
+                  <Type className="h-4 w-4" /> Tekstveld
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => addLayer("image")}>
+                  <ImageIcon className="h-4 w-4" /> Fotokader
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => addLayer("color")}>
+                  <Square className="h-4 w-4" /> Kleurvlak
+                </Button>
+              </>
+            )}
+            <div className="ml-auto flex gap-1">
+              <Button size="sm" variant="ghost" onClick={undo} disabled={!canUndo} title="Ongedaan maken (Ctrl+Z)">
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={redo} disabled={!canRedo} title="Opnieuw (Ctrl+Shift+Z)">
+                <Redo2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
           <Card className="bg-hhc-black p-4">
             <CardContent className="flex justify-center p-0">
               <DesignCanvas
                 schema={schema}
                 formData={previewFormData}
-                maxWidth={520}
-                maxHeight={640}
+                maxWidth={720}
+                maxHeight={720}
                 editable={false}
                 fontFaces={fontFaces}
                 textTransforms={Object.fromEntries(fields.map((f) => [f.key, f.textTransform]))}
+                builder={
+                  locked
+                    ? undefined
+                    : { selectedLayerId, onSelectLayer: setSelectedLayerId, onChangeLayer: changeGeometry }
+                }
+                selectedField={locked && selectedLayer && "field" in selectedLayer ? selectedLayer.field : undefined}
               />
             </CardContent>
           </Card>
+          {!locked && (
+            <p className="text-xs text-muted-foreground">
+              Klik een laag om hem te kiezen; sleep om te verplaatsen en gebruik de grepen om te schalen of te draaien.
+              Randen en middens klikken vast aan het canvas en aan andere lagen. Pijltjestoetsen schuiven 1 px (met Shift
+              10 px).
+            </p>
+          )}
 
           {version.importReport && (
             <ImportReportPanel report={version.importReport} templateId={template.id} versionId={version.id} schema={schema} />
@@ -397,35 +578,6 @@ export function TemplateBuilder({
               </span>
             </label>
           )}
-
-          <div>
-            <Label>Lagen (aan/uit zetten door gebruiker)</Label>
-            <p className="mb-2 text-xs text-muted-foreground">
-              Zet een laag aan om er een schakelaar voor toe te voegen waarmee de gebruiker hem in de wizard zelf kan
-              tonen of verbergen (bv. een sponsorlogo of een optionele tekstregel).
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {schema.layers
-                .filter((l) => l.type !== "background")
-                .map((l) => (
-                  <label
-                    key={l.id}
-                    className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={Boolean(l.visibilityField)}
-                      onChange={(e) => toggleLayerVisibility(l.id, e.target.checked)}
-                    />
-                    <span className="flex-1">{layerLabel(l)}</span>
-                    <span className="text-xs uppercase text-muted-foreground">{l.type}</span>
-                  </label>
-                ))}
-              {schema.layers.filter((l) => l.type !== "background").length === 0 && (
-                <p className="text-sm text-muted-foreground">Geen lagen gevonden.</p>
-              )}
-            </div>
-          </div>
 
           <TextFontPanel
             layers={schema.layers.filter((l): l is TextLayer => l.type === "text")}
@@ -484,8 +636,37 @@ export function TemplateBuilder({
         </div>
 
         <div className="flex flex-col gap-3">
+          <div>
+            <Label>Lagen</Label>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Bovenste laag bovenaan. Met het oogje kan de gebruiker een laag zelf tonen of verbergen (bv. een sponsorlogo).
+            </p>
+            <LayerList
+              layers={schema.layers}
+              selectedId={selectedLayerId}
+              label={layerLabel}
+              locked={locked}
+              onSelect={setSelectedLayerId}
+              onMove={moveLayer}
+              onDelete={deleteLayer}
+              onToggleVisibility={toggleLayerVisibility}
+            />
+          </div>
+          {selectedLayer && (
+            <Card>
+              <CardContent className="p-4">
+                <LayerProperties
+                  key={selectedLayer.id}
+                  layer={selectedLayer}
+                  locked={locked}
+                  fieldLabel={"field" in selectedLayer ? fields.find((f) => f.key === selectedLayer.field)?.label : undefined}
+                  onChange={(patch) => updateLayer(selectedLayer.id, patch)}
+                />
+              </CardContent>
+            </Card>
+          )}
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Gedetecteerde velden ({fields.length})
+            Velden ({fields.length})
           </h2>
           {fields.map((f, i) => (
             <FieldEditorRow key={f.key} field={f} onChange={(next) => updateField(i, next)} />

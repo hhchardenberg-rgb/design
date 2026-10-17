@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { FieldType } from "@/lib/validations/template";
+import type { FieldType, TemplateSchemaJson } from "@/lib/validations/template";
+import { LAYER_OVERRIDES_KEY, normalizeLayerOverrides } from "./layer-overrides";
 
 /**
  * Server-side validatie van ontwerpinvoer (formData) tegen de velden van de
@@ -61,6 +62,8 @@ export class FormDataError extends Error {
 export interface NormalizeOptions {
   /** Hex-kleuren die een BRAND_COLOR-veld mag aannemen (huisstijl + standaardwaarden). */
   allowedColors: Set<string>;
+  /** Schema van de versie; nodig voor laagaanpassingen (formData.__layers). */
+  schema?: TemplateSchemaJson;
 }
 
 /**
@@ -83,6 +86,17 @@ export function normalizeFormData(
   const out: Record<string, unknown> = {};
 
   for (const [key, raw] of Object.entries(input as Record<string, unknown>)) {
+    if (key === LAYER_OVERRIDES_KEY) {
+      if (raw === undefined || raw === null) continue;
+      if (!options.schema) throw new FormDataError("Laagaanpassingen zijn hier niet mogelijk.");
+      try {
+        const overrides = normalizeLayerOverrides(options.schema, raw, options.allowedColors);
+        if (Object.keys(overrides).length) out[key] = overrides;
+      } catch (error) {
+        throw new FormDataError(error instanceof Error ? error.message : "Ongeldige laagaanpassingen.");
+      }
+      continue;
+    }
     const field = byKey.get(key);
     if (!field) throw new FormDataError(`Onbekend veld "${key}" voor deze templateversie.`, key);
     if (raw === undefined || raw === null) continue;

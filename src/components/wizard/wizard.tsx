@@ -12,6 +12,8 @@ import type { TemplateSchemaJson } from "@/lib/validations/template";
 import type { ImageFieldValue } from "@/lib/render/imageFit";
 import type { FontFaceInfo } from "@/lib/fonts/faces";
 import type { TextIssue } from "@/components/editor/design-canvas";
+import { LayerAdjustPanel } from "./layer-adjust-panel";
+import { allows, applyLayerOverrides, LAYER_OVERRIDES_KEY, type LayerOverride, type LayerOverrides } from "@/lib/design/layer-overrides";
 
 const DesignCanvas = dynamic(() => import("@/components/editor/design-canvas").then((m) => m.DesignCanvas), {
   ssr: false,
@@ -270,6 +272,25 @@ export function Wizard({
     setHist({ entries: [{ data, at: 0 }], index: 0 });
   }
 
+  // Laag die de invuller zelf mag aanpassen (ingesteld in de builder).
+  const adjustLayer = selectedField
+    ? schema.layers.find((l) => "field" in l && l.field === selectedField && (l.allow?.length ?? 0) > 0)
+    : undefined;
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
+  const adjusting = Boolean(adjustLayer) && adjustingId === adjustLayer?.id;
+  const overrides = (formData[LAYER_OVERRIDES_KEY] ?? {}) as LayerOverrides;
+  const effectiveSchema = useMemo(() => applyLayerOverrides(schema, formData), [schema, formData]);
+
+  function setOverride(layerId: string, patch: LayerOverride | null) {
+    const next: LayerOverrides = { ...overrides };
+    if (patch === null) delete next[layerId];
+    else next[layerId] = { ...next[layerId], ...patch };
+    const data = { ...formData };
+    if (Object.keys(next).length) data[LAYER_OVERRIDES_KEY] = next;
+    else delete data[LAYER_OVERRIDES_KEY];
+    commit(data, patch === null ? undefined : `layer:${layerId}:${Object.keys(patch).join(",")}`);
+  }
+
   const textFields = fields.filter((f) => !["IMAGE", "LOGO", "BRAND_COLOR", "CHECKBOX"].includes(f.type));
   const mediaFields = fields.filter((f) => ["IMAGE", "LOGO"].includes(f.type));
   const otherFields = fields.filter((f) => ["BRAND_COLOR", "CHECKBOX"].includes(f.type));
@@ -314,6 +335,19 @@ export function Wizard({
           onKeepMine={() => saver.keepMine()}
           onTakeTheirs={takeTheirs}
         />
+
+        {adjustLayer && (
+          <LayerAdjustPanel
+            layer={adjustLayer}
+            effective={effectiveSchema.layers.find((l) => l.id === adjustLayer.id) ?? adjustLayer}
+            override={overrides[adjustLayer.id]}
+            brandColors={brandColors}
+            adjusting={adjusting}
+            onToggleAdjust={() => setAdjustingId(adjusting ? null : adjustLayer.id)}
+            onChange={(patch) => setOverride(adjustLayer.id, patch)}
+            onReset={() => setOverride(adjustLayer.id, null)}
+          />
+        )}
 
         {textFields.length > 0 && (
           <section className="flex flex-col gap-4">
@@ -432,6 +466,22 @@ export function Wizard({
                 onImageTransform={(key, value) => updateField(key, value, `img:${key}`)}
                 onSelectField={selectFromCanvas}
                 selectedField={selectedField}
+                builder={
+                  adjusting && adjustLayer
+                    ? {
+                        selectedLayerId: adjustLayer.id,
+                        only: [adjustLayer.id],
+                        rotate: false,
+                        canMove: (l) => allows(l, "move"),
+                        canResize: (l) => allows(l, "resize"),
+                        onSelectLayer: (id) => {
+                          if (!id) setAdjustingId(null);
+                        },
+                        onChangeLayer: (id, g) =>
+                          setOverride(id, allows(adjustLayer, "resize") ? { x: g.x, y: g.y, width: g.width, height: g.height } : { x: g.x, y: g.y }),
+                      }
+                    : undefined
+                }
               />
             </CardContent>
           </Card>
