@@ -43,6 +43,12 @@ export interface TextLayoutInput {
   align: "left" | "center" | "right";
   verticalAlign: "top" | "middle" | "bottom";
   allowTruncate: boolean;
+  /**
+   * Eerste basislijn uit Photoshop (zie TextLayer.psdBaseline). Bij dezelfde
+   * grootte en hetzelfde aantal regels valt de tekst daar exact; bij andere
+   * tekst schuift alles evenveel mee (geschaald met de lettergrootte).
+   */
+  anchor?: { y: number; lines: number; fontSize: number };
 }
 
 export interface TextLayoutLine {
@@ -155,6 +161,12 @@ function fitWithEllipsis(line: string, maxWidth: number, font: string, spacing: 
   return ELLIPSIS;
 }
 
+/** Basislijn binnen één regel: inhoud (ascender + descender) gecentreerd. */
+function baselineInLine(input: TextLayoutInput, size: number): number {
+  const contentHeight = (input.face.ascent + input.face.descent) * size;
+  return (size * input.lineHeight - contentHeight) / 2 + input.face.ascent * size;
+}
+
 function position(
   input: TextLayoutInput,
   size: number,
@@ -168,8 +180,16 @@ function position(
   const blockHeight = lines.length * lineHeightPx;
   const top =
     input.verticalAlign === "top" ? 0 : input.verticalAlign === "bottom" ? input.height - blockHeight : (input.height - blockHeight) / 2;
-  const contentHeight = (input.face.ascent + input.face.descent) * size;
-  const baselineOffset = (lineHeightPx - contentHeight) / 2 + input.face.ascent * size;
+  const baselineOffset = baselineInLine(input, size);
+  let shift = 0;
+  if (input.anchor) {
+    const ref = input.anchor;
+    const refLine = ref.fontSize * input.lineHeight;
+    const refBlock = ref.lines * refLine;
+    const refTop =
+      input.verticalAlign === "top" ? 0 : input.verticalAlign === "bottom" ? input.height - refBlock : (input.height - refBlock) / 2;
+    shift = (ref.y - (refTop + baselineInLine(input, ref.fontSize))) * (size / ref.fontSize);
+  }
 
   return {
     fontSize: size,
@@ -181,7 +201,7 @@ function position(
     lines: lines.map((text, i) => {
       const width = lineWidth(text, font, input.letterSpacing, measure);
       const x = input.align === "center" ? (input.width - width) / 2 : input.align === "right" ? input.width - width : 0;
-      return { text, x, baseline: top + i * lineHeightPx + baselineOffset, width };
+      return { text, x, baseline: top + i * lineHeightPx + baselineOffset + shift, width };
     }),
   };
 }

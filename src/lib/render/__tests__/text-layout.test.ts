@@ -152,3 +152,16 @@ test("tekst van een laag: voorbeeldtekst, leeg, transformatie en hoofdletters", 
   assert.equal(resolveLayerText(layer, { t: "ijsselmeer" }, "CAPITALIZE"), "IJsselmeer");
   assert.equal(resolveLayerText({ ...layer, uppercase: true }, { t: "één" }), "ÉÉN");
 });
+
+test("Photoshop-basislijn: exact op de plek, ongeacht de lettertypemetriek", () => {
+  const anchor = { y: 50, lines: 1, fontSize: 40 };
+  for (const metrics of [{ ascent: 0.8, descent: 0.2 }, { ascent: 0.95, descent: 0.3 }]) {
+    for (const verticalAlign of ["top", "middle", "bottom"] as const) {
+      const l = layoutText({ ...base, face: { ...face, ...metrics }, verticalAlign, text: "ABC", anchor }, measure);
+      assert.equal(Math.round(l.lines[0].baseline * 1000) / 1000, 50);
+    }
+  }
+  // Twee regels waar Photoshop er één had: het blok schuift evenveel mee.
+  const two = layoutText({ ...base, maxLines: 2, verticalAlign: "top", text: "ABC\nDEF", anchor }, measure);
+  assert.deepEqual(two.lines.map((l) => l.baseline), [50, 90]);
+});

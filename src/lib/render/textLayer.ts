@@ -31,6 +31,7 @@ export function layoutTextLayer(layer: TextLayer, text: string, face: FontFaceIn
       align: layer.align,
       verticalAlign: layer.verticalAlign ?? "middle",
       allowTruncate: layer.allowTruncate,
+      anchor: layer.psdBaseline,
     },
     measure
   );

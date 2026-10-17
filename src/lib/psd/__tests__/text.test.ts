@@ -93,3 +93,29 @@ test("niet-gedraaid kader terugrekenen uit de omhullende", () => {
   assert.ok(Math.abs(r.width - 200) < 0.01 && Math.abs(r.height - 50) < 0.01);
   assert.equal(unrotateBox(100, 100, 45), null);
 });
+
+test("eerste basislijn: puntentekst uit de oorsprong, alineatekst uit de pixels", () => {
+  const point = textLayerFromPsd(box, {
+    text: { text: "Uit", transform: [1, 0, 0, 1, 150, 260], style: { fontSize: 30 } },
+  }).layer;
+  assert.equal(point.x, 150, "links uitgelijnde puntentekst begint bij de oorsprong");
+  assert.equal(point.y + point.psdBaseline!.y, 260);
+
+  // Alineatekst met twee regels "inkt": rijen 0-19 en 36-55 (basislijnen 20 en 56).
+  const w = 10;
+  const h = 60;
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    if ((y >= 0 && y < 20) || (y >= 36 && y < 56)) for (let x = 0; x < w; x++) data[(y * w + x) * 4 + 3] = 255;
+  }
+  const para = textLayerFromPsd(
+    { ...box, top: 400, height: 60 },
+    {
+      text: { text: "A\nB", transform: [1, 0, 0, 1, 100, 400], shapeType: "box", boxBounds: [0, 0, 200, 60], style: { fontSize: 30, autoLeading: false, leading: 36 } },
+      imageData: { width: w, height: h, data },
+      top: 400,
+    }
+  ).layer;
+  assert.equal(para.y + para.psdBaseline!.y, 420);
+  assert.equal(para.psdBaseline!.lines, 2);
+});
