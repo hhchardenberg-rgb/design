@@ -23,7 +23,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
   },
   {
     key: "sponsorcommissielid",
-    name: "Sponsorcommissielid",
+    name: "Commissielid",
     description: "Dossiers, contacten, contacthistorie en taken bewerken; contracten alleen lezen. Geen financiën.",
     permissions: [...edit("companies", "contacts", "history", "tasks"), ...read("opportunities", "contracts", "counterparts", "files")],
   },

@@ -121,3 +121,15 @@ test("end-to-end rechtenbeheer", { skip }, async () => {
   assert.equal(permEvent.actorId, u1.id);
   assert.ok(permEvent.before && permEvent.after);
 });
+
+test("oude standaardnaam Sponsorcommissielid wordt Commissielid; eigen naam blijft staan", { skip }, async () => {
+  const key = "sponsorcommissielid";
+  await db.commercialRole.update({ where: { key }, data: { name: "Sponsorcommissielid" } });
+  await authz.ensureSystemRoles();
+  assert.equal((await db.commercialRole.findUniqueOrThrow({ where: { key } })).name, "Commissielid");
+
+  await db.commercialRole.update({ where: { key }, data: { name: "Eigen naam" } });
+  await authz.ensureSystemRoles();
+  assert.equal((await db.commercialRole.findUniqueOrThrow({ where: { key } })).name, "Eigen naam");
+  await db.commercialRole.update({ where: { key }, data: { name: "Commissielid" } });
+});

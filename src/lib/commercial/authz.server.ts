@@ -71,6 +71,19 @@ export async function ensureSystemRoles(): Promise<void> {
     });
   }
   await addLaterPermissions();
+  await renameDefaultRoles();
+}
+
+/**
+ * Standaardrollen die later een andere naam kregen. Alleen hernoemen als de naam nog de oude
+ * standaardnaam is, zodat een naam die een beheerder zelf koos blijft staan. De sleutel blijft gelijk.
+ */
+const RENAMED_ROLES: { key: string; from: string; to: string }[] = [{ key: "sponsorcommissielid", from: "Sponsorcommissielid", to: "Commissielid" }];
+
+async function renameDefaultRoles(): Promise<void> {
+  for (const { key, from, to } of RENAMED_ROLES) {
+    await prisma.commercialRole.updateMany({ where: { key, name: from }, data: { name: to } });
+  }
 }
 
 /**
