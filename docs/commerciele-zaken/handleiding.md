@@ -1,6 +1,6 @@
 # Commerciële Zaken – handleiding, beheer en oplevering
 
-Beschermde sectie van de HHC Hub voor de sponsorcommissie. Alles hieronder is gebouwd en getest tenzij onder
+Beschermde sectie van de HHC Hub voor Commerciële Zaken. Alles hieronder is gebouwd en getest tenzij onder
 "Niet gebouwd" anders staat.
 
 ## 1. Wat er is gebouwd
@@ -45,7 +45,7 @@ Er is bewust geen "verwijderen": dossiers worden gearchiveerd.
 | Rol | Kort |
 | --- | --- |
 | Alleen lezen | Dossiers, contacten, kansen, tegenprestaties, taken, bestanden bekijken. Geen bedragen |
-| Sponsorcommissielid | Dossiers, contacten, historie, taken bewerken; contracten lezen. Geen financiën |
+| Commissielid | Dossiers, contacten, historie, taken bewerken; contracten lezen. Geen financiën |
 | Relatiebeheerder | Relaties, kansen, tegenprestaties, bestanden beheren; contracten, bedragen, rapportages lezen |
 | Contractbeheerder | Contracten en bedragen bewerken; definitief maken is aparte bevoegdheid |
 | Financieel medewerker | Facturen, creditnota's en betalingen beheren, definitief maken, downloaden en versturen |
@@ -61,7 +61,7 @@ totalen, rapporten, exports of de pijplijn. Indexatie toepassen vraagt `amounts:
 **Auditlog**: wijzigingen in rechten, eigenaren, teams, indexaties, mailings en exports worden vastgelegd, zonder
 bedragen, adressen of berichttekst.
 
-## 3. Dagelijks gebruik (voor de sponsorcommissie)
+## 3. Dagelijks gebruik
 
 0. **Startpagina**: bovenaan staat een overzicht met je open taken, aflopende contracten (90 dagen), openstaande facturen,
    de pijplijn en de tegenprestaties. Je ziet alleen blokken waar je recht op hebt, binnen je eigen bereik; bedragen alleen met leesrecht.
@@ -215,7 +215,7 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
 1. Zet `CRON_SECRET` en (voor mailings) `RESEND_WEBHOOK_SECRET`; verifieer het mailingdomein in Resend.
 2. Zet `COMMERCIAL_ENABLED=true` in Vercel (productie) en deploy opnieuw.
 3. Geef als hoofdadmin een aanspreekpunt toegang (Beheer > Gebruikers en rechten) met rol "Beheerder".
-4. Laat die persoon teams, seizoenen, pakketten en de overige rollen instellen en de sponsorcommissie uitnodigen.
+4. Laat die persoon teams, seizoenen, pakketten en de overige rollen instellen en de gebruikers uitnodigen.
 5. Importeer bestaande sponsoren (Sponsoren > Importeren) en controleer het voorbeeld voor je bevestigt.
 
 **Terugdraaien**
