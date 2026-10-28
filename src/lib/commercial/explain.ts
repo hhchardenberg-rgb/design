@@ -4,7 +4,7 @@ import { AREAS, ACTIONS, splitPermission, type Permission } from "./permissions"
 export function describeSource(source: Source): string {
   switch (source.kind) {
     case "role":
-      return "Via de toegewezen rol";
+      return "Via de rollen";
     case "override-allow":
       return "Individueel toegestaan";
     case "override-deny":

@@ -25,18 +25,16 @@ export interface Member {
   userId: string;
   name: string;
   email: string;
-  roleId: string | null;
+  roleNames: string[];
   roleName: string | null;
   scopes: Record<"companies" | "tasks", "OWN" | "TEAM" | "ALL">;
   effective: EffectiveRow[];
 }
 export interface Role {
   id: string;
-  key: string;
   name: string;
   description: string | null;
   permissions: string[];
-  isSystem: boolean;
 }
 export interface AuditRow {
   id: string;
@@ -62,6 +60,12 @@ export const ACTION_NAMES: Record<string, string> = {
   "membership.revoke": "Toegang ingetrokken",
   "role.create": "Rol aangemaakt",
   "role.update": "Rol gewijzigd",
+  "access.user.roles": "Rollen gewijzigd",
+  "access.role.create": "Rol aangemaakt",
+  "access.role.update": "Rol gewijzigd",
+  "access.role.delete": "Rol verwijderd",
+  "access.migrated": "Rollen overgezet naar één systeem",
+  "access.reconciled": "Rollen bijgewerkt na wijziging elders",
 };
 
 export function toSet(rows: EffectiveRow[]): Set<Permission> {

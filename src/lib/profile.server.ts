@@ -1,7 +1,8 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
-import { ASSIGNABLE_ROLES, effectiveRoles } from "@/lib/roles";
+import { effectiveRoles } from "@/lib/roles";
+import { roleNamesOf } from "@/lib/access/service.server";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
 import { effectiveDigestFrequency, isDigestFrequency } from "@/lib/commercial/digest-frequency";
 import { loadDefaultDigestFrequency } from "@/lib/commercial/reminder-settings.server";
@@ -32,7 +33,10 @@ export async function getProfile(userId: string) {
   const roles = effectiveRoles(user);
   const access = await loadCommercialAccess(userId).catch(() => null);
   const defaultFrequency = await loadDefaultDigestFrequency();
-  const membership = access?.isMember ? await prisma.commercialMembership.findUnique({ where: { userId }, select: { role: { select: { name: true } } } }) : null;
+  const roleNames = await roleNamesOf(userId);
+  const czRoleNames = access?.isMember
+    ? (await prisma.userAccessRole.findMany({ where: { userId, role: { commercialRoleId: { not: null } } }, select: { role: { select: { name: true } } } })).map((r) => r.role.name)
+    : [];
   return {
     id: user.id,
     name: user.name,
@@ -45,8 +49,8 @@ export async function getProfile(userId: string) {
     commercialDigestDefault: defaultFrequency,
     commercialDigestEffective: effectiveDigestFrequency(user, defaultFrequency),
     memberSince: user.createdAt.toISOString(),
-    roles: roles.map((r) => ASSIGNABLE_ROLES.find((d) => d.value === r)?.label ?? r),
-    commercial: access?.isMember ? { member: true, roleName: roles.includes("ADMIN") ? "Volledige toegang (hoofdadmin)" : (membership?.role?.name ?? null) } : { member: false, roleName: null },
+    roles: roleNames,
+    commercial: access?.isMember ? { member: true, roleName: roles.includes("ADMIN") ? "Volledige toegang (hoofdadmin)" : czRoleNames.join(", ") || null } : { member: false, roleName: null },
     security: { totp: !!user.totpCredential, passkeys: user.webauthnCredentials.length },
   };
 }

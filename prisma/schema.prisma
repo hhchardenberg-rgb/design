@@ -94,8 +94,53 @@ model User {
   passwordResetTokens       PasswordResetToken[]
   commercialMembership      CommercialMembership?
   commercialTeamMemberships CommercialTeamMember[]
+  accessRoles               UserAccessRole[]
 
   @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Rollen voor de hele Hub (één systeem voor alle onderdelen)
+// ---------------------------------------------------------------------------
+// Een rol bepaalt per onderdeel wat iemand mag: Communicatie en Ticketing per
+// niveau (geen / gebruiker / beheerder), Commerciële Zaken per bevoegdheid. Een
+// gebruiker kan meerdere rollen hebben; de rechten tellen op. De toewijzingen
+// hier zijn de bron van waarheid. `User.roles` en `CommercialMembership` worden
+// bij elke wijziging bijgewerkt (zie src/lib/access/service.server.ts), zodat
+// inlogtoken, routebewaking en de bestaande CZ-code ongewijzigd blijven werken.
+
+model AccessRole {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  description    String?
+  // Vaste rol (Hoofdadmin): niet te verwijderen of in te perken.
+  isSystem       Boolean  @default(false)
+  // Hoofdadmin: ziet en beheert alles.
+  isAdmin        Boolean  @default(false)
+  // NONE | USER | ADMIN
+  hubLevel       String   @default("NONE")
+  ticketingLevel String   @default("NONE")
+  // Toegang tot Commerciële Zaken; de bevoegdheden staan in de gekoppelde CommercialRole.
+  commercialRoleId String?         @unique
+  commercialRole   CommercialRole? @relation(fields: [commercialRoleId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users UserAccessRole[]
+
+  @@map("access_roles")
+}
+
+model UserAccessRole {
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      AccessRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_access_roles")
 }
 
 // Wachtwoord-vergeten-flow (zie src/lib/password-reset.ts). Alleen de hash
@@ -875,6 +920,7 @@ model CommercialRole {
   updatedAt   DateTime @updatedAt
 
   memberships CommercialMembership[]
+  accessRole  AccessRole?
 
   @@map("commercial_roles")
 }

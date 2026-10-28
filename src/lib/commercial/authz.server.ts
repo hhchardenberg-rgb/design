@@ -5,9 +5,11 @@ import { isCommercialEnabled } from "./flag";
 import { ALL_PERMISSIONS, isPermission, type Permission } from "./permissions";
 import { effectiveRoles } from "@/lib/roles";
 import { ROLE_TEMPLATES } from "./role-templates";
+import { commercialBasePermissions, ensureAccessReady } from "@/lib/access/service.server";
 
 // Server-side autorisatie voor Commerciële Zaken. Een hoofdadmin (rol ADMIN) heeft automatisch
-// volledige toegang; voor ieder ander is een lidmaatschap met een rol nodig. Een beheerder
+// volledige toegang; voor ieder ander is een rol met toegang tot Commerciële Zaken nodig (zie
+// src/lib/access). De bevoegdheden van al iemands rollen tellen op. Een beheerder
 // van alleen een ander onderdeel (Communicatie, Ticketing) heeft hier geen toegang. Rechten
 // worden bij elk verzoek uit de database berekend, niet uit het JWT, zodat intrekken direct
 // effect heeft.
@@ -23,9 +25,11 @@ export interface CommercialAccess {
 }
 
 export async function loadCommercialAccess(userId: string): Promise<CommercialAccess> {
-  const [membership, user] = await Promise.all([
-    prisma.commercialMembership.findUnique({ where: { userId }, include: { role: true, overrides: true } }),
+  await ensureAccessReady();
+  const [membership, user, base] = await Promise.all([
+    prisma.commercialMembership.findUnique({ where: { userId }, include: { overrides: true } }),
     prisma.user.findUnique({ where: { id: userId }, select: { role: true, roles: true } }),
+    commercialBasePermissions(prisma, [userId]),
   ]);
   const isPlatformAdmin = !!user && effectiveRoles(user).includes("ADMIN");
   if (isPlatformAdmin) {
@@ -36,7 +40,7 @@ export async function loadCommercialAccess(userId: string): Promise<CommercialAc
 
   const effective = evaluate({
     hasSectionAccess: !!membership,
-    rolePermissions: (membership?.role?.permissions ?? []).filter(isPermission),
+    rolePermissions: (base.get(userId) ?? []).filter(isPermission),
     overrides: (membership?.overrides ?? [])
       .filter((o) => isPermission(o.permission))
       .map((o) => ({ permission: o.permission as Permission, effect: o.effect })),

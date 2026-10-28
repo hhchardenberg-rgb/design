@@ -123,12 +123,11 @@ export function ProfileForm() {
       <Card>
         <CardHeader>
           <CardTitle>Mijn toegang</CardTitle>
-          <CardDescription>Waar je bij aangesloten bent. Wijzigen kan alleen een beheerder.</CardDescription>
+          <CardDescription>Je rollen bepalen waar je bij kunt. Wijzigen kan alleen een beheerder.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex flex-wrap gap-2">
-            {profile.roles.length === 0 ? <span className="text-muted-foreground">Nog geen onderdelen.</span> : profile.roles.map((r) => <Badge key={r} variant="outline">{r}</Badge>)}
-            {profile.commercial.member && <Badge variant="outline">Commerciële Zaken{profile.commercial.roleName ? `: ${profile.commercial.roleName}` : ""}</Badge>}
+            {profile.roles.length === 0 ? <span className="text-muted-foreground">Nog geen rollen.</span> : profile.roles.map((r) => <Badge key={r} variant="outline">{r}</Badge>)}
           </div>
           <p className="text-muted-foreground">Account sinds {formatDay(profile.memberSince)}.</p>
         </CardContent>
