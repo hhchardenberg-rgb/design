@@ -45,17 +45,20 @@ export async function requestPasswordReset(prisma: PrismaClient, email: string, 
   });
   if (emailCount >= EMAIL_MAX_REQUESTS) return;
 
+  const token = await createPasswordToken(prisma, user.id, ip, TOKEN_TTL_MS);
+  await sendPasswordResetEmail(user.email, user.name, token);
+}
+
+/**
+ * Maakt een eenmalig token waarmee iemand zelf een wachtwoord kiest via /wachtwoord-resetten/[token]. Ook gebruikt
+ * voor de instellink in de welkomstmail (zie src/lib/welcome.server.ts), met een langere geldigheid.
+ */
+export async function createPasswordToken(prisma: PrismaClient, userId: string, ip: string, ttlMs: number): Promise<string> {
   const token = randomBytes(TOKEN_BYTES).toString("base64url");
   await prisma.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      tokenHash: hashToken(token),
-      ip,
-      expiresAt: new Date(now + TOKEN_TTL_MS),
-    },
+    data: { userId, tokenHash: hashToken(token), ip, expiresAt: new Date(Date.now() + ttlMs) },
   });
-
-  await sendPasswordResetEmail(user.email, user.name, token);
+  return token;
 }
 
 /**

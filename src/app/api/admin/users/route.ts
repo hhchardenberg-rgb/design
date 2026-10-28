@@ -6,15 +6,18 @@ import { requireAdmin, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { requireUserManager, visibleRoles } from "@/lib/user-managers.server";
 import { normalizeEmail } from "@/lib/utils";
 import { backfillUserRoles } from "@/lib/user-roles.server";
+import { sendWelcome, unusablePasswordHash } from "@/lib/welcome.server";
 
 const APP_ROLES = ["ADMIN", "HUB", "TICKETING", "HUB_ADMIN", "TICKETING_ADMIN"] as const;
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Naam is verplicht."),
   email: z.email("Ongeldig e-mailadres."),
-  password: z.string().min(8, "Wachtwoord moet minimaal 8 tekens zijn."),
+  // Leeg is toegestaan als er een welkomstmail gaat: de gebruiker kiest dan zelf een wachtwoord via de instellink.
+  password: z.union([z.literal(""), z.string().min(8, "Wachtwoord moet minimaal 8 tekens zijn.")]).optional(),
   roles: z.array(z.enum(APP_ROLES)).default(["HUB"]),
-});
+  sendWelcome: z.boolean().default(true),
+}).refine((b) => b.sendWelcome || b.password, { message: "Vul een wachtwoord in, of stuur een welkomstmail zodat de gebruiker zelf een wachtwoord kiest.", path: ["password"] });
 
 export async function GET() {
   try {
@@ -51,7 +54,7 @@ export async function POST(req: Request) {
       data: {
         name: body.name,
         email,
-        passwordHash: await bcrypt.hash(body.password, 12),
+        passwordHash: body.password ? await bcrypt.hash(body.password, 12) : await unusablePasswordHash(),
         roles: body.roles,
         // Legacy-veld blijft meelopen zodat de historische kolom betekenisvol blijft.
         role: body.roles.includes("ADMIN") ? "ADMIN" : "USER",
@@ -59,7 +62,8 @@ export async function POST(req: Request) {
       select: { id: true, name: true, email: true, roles: true, createdAt: true },
     });
 
-    return NextResponse.json({ user });
+    const welcome = body.sendWelcome ? await sendWelcome(prisma, user) : null;
+    return NextResponse.json({ user, welcome });
   } catch (error) {
     return apiErrorResponse(error);
   }
