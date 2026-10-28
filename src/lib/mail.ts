@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { unsubscribeParams } from "@/lib/commercial/mail-security";
 import { renderContractNotice, renderMailing, type ContractNotice } from "@/lib/commercial/mail-render";
 import { formatDay } from "@/lib/date-format";
+import { renderWelcomeMail } from "@/lib/welcome-mail-render";
 
 // Zelfde manier van URL-opbouw als src/lib/webauthn/rp.ts: afgeleid van
 // NEXTAUTH_URL (server-geconfigureerd), niet van request-headers.
@@ -46,6 +47,25 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
   if (error) {
     throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
   }
+}
+
+/** Welkomstmail voor een nieuw account, met een instellink in plaats van een wachtwoord (zie src/lib/welcome.server.ts). */
+export async function sendWelcomeEmail(to: string, name: string, token: string, expiresAt: Date): Promise<void> {
+  const resend = getClient();
+  const { subject, html, text } = welcomeMailFor(to, name, token, expiresAt);
+  const { error } = await resend.emails.send({ from: FROM_EMAIL, to, subject, html, text });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+}
+
+export function welcomeMailFor(email: string, name: string, token: string, expiresAt: Date) {
+  return renderWelcomeMail({
+    name,
+    email,
+    setPasswordUrl: `${APP_URL}/wachtwoord-resetten/${token}`,
+    linkValidUntil: formatDay(expiresAt),
+    hubUrl: APP_URL,
+    logoUrl: `${APP_URL}/branding/hhc-logo.png`,
+  });
 }
 
 /**

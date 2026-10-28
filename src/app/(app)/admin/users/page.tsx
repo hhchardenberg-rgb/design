@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Eye, EyeOff, Plus, Search, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Mail, Plus, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -33,6 +33,12 @@ async function call(url: string, method: string, body?: unknown): Promise<string
   return typeof data.error === "string" ? data.error : "Er ging iets mis.";
 }
 
+function welcomeNotice(result: "sent" | "skipped" | "failed", email: string): string {
+  if (result === "sent") return `Welkomstmail verstuurd naar ${email}.`;
+  if (result === "skipped") return "Welkomstmail niet verstuurd: dit is geen productieomgeving (een preview mailt nooit echte gebruikers).";
+  return "Welkomstmail versturen is mislukt. Probeer het later opnieuw via de knop Welkomstmail.";
+}
+
 export default function AdminUsersPage() {
   const { data: session } = useSession();
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -47,6 +53,9 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newRoles, setNewRoles] = useState<string[]>([]);
+  const [sendWelcome, setSendWelcome] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [welcomeBusyId, setWelcomeBusyId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -97,18 +106,38 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setCreating(true);
     setError(null);
-    const err = await call("/api/admin/users", "POST", { name, email, password, roleIds: newRoles });
+    setNotice(null);
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password, roleIds: newRoles, sendWelcome }),
+    });
+    const data = await res.json().catch(() => ({}));
     setCreating(false);
-    if (err) {
-      setError(err);
+    if (!res.ok) {
+      setError(typeof data.error === "string" ? data.error : "Aanmaken mislukt.");
       return;
     }
+    setNotice(`Account voor ${data.user.name} aangemaakt.${data.welcome ? ` ${welcomeNotice(data.welcome, data.user.email)}` : ""}`);
+    setSendWelcome(true);
     setName("");
     setEmail("");
     setPassword("");
     setNewRoles([]);
     setShowCreate(false);
     await load();
+  }
+
+  async function resendWelcome(u: UserRow) {
+    if (!confirm(`Welkomstmail met een nieuwe instellink sturen naar ${u.email}?`)) return;
+    setError(null);
+    setNotice(null);
+    setWelcomeBusyId(u.id);
+    const res = await fetch(`/api/admin/users/${u.id}/welcome`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setWelcomeBusyId(null);
+    if (!res.ok) setError(typeof data.error === "string" ? data.error : "Versturen mislukt.");
+    else setNotice(welcomeNotice(data.welcome, u.email));
   }
 
   const isSelf = (id: string) => id === session?.user?.id;
@@ -147,6 +176,7 @@ export default function AdminUsersPage() {
         </div>
 
         {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+        {notice && <p className="rounded-md bg-surface-muted p-3 text-sm">{notice}</p>}
 
         {manager.full && showCreate && (
           <Card>
@@ -162,9 +192,16 @@ export default function AdminUsersPage() {
                     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                   <div>
-                    <Label>Wachtwoord</Label>
+                    <Label>Wachtwoord{sendWelcome && <span className="font-normal text-muted-foreground"> (optioneel)</span>}</Label>
                     <div className="flex items-center gap-1">
-                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        minLength={8}
+                        required={!sendWelcome}
+                        placeholder={sendWelcome ? "Kiest de gebruiker zelf" : undefined}
+                      />
                       <Button type="button" size="icon" variant="ghost" title="Wachtwoord genereren" onClick={() => { setPassword(generatePassword()); setShowPassword(true); }}>
                         <Sparkles className="h-4 w-4" />
                       </Button>
@@ -178,6 +215,18 @@ export default function AdminUsersPage() {
                   <Label>Rollen</Label>
                   <p className="mb-2 text-xs text-muted-foreground">Zonder rol kan iemand wel inloggen, maar nergens bij.</p>
                   <RolePicker roles={roles} value={newRoles} onChange={setNewRoles} idPrefix="new" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="new-welcome" className="flex cursor-pointer items-center gap-1.5 text-sm">
+                    <input id="new-welcome" type="checkbox" className="h-4 w-4 rounded border-border accent-hhc-orange" checked={sendWelcome} onChange={(e) => setSendWelcome(e.target.checked)} />
+                    Welkomstmail sturen
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    De gebruiker krijgt een mail met een link om zelf een wachtwoord te kiezen (7 dagen geldig) en uitleg over inloggen met tweestapsverificatie. Er staat nooit een wachtwoord in de mail.{" "}
+                    <a href="/api/admin/users/welcome-preview" target="_blank" rel="noreferrer" className="text-hhc-orange-dark hover:underline">
+                      Voorbeeld bekijken
+                    </a>
+                  </p>
                 </div>
                 <Button type="submit" disabled={creating} className="w-fit">{creating ? "Bezig..." : "Gebruiker toevoegen"}</Button>
               </form>
@@ -241,6 +290,10 @@ export default function AdminUsersPage() {
                           <>
                             <Button size="sm" variant="ghost" onClick={() => { setEditAccountId(u.id); setEditName(u.name); setEditEmail(u.email); }}>Gegevens wijzigen</Button>
                             <Button size="sm" variant="outline" onClick={() => setResetId(u.id)}>Wachtwoord resetten</Button>
+                            <Button size="sm" variant="outline" onClick={() => resendWelcome(u)} disabled={welcomeBusyId === u.id} title="Welkomstmail met instellink sturen">
+                              <Mail className="h-4 w-4" />
+                              {welcomeBusyId === u.id ? "Bezig..." : "Welkomstmail"}
+                            </Button>
                           </>
                         )}
                         <Button
