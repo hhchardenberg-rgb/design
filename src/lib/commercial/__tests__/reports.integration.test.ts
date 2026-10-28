@@ -72,7 +72,7 @@ test("rapportages en export: bedragen, bereik, formule-injectie en logging", { s
   // Zonder rapportagerecht niets; met rapportage- maar zonder bedragenrecht zijn alle bedragen null (ook totalen).
   await rejects(rp.seasonReport(cl, season), 403);
   const noAmounts = await mkUser("noamt");
-  const roleNoAmt = await svc.createRole(await svc.buildActor(mgr), { name: "Rapport zonder bedragen", permissions: ["companies:read", "contracts:read", "opportunities:read", "reports:read", "exports:export"] });
+  const roleNoAmt = await db.commercialRole.create({ data: { key: "rapport-zonder-bedragen", name: "Rapport zonder bedragen", permissions: ["companies:read", "contracts:read", "opportunities:read", "reports:read", "exports:export"] } });
   await svc.grantMembership(admin, noAmounts.id, roleNoAmt.id);
   const cna = await ctxMod.buildRecordCtx(noAmounts);
   const hidden = await rp.seasonReport(cna, season);

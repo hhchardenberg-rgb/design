@@ -158,12 +158,15 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
 
 ## 4. Beheer
 
-- **Toegang en rechten**: alles staat bij Beheer > Gebruikers en rechten (hoofdadmin; beheerders per onderdeel zien alleen hun eigen onderdeel). In de kaart van een
-  gebruiker zit het blok "Commerciële Zaken": toegang geven of intrekken met een startrol, en daarna "Rechten
-  instellen" voor rol, bereik en afwijkingen. Onderaan de pagina beheer je de rollen en zie je de laatste
-  wijzigingen. Rechten instellen, toegang geven en rollen beheren kan een hoofdadmin of een Beheerder Commerciële Zaken, binnen de eigen
-  bevoegdheden.
-  De oude pagina's Beheer > Commerciële Zaken en Instellingen > Rechten verwijzen hierheen.
+- **Toegang en rechten**: één rollensysteem voor de hele Hub, bij Beheer > Gebruikers en rechten. Op het
+  tabblad *Rollen* maak je rollen aan, bewerk, kopieer of verwijder je ze. Een rol zegt per onderdeel wat
+  iemand mag: Communicatie en Ticketing (geen toegang, gebruiker of beheerder) en Commerciële Zaken (geen
+  toegang, of toegang met bevoegdheden per onderdeel; snel in te vullen vanuit een voorbeeld zoals
+  "Relatiebeheerder"). Op het tabblad *Gebruikers* vink je per persoon de rollen aan; met meerdere rollen
+  tellen de rechten op. Wat voor één persoon anders moet dan de rol (bereik "alleen eigen", een extra of
+  geblokkeerde bevoegdheid) stel je in onder "Uitzonderingen en bereik" in de kaart van die persoon.
+  Een hoofdadmin beheert alles; een Beheerder Commerciële Zaken wijst alleen CZ-rollen toe en maakt alleen
+  CZ-rollen aan met bevoegdheden die hij zelf heeft. Onderaan het tabblad Rollen staan de laatste wijzigingen.
 - **Facturatie-instellingen**: Instellingen > Facturatie: gegevens van de vereniging, btw-nummer, IBAN,
   betalingstermijn en nummering. Zolang btw-nummer, IBAN, termijn en volgnummers leeg zijn, kan geen factuur
   definitief worden gemaakt. Het briefpapier toont zelf ook een IBAN; controleer dat beide kloppen.
@@ -221,7 +224,7 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
 **Terugdraaien**
 - *Direct uitzetten*: `COMMERCIAL_ENABLED` op `false` (of verwijderen) en opnieuw deployen. Menu, schermen en API's
   verdwijnen (404), de cron slaat over. De gegevens blijven in de database staan.
-- *Eén persoon uitsluiten*: toegang intrekken in Beheer > Gebruikers en rechten; werkt direct.
+- *Eén persoon uitsluiten*: de CZ-rollen van die persoon uitvinken in Beheer > Gebruikers en rechten; werkt direct.
 - *Code terugdraaien*: een eerdere deployment promoten in Vercel. De nieuwe tabellen blijven bestaan en
   schaden de rest van de Hub niet.
 

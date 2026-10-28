@@ -3,51 +3,17 @@
 // gebruikt kan worden. Een gebruiker kan nul of meer rollen tegelijk hebben
 // (bv. zowel HUB als TICKETING) — zie prisma/schema.prisma (`User.roles`).
 //
-// Nieuwe rol toevoegen: hier een entry aan ASSIGNABLE_ROLES toevoegen, de
-// waarde aan de Prisma `Role`-enum toevoegen, en (indien de rol een eigen
-// afgeschermd gedeelte beschermt) een sectie toevoegen in middleware.ts.
+// Let op: dit zijn de technische rolwaarden in het inlogtoken. Welke rollen
+// beheerders aanmaken en toewijzen staat in src/lib/access (tabel access_roles);
+// daaruit wordt `User.roles` bij elke wijziging afgeleid.
 
 export type AppRole = "ADMIN" | "HUB" | "TICKETING" | "HUB_ADMIN" | "TICKETING_ADMIN";
 
-export interface RoleDefinition {
-  value: AppRole;
-  label: string;
-  description: string;
-}
-
-// Opzet: drie onderdelen (Communicatie, Ticketing, Commerciële Zaken), één beheer.
-//  - Gebruiker: ziet alleen de onderdelen waar die bij is aangesloten.
-//  - Beheerder per onderdeel (HUB_ADMIN, TICKETING_ADMIN, en "Beheerder Commerciële Zaken" binnen die sectie):
-//    beheert de inhoud en de gebruikers van alleen dat onderdeel.
-//  - Hoofdadmin (ADMIN): ziet en beheert alles, ook Commerciële Zaken.
-// Volgorde bepaalt de weergavevolgorde in de checkbox-lijst bij gebruikersbeheer.
-export const ASSIGNABLE_ROLES: RoleDefinition[] = [
-  {
-    value: "HUB",
-    label: "Communicatie",
-    description: "Toegang tot de communicatie-hub: designtool, agenda, nieuws, kennisbank en meer.",
-  },
-  {
-    value: "HUB_ADMIN",
-    label: "Communicatiebeheerder",
-    description: "Beheert de inhoud en de gebruikers van Communicatie (en heeft er zelf toegang toe).",
-  },
-  {
-    value: "TICKETING",
-    label: "Ticketing",
-    description: "Toegang tot het afgeschermde Ticketing-gedeelte met handleidingen en procedures.",
-  },
-  {
-    value: "TICKETING_ADMIN",
-    label: "Ticketingbeheerder",
-    description: "Beheert de inhoud en de gebruikers van Ticketing (en heeft er zelf toegang toe).",
-  },
-  {
-    value: "ADMIN",
-    label: "Hoofdadmin",
-    description: "Ziet en beheert alles: alle onderdelen, inclusief Commerciële Zaken, en alle gebruikers.",
-  },
-];
+// Opzet: drie onderdelen (Communicatie, Ticketing, Commerciële Zaken).
+//  - HUB / TICKETING: toegang tot dat onderdeel.
+//  - HUB_ADMIN / TICKETING_ADMIN: beheert de inhoud en de gebruikers van dat onderdeel.
+//  - ADMIN (hoofdadmin): ziet en beheert alles, ook Commerciële Zaken.
+// Commerciële Zaken heeft geen eigen waarde hier: die rechten komen per verzoek uit de database.
 
 /** Welke rol "inbegrepen" is in een andere: een beheerder van een onderdeel heeft ook toegang tot dat onderdeel. */
 const IMPLIED_BY: Partial<Record<AppRole, AppRole[]>> = {

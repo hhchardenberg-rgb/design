@@ -55,6 +55,28 @@ export const {
 } = NextAuth({
   ...authConfig,
   session: { strategy: "jwt" },
+  callbacks: {
+    ...authConfig.callbacks,
+    // Rollen opnieuw ophalen (hooguit eens per minuut), zodat een gewijzigde rol
+    // niet pas na opnieuw inloggen werkt. Alleen hier, in de Node-runtime; de
+    // routebewaking leest daarna het bijgewerkte token.
+    async jwt(params) {
+      const token = authConfig.callbacks.jwt(params);
+      const now = Date.now();
+      if (params.user) {
+        token.rolesCheckedAt = now;
+      } else if (token.sub && now - ((token.rolesCheckedAt as number | undefined) ?? 0) > 60_000) {
+        try {
+          const user = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true, roles: true } });
+          if (user) token.roles = effectiveRoles(user);
+          token.rolesCheckedAt = now;
+        } catch {
+          // Database even onbereikbaar: het bestaande token blijft gelden.
+        }
+      }
+      return token;
+    },
+  },
   providers: [
     Credentials({
       name: "credentials",

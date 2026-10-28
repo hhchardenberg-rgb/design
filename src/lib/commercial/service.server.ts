@@ -2,13 +2,14 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { allowedSet, evaluate } from "./evaluate";
-import { checkAssignRole, checkEditRole, checkGrant, checkMembershipChange, checkRestrict, type Actor, type Decision } from "./delegation";
+import { checkAssignRole, checkGrant, checkMembershipChange, checkRestrict, type Actor, type Decision } from "./delegation";
 import { ALL_PERMISSIONS, findInconsistencies, isPermission, type Permission } from "./permissions";
-import { loadCommercialAccess, ensureSystemRoles } from "./authz.server";
+import { loadCommercialAccess } from "./authz.server";
 import { summarize } from "./explain";
 import { DEFAULT_SCOPE, SCOPED_AREAS, scopeWithinLimit, type Scope, type ScopedArea } from "./scope";
 import { loadScopes } from "./ctx.server";
 import { effectiveRoles } from "@/lib/roles";
+import { ACCESS_LOCK_SQL, ACCESS_TX_OPTS, accessRoleForCommercial, commercialBasePermissions, ensureAccessReady, reconcileUser, syncUserAccess } from "@/lib/access/service.server";
 
 // Alle schrijfacties op toegang en rechten lopen via dit bestand: eerst de
 // delegatieregels, dan de wijziging én de auditregel in één transactie.
@@ -56,40 +57,40 @@ async function audit(
 
 interface MembershipFull {
   userId: string;
-  roleId: string | null;
-  role: { permissions: string[] } | null;
+  /** Basisbevoegdheden: de optelsom van de rollen van deze persoon. */
+  base: string[];
   overrides: { permission: string; effect: "ALLOW" | "DENY" }[];
 }
 
-function effectiveOf(m: Pick<MembershipFull, "role" | "overrides">): Set<Permission> {
+function effectiveOf(m: Pick<MembershipFull, "base" | "overrides">): Set<Permission> {
   return allowedSet(
     evaluate({
       hasSectionAccess: true,
-      rolePermissions: (m.role?.permissions ?? []).filter(isPermission),
+      rolePermissions: m.base.filter(isPermission),
       overrides: m.overrides.filter((o) => isPermission(o.permission)).map((o) => ({ permission: o.permission as Permission, effect: o.effect })),
     }),
   );
 }
 
 /** Aantal leden dat 'rights:manage_rights' houdt na een hypothetische wijziging. */
-async function countRightsManagers(
-  tx: Tx,
-  change: { removeUserId?: string; replaceMember?: MembershipFull; replaceRole?: { id: string; permissions: string[] } } = {},
-): Promise<number> {
-  const all = await tx.commercialMembership.findMany({ include: { role: true, overrides: true } });
+async function countRightsManagers(tx: Tx, change: { removeUserId?: string; replaceMember?: MembershipFull } = {}): Promise<number> {
+  const [all, base] = await Promise.all([tx.commercialMembership.findMany({ include: { overrides: true } }), commercialBasePermissions(tx)]);
   let count = 0;
   for (const m of all) {
     if (m.userId === change.removeUserId) continue;
-    let candidate: MembershipFull = m;
+    let candidate: MembershipFull = { userId: m.userId, base: base.get(m.userId) ?? [], overrides: m.overrides };
     if (change.replaceMember && m.userId === change.replaceMember.userId) candidate = change.replaceMember;
-    if (change.replaceRole && candidate.roleId === change.replaceRole.id) {
-      candidate = { ...candidate, role: { permissions: change.replaceRole.permissions } };
-    }
-    const eff = effectiveOf(candidate);
-    if (eff.has("rights:manage_rights")) count++;
+    if (effectiveOf(candidate).has("rights:manage_rights")) count++;
   }
   // Hoofdadmins hebben altijd rechtenbeheer, dus er blijft nooit niemand over zolang er een is.
   return count + (await tx.user.count({ where: { roles: { has: "ADMIN" } } }));
+}
+
+async function loadMember(tx: Tx, userId: string): Promise<(MembershipFull & { id: string; overrides: { permission: string; effect: "ALLOW" | "DENY" }[] }) | null> {
+  const m = await tx.commercialMembership.findUnique({ where: { userId }, include: { overrides: true } });
+  if (!m) return null;
+  const base = (await commercialBasePermissions(tx, [userId])).get(userId) ?? [];
+  return { id: m.id, userId, base, overrides: m.overrides };
 }
 
 function assertConsistent(perms: readonly Permission[]) {
@@ -103,11 +104,14 @@ function assertKnown(perms: readonly string[]): Permission[] {
   return perms as Permission[];
 }
 
-// --- Sectietoegang (alleen platformbeheerder) ---------------------------------
+// --- Sectietoegang ----------------------------------------------------------------
+// Toegang tot Commerciële Zaken loopt via de rollen van de Hub (src/lib/access). Deze
+// twee functies zijn de korte weg "toegang geven met deze CZ-rol" en "alle CZ-rollen
+// weghalen"; de wijziging gaat via de rollentoewijzing, zodat alles gelijk blijft.
 
 export async function grantMembership(actor: ServiceActor, userId: string, roleId: string | null) {
   enforce(checkMembershipChange(actor, "grant"));
-  await ensureSystemRoles();
+  await ensureAccessReady();
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, roles: true } });
   if (!user) throw new ApiError(404, "Gebruiker niet gevonden.");
   if (effectiveRoles(user).includes("ADMIN")) throw new ApiError(409, "Een hoofdadmin heeft automatisch volledige toegang tot Commerciële Zaken.");
@@ -116,61 +120,49 @@ export async function grantMembership(actor: ServiceActor, userId: string, roleI
   // Een rol meegeven is een toekenning: binnen de eigen grens blijven.
   if (role) enforce(checkAssignRole(actor, userId, role.permissions.filter(isPermission)));
   return prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(ACCESS_LOCK_SQL);
+    await reconcileUser(tx, userId);
     if (await tx.commercialMembership.findUnique({ where: { userId } })) {
       throw new ApiError(409, "Deze gebruiker heeft al toegang tot Commerciële Zaken.");
     }
-    const m = await tx.commercialMembership.create({ data: { userId, roleId, createdById: actor.userId } });
+    const accessRole = await accessRoleForCommercial(tx, roleId);
+    await tx.userAccessRole.create({ data: { userId, roleId: accessRole.id } });
+    await syncUserAccess(tx, userId);
+    const m = await tx.commercialMembership.update({ where: { userId }, data: { createdById: actor.userId } });
     await audit(tx, actor, {
       action: "membership.grant",
       entity: "membership",
       entityId: m.id,
       targetUserId: userId,
-      after: { roleId, selfGranted: userId === actor.userId },
+      after: { roleId, role: accessRole.name, selfGranted: userId === actor.userId },
     });
     return m;
-  });
+  }, ACCESS_TX_OPTS);
 }
 
 export async function revokeMembership(actor: ServiceActor, userId: string) {
+  await ensureAccessReady();
   return prisma.$transaction(async (tx) => {
-    const m = await tx.commercialMembership.findUnique({ where: { userId }, include: { role: true, overrides: true } });
+    await tx.$executeRawUnsafe(ACCESS_LOCK_SQL);
+    await reconcileUser(tx, userId);
+    const m = await loadMember(tx, userId);
     if (!m) throw new ApiError(404, "Deze gebruiker heeft geen toegang tot Commerciële Zaken.");
     const isManager = effectiveOf(m).has("rights:manage_rights");
     const othersManage = (await countRightsManagers(tx, { removeUserId: userId })) >= 1;
     enforce(checkMembershipChange(actor, "revoke", { targetIsLastRightsManager: isManager && !othersManage }), 409);
-    await tx.commercialMembership.delete({ where: { userId } });
+    const czRoles = await tx.userAccessRole.findMany({ where: { userId, role: { commercialRoleId: { not: null } } }, select: { roleId: true, role: { select: { name: true } } } });
+    await tx.userAccessRole.deleteMany({ where: { userId, roleId: { in: czRoles.map((r) => r.roleId) } } });
+    await syncUserAccess(tx, userId);
+    // Een lid zonder CZ-rol in het rollensysteem (vangnet) verdwijnt hier ook.
+    await tx.commercialMembership.deleteMany({ where: { userId } });
     await audit(tx, actor, {
       action: "membership.revoke",
       entity: "membership",
       entityId: m.id,
       targetUserId: userId,
-      before: { roleId: m.roleId, overrides: m.overrides.map((o) => ({ permission: o.permission, effect: o.effect })) },
+      before: { roles: czRoles.map((r) => r.role.name), overrides: m.overrides.map((o) => ({ permission: o.permission, effect: o.effect })) },
     });
-  });
-}
-
-// --- Rol van een lid ----------------------------------------------------------
-
-export async function setMemberRole(actor: ServiceActor, userId: string, roleId: string | null) {
-  return prisma.$transaction(async (tx) => {
-    const m = await tx.commercialMembership.findUnique({ where: { userId }, include: { role: true, overrides: true } });
-    if (!m) throw new ApiError(404, "Deze gebruiker heeft geen toegang tot Commerciële Zaken.");
-    const role = roleId ? await tx.commercialRole.findUnique({ where: { id: roleId } }) : null;
-    if (roleId && !role) throw new ApiError(404, "Rol niet gevonden.");
-    const rolePerms = assertKnown(role?.permissions ?? []);
-
-    // Rol toewijzen = alle bevoegdheden van die rol toekennen (delegatiegrens).
-    enforce(rolePerms.length ? checkAssignRole(actor, userId, rolePerms) : checkRestrict(actor, userId));
-
-    const next: MembershipFull = { ...m, roleId, role: role ? { permissions: role.permissions } : null };
-    if (effectiveOf(m).has("rights:manage_rights") && !effectiveOf(next).has("rights:manage_rights")) {
-      if ((await countRightsManagers(tx, { removeUserId: userId })) < 1) {
-        throw new ApiError(409, "Dit zou het laatste lid zonder rechtenbeheer achterlaten. Wijs eerst iemand anders aan.");
-      }
-    }
-    await tx.commercialMembership.update({ where: { userId }, data: { roleId } });
-    await audit(tx, actor, { action: "member.role", entity: "membership", entityId: m.id, targetUserId: userId, before: { roleId: m.roleId }, after: { roleId } });
-  });
+  }, ACCESS_TX_OPTS);
 }
 
 // --- Individuele uitzonderingen -----------------------------------------------
@@ -186,7 +178,7 @@ export async function setMemberPermissions(actor: ServiceActor, userId: string, 
   assertConsistent(desired);
 
   return prisma.$transaction(async (tx) => {
-    const m = await tx.commercialMembership.findUnique({ where: { userId }, include: { role: true, overrides: true } });
+    const m = await loadMember(tx, userId);
     if (!m) throw new ApiError(404, "Deze gebruiker heeft geen toegang tot Commerciële Zaken.");
 
     const current = effectiveOf(m);
@@ -196,7 +188,7 @@ export async function setMemberPermissions(actor: ServiceActor, userId: string, 
 
     enforce(added.length ? checkGrant(actor, userId, added) : checkRestrict(actor, userId));
 
-    const base = new Set((m.role?.permissions ?? []).filter(isPermission));
+    const base = new Set(m.base.filter(isPermission));
     const wanted = new Set(desired);
     const overrides: { permission: Permission; effect: "ALLOW" | "DENY" }[] = [];
     for (const p of wanted) if (!base.has(p)) overrides.push({ permission: p, effect: "ALLOW" });
@@ -258,65 +250,17 @@ export async function setMemberScopes(actor: ServiceActor, userId: string, scope
   });
 }
 
-// --- Rollen ---------------------------------------------------------------------
-
-function slug(name: string): string {
-  return name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "rol";
-}
-
-export async function createRole(actor: ServiceActor, input: { name: string; description?: string; permissions: string[] }) {
-  const perms = [...new Set(assertKnown(input.permissions))];
-  assertConsistent(perms);
-  enforce(checkEditRole(actor, perms, false));
-  return prisma.$transaction(async (tx) => {
-    let key = slug(input.name);
-    if (await tx.commercialRole.findUnique({ where: { key } })) key = `${key}-${Date.now().toString(36)}`;
-    const role = await tx.commercialRole.create({ data: { key, name: input.name, description: input.description ?? null, permissions: perms } });
-    await audit(tx, actor, { action: "role.create", entity: "role", entityId: role.id, after: { name: role.name, permissions: perms } });
-    return role;
-  });
-}
-
-export async function updateRole(actor: ServiceActor, roleId: string, input: { name?: string; description?: string | null; permissions?: string[] }) {
-  const perms = input.permissions ? [...new Set(assertKnown(input.permissions))] : undefined;
-  if (perms) assertConsistent(perms);
-
-  return prisma.$transaction(async (tx) => {
-    const role = await tx.commercialRole.findUnique({ where: { id: roleId } });
-    if (!role) throw new ApiError(404, "Rol niet gevonden.");
-    const own = await tx.commercialMembership.findUnique({ where: { userId: actor.userId } });
-    const added = perms ? perms.filter((p) => !role.permissions.includes(p)) : [];
-    enforce(checkEditRole(actor, added, own?.roleId === roleId && perms !== undefined));
-
-    if (perms) {
-      const remaining = await countRightsManagers(tx, { replaceRole: { id: roleId, permissions: perms } });
-      if (remaining < 1) throw new ApiError(409, "Dit zou het laatste lid met rechtenbeheer zonder die bevoegdheid laten. Wijs eerst iemand anders aan.");
-    }
-    const updated = await tx.commercialRole.update({
-      where: { id: roleId },
-      data: { name: input.name, description: input.description, permissions: perms },
-    });
-    await audit(tx, actor, {
-      action: "role.update",
-      entity: "role",
-      entityId: roleId,
-      before: { name: role.name, description: role.description, permissions: role.permissions },
-      after: { name: updated.name, description: updated.description, permissions: updated.permissions },
-    });
-    return updated;
-  });
-}
-
 // --- Lezen voor het beheerscherm -------------------------------------------------
 
 export async function getRightsOverview(actor: ServiceActor) {
-  await ensureSystemRoles();
-  const [memberships, roles, events] = await Promise.all([
+  await ensureAccessReady();
+  const [memberships, base, czRoles, events] = await Promise.all([
     prisma.commercialMembership.findMany({
-      include: { user: { select: { id: true, name: true, email: true } }, role: true, overrides: true, scopes: true },
+      include: { user: { select: { id: true, name: true, email: true, accessRoles: { where: { role: { commercialRoleId: { not: null } } }, select: { role: { select: { name: true } } } } } }, overrides: true, scopes: true },
       orderBy: { createdAt: "asc" },
     }),
-    prisma.commercialRole.findMany({ orderBy: [{ isSystem: "desc" }, { name: "asc" }] }),
+    commercialBasePermissions(prisma),
+    prisma.accessRole.findMany({ where: { commercialRoleId: { not: null } }, include: { commercialRole: true }, orderBy: { name: "asc" } }),
     // Alleen toegangs- en rechtenwijzigingen; dossiermutaties horen niet bij het rechtenscherm.
     prisma.commercialAuditEvent.findMany({ where: { entity: { in: ["membership", "role", "team"] } }, orderBy: { createdAt: "desc" }, take: 50 }),
   ]);
@@ -324,15 +268,16 @@ export async function getRightsOverview(actor: ServiceActor) {
   const members = memberships.map((m) => {
     const eff = evaluate({
       hasSectionAccess: true,
-      rolePermissions: (m.role?.permissions ?? []).filter(isPermission),
+      rolePermissions: (base.get(m.userId) ?? []).filter(isPermission),
       overrides: m.overrides.filter((o) => isPermission(o.permission)).map((o) => ({ permission: o.permission as Permission, effect: o.effect })),
     });
+    const roleNames = m.user.accessRoles.map((a) => a.role.name).sort((a, b) => a.localeCompare(b, "nl"));
     return {
       userId: m.userId,
       name: m.user.name,
       email: m.user.email,
-      roleId: m.roleId,
-      roleName: m.role?.name ?? null,
+      roleNames,
+      roleName: roleNames.length ? roleNames.join(", ") : null,
       scopes: Object.fromEntries(SCOPED_AREAS.map((a) => [a, (m.scopes.find((r) => r.area === a)?.scope ?? DEFAULT_SCOPE) as Scope])) as Record<ScopedArea, Scope>,
       effective: summarize(eff),
     };
@@ -340,7 +285,7 @@ export async function getRightsOverview(actor: ServiceActor) {
 
   return {
     members,
-    roles: roles.map((r) => ({ id: r.id, key: r.key, name: r.name, description: r.description, permissions: r.permissions, isSystem: r.isSystem })),
+    roles: czRoles.map((r) => ({ id: r.id, name: r.name, description: r.description, permissions: r.commercialRole?.permissions ?? [] })),
     audit: events.map((e) => ({
       id: e.id,
       at: e.createdAt.toISOString(),

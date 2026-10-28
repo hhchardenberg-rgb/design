@@ -79,7 +79,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
     id: "systeem",
     label: "Systeem",
     modules: [
-      { title: "Gebruikers en rechten", description: "Accounts, rollen en toegang tot Commerciële Zaken.", href: "/admin/users", icon: UserCog, section: "systeem" },
+      { title: "Gebruikers en rechten", description: "Accounts en rollen: wie mag wat in Communicatie, Ticketing en Commerciële Zaken.", href: "/admin/users", icon: UserCog, section: "systeem" },
       { title: "Documentatie", description: "PSD-conventies en handleidingen.", href: "/docs", icon: FileText, section: "hub" },
     ],
   },
