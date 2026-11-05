@@ -68,7 +68,10 @@ export const {
       } else if (token.sub && now - ((token.rolesCheckedAt as number | undefined) ?? 0) > 60_000) {
         try {
           const user = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true, roles: true } });
-          if (user) token.roles = effectiveRoles(user);
+          // Account verwijderd: de sessie vervalt meteen (null wist het sessiecookie), in plaats van
+          // tot 30 dagen geldig te blijven.
+          if (!user) return null;
+          token.roles = effectiveRoles(user);
           token.rolesCheckedAt = now;
         } catch {
           // Database even onbereikbaar: het bestaande token blijft gelden.

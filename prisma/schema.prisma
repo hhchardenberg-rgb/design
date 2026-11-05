@@ -110,21 +110,21 @@ model User {
 // inlogtoken, routebewaking en de bestaande CZ-code ongewijzigd blijven werken.
 
 model AccessRole {
-  id             String   @id @default(cuid())
-  name           String   @unique
-  description    String?
+  id               String          @id @default(cuid())
+  name             String          @unique
+  description      String?
   // Vaste rol (Hoofdadmin): niet te verwijderen of in te perken.
-  isSystem       Boolean  @default(false)
+  isSystem         Boolean         @default(false)
   // Hoofdadmin: ziet en beheert alles.
-  isAdmin        Boolean  @default(false)
+  isAdmin          Boolean         @default(false)
   // NONE | USER | ADMIN
-  hubLevel       String   @default("NONE")
-  ticketingLevel String   @default("NONE")
+  hubLevel         String          @default("NONE")
+  ticketingLevel   String          @default("NONE")
   // Toegang tot Commerciële Zaken; de bevoegdheden staan in de gekoppelde CommercialRole.
   commercialRoleId String?         @unique
   commercialRole   CommercialRole? @relation(fields: [commercialRoleId], references: [id], onDelete: SetNull)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   users UserAccessRole[]
 
@@ -1694,4 +1694,42 @@ model DesignBatchItem {
 
   @@index([batchId, sortOrder])
   @@map("design_batch_items")
+}
+
+// ---------------------------------------------------------------------------
+// Back-ups (zie src/lib/backup). Eén rij per poging, geslaagd of niet. Bewust zonder relatie
+// naar users: een back-uphistorie moet blijven bestaan, ook als het account van wie de
+// back-up startte later verdwijnt. Tabellen die met "backup_" beginnen gaan zelf niet mee in
+// de databaseback-up.
+// ---------------------------------------------------------------------------
+model BackupRun {
+  id              String    @id @default(cuid())
+  // SCHEDULED (cron) | MANUAL (beheerder)
+  trigger         String
+  // RUNNING | OK | FAILED
+  status          String    @default("RUNNING")
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+  // Wie de handmatige back-up startte (naam blijft staan als het account verdwijnt).
+  triggeredById   String?
+  triggeredByName String?
+  // s3 | blob
+  target          String?
+  // Sleutel van het versleutelde bestand in de back-upopslag.
+  storageKey      String?
+  bytes           Int?
+  tableCount      Int?
+  rowCount        Int?
+  // Vingerafdruk van de gebruikte BACKUP_ENCRYPTION_KEY (geen geheim).
+  keyId           String?
+  commit          String?
+  // Bestanden (uploads) gekopieerd in deze ronde, en wat er nog openstaat.
+  filesCopied     Int?
+  filesPending    Int?
+  error           String?
+  // Verwijderd volgens de bewaartermijn.
+  prunedAt        DateTime?
+
+  @@index([status, startedAt])
+  @@map("backup_runs")
 }

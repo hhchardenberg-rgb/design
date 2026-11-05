@@ -8,6 +8,8 @@ import type { NextConfig } from "next";
 // breken. `upgrade-insecure-requests` is veilig omdat de app alleen over
 // https draait (Vercel).
 const securityHeaders = [
+  // Browsers onthouden twee jaar dat de Hub alleen over https bereikbaar is.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

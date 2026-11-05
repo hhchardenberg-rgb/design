@@ -153,3 +153,20 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/** Waarschuwing aan de hoofdadmins dat de automatische back-up mislukt is (zie src/lib/backup). */
+export async function sendBackupFailedEmail(to: string, name: string, info: { when: string; error: string }): Promise<void> {
+  const resend = getClient();
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Back-up mislukt — HHC Hardenberg Hub",
+    html: `
+      <p>Hoi ${escapeHtml(name)},</p>
+      <p>De back-up van ${escapeHtml(info.when)} is mislukt. De gegevens zelf zijn niet aangetast, maar er is van vandaag geen nieuwe kopie.</p>
+      <p>Foutmelding: <code>${escapeHtml(info.error)}</code></p>
+      <p><a href="${APP_URL}/admin/backups">Open Back-ups in de Hub</a> om het opnieuw te proberen.</p>
+    `,
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+}

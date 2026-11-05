@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, apiErrorResponse } from "@/lib/api-guards";
+import { requireRole, apiErrorResponse } from "@/lib/api-guards";
 
 /** Autocomplete voor de spelersdatabase (zie MASTERPROMPT sectie 14). */
 export async function GET(req: Request) {
   try {
-    await requireUser();
+    await requireRole("HUB");
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() ?? "";
     const teamId = url.searchParams.get("teamId") ?? undefined;
