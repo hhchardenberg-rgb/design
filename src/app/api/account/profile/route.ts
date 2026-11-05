@@ -15,7 +15,7 @@ const schema = z.object({
 
 export async function GET() {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     return NextResponse.json(await getProfile(user.id));
   } catch (error) {
     return apiErrorResponse(error);
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) throw new ApiError(400, "Controleer de ingevulde gegevens.");
     const body = parsed.data;

@@ -1,3 +1,4 @@
+import { audit, ipOf } from "@/lib/audit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
@@ -15,7 +16,7 @@ const bodySchema = z.object({ password: z.string().min(1) });
  */
 export async function POST(req: Request) {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     const { password } = bodySchema.parse(await req.json());
     await requireCurrentPassword(user.id, password);
 
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     }
 
     const recoveryCodes = await generateRecoveryCodes(prisma, user.id);
+    await audit({ action: "auth.recovery_codes", actor: user, target: { type: "user", id: user.id, name: user.name }, ip: ipOf(req) });
     return NextResponse.json({ recoveryCodes });
   } catch (error) {
     return apiErrorResponse(error);

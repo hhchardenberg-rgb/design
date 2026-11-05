@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { signOut, useSession } from "next-auth/react";
 import { startRegistration } from "@simplewebauthn/browser";
-import { ShieldCheck, ShieldAlert, Copy, Download, KeyRound, Trash2, Pencil } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Copy, Download, KeyRound, Trash2, Pencil, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -36,6 +37,23 @@ function formatDate(value: string) {
 
 export default function AccountSecurityPage() {
   const toast = useToast();
+  // update() laat de server de tweestapsstatus direct opnieuw bekijken, zodat een verplichting
+  // vervalt zodra hij is ingesteld (en de rest van de Hub weer opengaat).
+  const { data: session, update: refreshSession } = useSession();
+  const mfaSetupRequired = !!session?.user?.mfaSetupRequired;
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+
+  async function logoutEverywhere() {
+    if (!window.confirm("Je wordt op alle apparaten uitgelogd, ook hier. Doorgaan?")) return;
+    setLoggingOutAll(true);
+    try {
+      await parseJsonOrThrow(await fetch("/api/account/sessions", { method: "DELETE" }));
+      await signOut({ callbackUrl: "/login" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Uitloggen is mislukt.");
+      setLoggingOutAll(false);
+    }
+  }
   const [status, setStatus] = useState<MfaStatus | null>(null);
   const [step, setStep] = useState<EnrollStep>("idle");
 
@@ -107,6 +125,7 @@ export default function AccountSecurityPage() {
       setStep("recovery-codes");
       setCode("");
       await loadStatus();
+      await refreshSession();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Bevestigen is mislukt.");
     } finally {
@@ -137,6 +156,7 @@ export default function AccountSecurityPage() {
         );
         toast.success("Tweestapsverificatie is uitgeschakeld.");
         await loadStatus();
+        await refreshSession();
         setConfirmAction(null);
       } else {
         const data = await parseJsonOrThrow(
@@ -197,6 +217,7 @@ export default function AccountSecurityPage() {
       setAddingPasskey(false);
       setNewPasskeyName("");
       await loadPasskeys();
+      await refreshSession();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Toevoegen is mislukt of geannuleerd.");
     } finally {
@@ -240,6 +261,7 @@ export default function AccountSecurityPage() {
       setDeleteTarget(null);
       setDeletePassword("");
       await loadPasskeys();
+      await refreshSession();
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : "Verwijderen is mislukt.");
     } finally {
@@ -253,6 +275,21 @@ export default function AccountSecurityPage() {
         <h1 className="text-2xl font-bold">Beveiliging</h1>
         <p className="mt-1 text-muted-foreground">Beheer tweestapsverificatie en passkeys voor je account.</p>
       </div>
+
+      {mfaSetupRequired && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="flex gap-3 pt-6 text-sm">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-hhc-orange-dark" />
+            <div>
+              <p className="font-semibold">Stel eerst tweestapsverificatie in</p>
+              <p className="mt-1 text-muted-foreground">
+                Omdat je beheerrechten of toegang tot Commerciële Zaken hebt, is een tweede stap bij het inloggen verplicht. Kies hieronder een
+                authenticator-app of een passkey. Daarna kun je de Hub weer gewoon gebruiken.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {step === "recovery-codes" && (
         <Card>
@@ -565,6 +602,22 @@ export default function AccountSecurityPage() {
           </CardContent>
         </Card>
       )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LogOut className="h-5 w-5" /> Uitloggen op alle apparaten
+          </CardTitle>
+          <CardDescription>
+            Ben je een telefoon of laptop kwijt, of vertrouw je het niet? Hiermee vervalt elke sessie binnen een minuut, ook deze. Bij het wijzigen
+            of herstellen van je wachtwoord gebeurt dit automatisch.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={logoutEverywhere} disabled={loggingOutAll}>
+            {loggingOutAll ? "Bezig…" : "Overal uitloggen"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

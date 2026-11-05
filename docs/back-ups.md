@@ -9,6 +9,7 @@ gekopieerd. Beheer en historie: **Beheer > Back-ups** (alleen hoofdadmin). Code:
 | Variabele | Waarde |
 |---|---|
 | `BACKUP_ENCRYPTION_KEY` | `openssl rand -base64 32`. **Bewaar deze ook in de wachtwoordkluis**: zonder sleutel is geen enkele back-up terug te zetten. |
+| `DATA_ENCRYPTION_KEY` | `openssl rand -base64 32`, op Production **en** Preview. Versleutelt telefoonnummers, notities en sponsorbestanden in de database en opslag. **Ook in de wachtwoordkluis**: zonder deze sleutel zijn die velden en bestanden na een herstel onleesbaar. Nooit wijzigen zolang er versleutelde gegevens zijn. |
 | `BACKUP_S3_BUCKET` | naam van de bucket (bv. `hhc-hub-backups`) |
 | `BACKUP_S3_ENDPOINT` | bij Cloudflare R2: `https://<account-id>.eu.r2.cloudflarestorage.com` (leeg bij AWS) |
 | `BACKUP_S3_REGION` | `auto` bij R2, anders de regio (bv. `eu-central-1`) |
@@ -41,6 +42,7 @@ Herstel altijd eerst in een **nieuwe, lege database**, nooit direct over de prod
    zet het schema klaar:
    ```bash
    export BACKUP_ENCRYPTION_KEY=...           # uit de wachtwoordkluis
+   # DATA_ENCRYPTION_KEY hoort bij de omgeving die de herstelde database gebruikt (zelfde waarde als in productie)
    npm run backup -- inspect back-up.hhcbak    # controleert sleutel en volledigheid
    DATABASE_URL=<nieuwe-db> npx prisma db push
    npm run backup -- restore back-up.hhcbak --database-url <nieuwe-db>
@@ -60,6 +62,14 @@ Een leesbare kopie (bijvoorbeeld voor een inzageverzoek) maak je met
 **Eerste verdedigingslinie:** Neon bewaart zelf een tijdlijn waarmee je de database naar een
 eerder moment kunt terugzetten (Neon Console > Branches > Restore). Dat is het snelst voor "gisteren
 is er iets misgegaan". De back-ups hier zijn de tweede, onafhankelijke kopie.
+
+## Aparte database voor previews
+
+Previews gebruiken nu dezelfde database als productie. Zet in Vercel > Storage > (Neon-database) >
+Settings de optie **"Create database branch for deployment" → Preview** aan. Elke preview krijgt dan een
+eigen Neon-branch (kopie van productie op dat moment), zodat testen en `prisma db push` in een preview de
+echte gegevens niet meer raken. De app schrijft in previews sowieso niets versleuteld en verstuurt geen
+echte mail (zet eventueel `PREVIEW_MAIL_TO` om testmails naar één adres te laten gaan).
 
 ## Herstel oefenen
 

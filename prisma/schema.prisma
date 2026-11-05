@@ -75,6 +75,9 @@ model User {
   jobTitle                  String?
   // Herinneringsmail van Commerciële Zaken; standaard aan. false = uit (blijft zo).
   notifyCommercialDigest    Boolean  @default(true)
+  // Wordt opgehoogd bij wachtwoordwijziging, reset of "uitloggen op alle apparaten": elke
+  // sessie met een lager nummer vervalt (zie src/lib/auth.ts).
+  sessionVersion            Int      @default(0)
   // Eigen frequentie (DAILY | TWICE_WEEKLY | WEEKLY | BIWEEKLY | MONTHLY | OFF); null = standaard van Commerciële Zaken.
   commercialDigestFrequency String?
   createdAt                 DateTime @default(now())
@@ -94,6 +97,7 @@ model User {
   passwordResetTokens       PasswordResetToken[]
   commercialMembership      CommercialMembership?
   commercialTeamMemberships CommercialTeamMember[]
+  knownDevices              KnownDevice[]
   accessRoles               UserAccessRole[]
 
   @@map("users")
@@ -1732,4 +1736,45 @@ model BackupRun {
 
   @@index([status, startedAt])
   @@map("backup_runs")
+}
+
+// ---------------------------------------------------------------------------
+// Audit-log van de hele Hub (zie src/lib/audit). Commerciële Zaken heeft daarnaast een eigen,
+// gedetailleerder log (commercial_audit_events). Geen relatie naar users: het log moet blijven
+// bestaan als een account verdwijnt.
+// ---------------------------------------------------------------------------
+model AuditEvent {
+  id         String   @id @default(cuid())
+  at         DateTime @default(now())
+  actorId    String?
+  actorName  String?
+  // bv. auth.login, auth.login_failed, user.roles_changed, backup.download
+  action     String
+  // Over wie of wat het gaat (bv. het account waarvan het wachtwoord gewijzigd is).
+  targetType String?
+  targetId   String?
+  targetName String?
+  summary    String
+  ip         String?
+  meta       Json?
+
+  @@index([at])
+  @@index([action, at])
+  @@index([actorId, at])
+  @@map("audit_events")
+}
+
+// Apparaten waarmee iemand eerder inlogde, voor de melding "nieuwe inlog". Alleen een hash van
+// een willekeurige apparaatcookie, geen IP-adres.
+model KnownDevice {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash  String
+  label       String?
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([userId, deviceHash])
+  @@map("known_devices")
 }

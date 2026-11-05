@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,8 +68,9 @@ export function ProfileForm() {
     const r = await api("/api/account/password", "POST", { current, next });
     setPwBusy(false);
     if (r.ok) {
-      toast.success("Wachtwoord gewijzigd.");
+      toast.success("Wachtwoord gewijzigd. Log opnieuw in met je nieuwe wachtwoord.");
       setCurrent(""); setNext(""); setAgain("");
+      setTimeout(() => signOut({ callbackUrl: "/login" }), 1500);
     } else toast.error(r.error);
   }
 
@@ -145,12 +147,12 @@ export function ProfileForm() {
         <Card>
           <CardHeader>
             <CardTitle>Wachtwoord wijzigen</CardTitle>
-            <CardDescription>Minimaal 8 tekens. Je blijft ingelogd.</CardDescription>
+            <CardDescription>Minimaal 12 tekens, en geen wachtwoord dat in een bekend datalek voorkomt. Daarna log je op al je apparaten opnieuw in.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div><Label htmlFor="pw-cur">Huidig wachtwoord</Label><Input id="pw-cur" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></div>
-            <div><Label htmlFor="pw-new">Nieuw wachtwoord</Label><Input id="pw-new" type="password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} /></div>
-            <div><Label htmlFor="pw-again">Nieuw wachtwoord nogmaals</Label><Input id="pw-again" type="password" autoComplete="new-password" minLength={8} value={again} onChange={(e) => setAgain(e.target.value)} /></div>
+            <div><Label htmlFor="pw-new">Nieuw wachtwoord</Label><Input id="pw-new" type="password" autoComplete="new-password" minLength={12} value={next} onChange={(e) => setNext(e.target.value)} /></div>
+            <div><Label htmlFor="pw-again">Nieuw wachtwoord nogmaals</Label><Input id="pw-again" type="password" autoComplete="new-password" minLength={12} value={again} onChange={(e) => setAgain(e.target.value)} /></div>
             <Button type="submit" variant="outline" disabled={pwBusy || !current || !next || !again}>{pwBusy ? "Bezig…" : "Wachtwoord wijzigen"}</Button>
           </CardContent>
         </Card>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ApiError, apiErrorResponse, requireAdmin } from "@/lib/api-guards";
+import { audit } from "@/lib/audit";
 import { BackupBusy, BackupNotConfigured, backupOverview, runBackup } from "@/lib/backup/service.server";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function POST() {
     const user = await requireAdmin();
     try {
       const run = await runBackup({ trigger: "MANUAL", user, fileBudgetMs: 120_000 });
-      console.info(`[backup] handmatige back-up ${run.id} door ${user.email}`);
+      await audit({ action: "backup.run", actor: user, target: { type: "backup", id: run.id }, summary: "Handmatige back-up gemaakt" });
       return NextResponse.json({ ok: true, id: run.id });
     } catch (error) {
       if (error instanceof BackupNotConfigured) throw new ApiError(409, error.message);

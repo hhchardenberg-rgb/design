@@ -1,0 +1,23 @@
+# Dependabot: wekelijks een PR met updates van npm-pakketten, gebundeld zodat het er weinig zijn.
+# Beveiligingsupdates komen los en direct (zet daarvoor in GitHub > Settings > Code security
+# "Dependabot alerts" en "Dependabot security updates" aan). Elke PR krijgt een Vercel-preview.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 5
+    labels: [afhankelijkheden]
+    commit-message:
+      prefix: "deps"
+    groups:
+      kleine-updates:
+        update-types: [minor, patch]
+    ignore:
+      # Grote versiesprongen (bv. Next.js 17, Prisma 7) bewust handmatig.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

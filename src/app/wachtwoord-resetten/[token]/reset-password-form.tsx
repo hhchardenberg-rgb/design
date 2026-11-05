@@ -67,11 +67,11 @@ export function ResetPasswordForm({ token }: { token: string }) {
           autoComplete="new-password"
           autoFocus
           required
-          minLength={8}
+          minLength={12}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <p className="mt-1 text-xs text-muted-foreground">Minimaal 8 tekens.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Minimaal 12 tekens.</p>
       </div>
       <div>
         <Label htmlFor="confirmPassword">Herhaal wachtwoord</Label>
@@ -80,7 +80,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           type="password"
           autoComplete="new-password"
           required
-          minLength={8}
+          minLength={12}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />

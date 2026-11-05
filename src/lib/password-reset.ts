@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import type { PrismaClient } from "@prisma/client";
 import { normalizeEmail } from "@/lib/utils";
 import { sendPasswordResetEmail } from "@/lib/mail";
+import { audit } from "@/lib/audit";
 
 const TOKEN_BYTES = 32;
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 uur geldig
@@ -85,6 +86,10 @@ export async function consumePasswordResetToken(
   if (!record) return false;
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
-  await prisma.user.update({ where: { id: record.userId }, data: { passwordHash } });
+  // Nieuw wachtwoord: alle bestaande sessies vervallen; openstaande andere resetlinks ook.
+  await prisma.user.update({ where: { id: record.userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
+  await prisma.passwordResetToken.updateMany({ where: { userId: record.userId, usedAt: null }, data: { usedAt: now } });
+  const owner = await prisma.user.findUnique({ where: { id: record.userId }, select: { id: true, name: true, email: true } });
+  await audit({ action: "auth.password_reset", actor: owner, target: { type: "user", id: record.userId, name: owner?.name } });
   return true;
 }

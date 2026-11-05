@@ -14,6 +14,29 @@ const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 // extra configuratie al werkt voor verzending.
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "HHC Hardenberg Hub <onboarding@resend.dev>";
 
+/**
+ * Vanuit een preview gaat nooit echte e-mail de deur uit: een preview deelt de database met
+ * productie, dus een test zou anders echte sponsoren, leden of gebruikers mailen. Alleen als
+ * PREVIEW_MAIL_TO is ingesteld, gaat alles naar dat ene testadres (onderwerp met [PREVIEW]).
+ */
+export const isPreviewDeployment = () => process.env.VERCEL_ENV === "preview";
+
+export class PreviewMailBlocked extends Error {
+  constructor() {
+    super("Vanuit een preview wordt geen echte e-mail verstuurd.");
+  }
+}
+
+type SendPayload = Parameters<Resend["emails"]["send"]>[0];
+
+function guardPreview(payload: SendPayload): SendPayload {
+  if (!isPreviewDeployment()) return payload;
+  const to = process.env.PREVIEW_MAIL_TO;
+  if (!to) throw new PreviewMailBlocked();
+  const p = payload as SendPayload & { cc?: unknown; bcc?: unknown; subject?: string };
+  return { ...p, to, cc: undefined, bcc: undefined, subject: `[PREVIEW] ${p.subject ?? ""}` } as SendPayload;
+}
+
 function getClient(): Resend {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -21,7 +44,11 @@ function getClient(): Resend {
       "RESEND_API_KEY is niet ingesteld — koppel de Resend-integratie via Vercel voordat e-mail verstuurd kan worden."
     );
   }
-  return new Resend(apiKey);
+  const client = new Resend(apiKey);
+  // Elke verzending loopt via de previewbewaking hierboven.
+  const send = client.emails.send.bind(client.emails);
+  client.emails.send = ((payload: SendPayload, options?: Parameters<Resend["emails"]["send"]>[1]) => send(guardPreview(payload), options)) as Resend["emails"]["send"];
+  return client;
 }
 
 export async function sendPasswordResetEmail(to: string, name: string, token: string): Promise<void> {
@@ -166,6 +193,40 @@ export async function sendBackupFailedEmail(to: string, name: string, info: { wh
       <p>De back-up van ${escapeHtml(info.when)} is mislukt. De gegevens zelf zijn niet aangetast, maar er is van vandaag geen nieuwe kopie.</p>
       <p>Foutmelding: <code>${escapeHtml(info.error)}</code></p>
       <p><a href="${APP_URL}/admin/backups">Open Back-ups in de Hub</a> om het opnieuw te proberen.</p>
+    `,
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+}
+
+/** Melding aan de eigenaar van een account: er is ingelogd vanaf een apparaat dat we nog niet kenden. */
+export async function sendNewDeviceEmail(to: string, name: string, info: { when: string; device: string; ip: string }): Promise<void> {
+  const resend = getClient();
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Nieuwe inlog op je account — HHC Hardenberg Hub",
+    html: `
+      <p>Hoi ${escapeHtml(name)},</p>
+      <p>Op ${escapeHtml(info.when)} is op je account ingelogd vanaf een nieuw apparaat: <strong>${escapeHtml(info.device)}</strong> (IP-adres ${escapeHtml(info.ip)}).</p>
+      <p>Was jij dit? Dan hoef je niets te doen.</p>
+      <p>Was jij dit niet? Wijzig dan direct je wachtwoord via <a href="${APP_URL}/account/profiel">je profiel</a>; daarmee word je overal uitgelogd. Licht ook de hoofdadmin in.</p>
+    `,
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+}
+
+/** Melding aan de eigenaar van een account: er is te vaak een verkeerd wachtwoord of verkeerde code geprobeerd. */
+export async function sendLoginLockedEmail(to: string, name: string, info: { when: string; attempts: number; ip: string }): Promise<void> {
+  const resend = getClient();
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Mislukte inlogpogingen op je account — HHC Hardenberg Hub",
+    html: `
+      <p>Hoi ${escapeHtml(name)},</p>
+      <p>Op ${escapeHtml(info.when)} is ${info.attempts} keer achter elkaar tevergeefs geprobeerd in te loggen op je account (laatste poging vanaf IP-adres ${escapeHtml(info.ip)}). Inloggen is daarom een kwartier geblokkeerd.</p>
+      <p>Was jij dit? Dan kun je het over een kwartier opnieuw proberen, of je wachtwoord herstellen via <a href="${APP_URL}/wachtwoord-vergeten">wachtwoord vergeten</a>.</p>
+      <p>Was jij dit niet? Dan probeert iemand anders binnen te komen. Zorg voor een sterk wachtwoord en zet tweestapsverificatie aan via <a href="${APP_URL}/account/security">accountbeveiliging</a>.</p>
     `,
   });
   if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);

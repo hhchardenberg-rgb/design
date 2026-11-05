@@ -7,7 +7,7 @@ import { countRemainingRecoveryCodes } from "@/lib/mfa/recovery-codes";
 /** Overzicht voor de "Accountbeveiliging"-pagina: wat is er actief. */
 export async function GET() {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     const [totpEnabled, recoveryCodesRemaining] = await Promise.all([
       hasTotpEnabled(prisma, user.id),
       countRemainingRecoveryCodes(prisma, user.id),

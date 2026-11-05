@@ -1,3 +1,4 @@
+import { audit, ipOf } from "@/lib/audit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
@@ -16,7 +17,7 @@ async function loadOwnPasskey(userId: string, id: string) {
 /** Een passkey een andere naam geven (geen gevoelige actie — geen her-authenticatie nodig). */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     const { id } = await params;
     await loadOwnPasskey(user.id, id);
     const { name } = renameSchema.parse(await req.json());
@@ -39,13 +40,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
  */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     const { id } = await params;
     await loadOwnPasskey(user.id, id);
     const { password } = deleteSchema.parse(await req.json());
     await requireCurrentPassword(user.id, password);
 
     await prisma.webAuthnCredential.delete({ where: { id } });
+    await audit({ action: "auth.passkey_removed", actor: user, target: { type: "user", id: user.id, name: user.name }, ip: ipOf(req) });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);

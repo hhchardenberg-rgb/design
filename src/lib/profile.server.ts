@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { assertStrongPassword } from "@/lib/password-policy.server";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { effectiveRoles } from "@/lib/roles";
@@ -85,11 +86,11 @@ export async function updateProfile(userId: string, input: ProfileInput) {
 /** Wachtwoord wijzigen vereist het huidige wachtwoord; het nieuwe moet verschillen. */
 export async function changePassword(userId: string, current: string, next: string) {
   if (!current) throw new ApiError(400, "Vul je huidige wachtwoord in.");
-  if (typeof next !== "string" || next.length < 8) throw new ApiError(400, "Wachtwoord moet minimaal 8 tekens zijn.");
-  if (next.length > 200) throw new ApiError(400, "Wachtwoord is te lang.");
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true, email: true, name: true } });
   if (!user) throw new ApiError(404, "Account niet gevonden.");
   if (!(await bcrypt.compare(current, user.passwordHash))) throw new ApiError(403, "Je huidige wachtwoord klopt niet.");
   if (current === next) throw new ApiError(400, "Kies een ander wachtwoord dan je huidige.");
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(next, 12) } });
+  await assertStrongPassword(next, user);
+  // Nieuw wachtwoord: alle bestaande sessies vervallen (sessionVersion, zie src/lib/auth.ts).
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(next, 12), sessionVersion: { increment: 1 } } });
 }

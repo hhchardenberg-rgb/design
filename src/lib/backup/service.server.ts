@@ -3,6 +3,7 @@ import { list as listBlobs } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { formatDayTime } from "@/lib/date-format";
 import { sendBackupFailedEmail } from "@/lib/mail";
+import { audit } from "@/lib/audit";
 import { encryptBackup, ENCRYPTION_OVERHEAD, fingerprintHex, parseKey } from "./crypto";
 import { dumpDatabase, type Sql } from "./db";
 import { selectExpired } from "./retention";
@@ -128,6 +129,7 @@ export async function runBackup(opts: RunOptions) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[backup] mislukt", error);
     await prisma.backupRun.update({ where: { id: run.id }, data: { status: "FAILED", finishedAt: new Date(), error: message.slice(0, 2000) } });
+    await audit({ action: "backup.failed", actor: opts.user ?? null, target: { type: "backup", id: run.id }, summary: `Back-up mislukt: ${message.slice(0, 300)}` });
     if (opts.notifyOnFailure) await notifyAdmins(run.startedAt, message);
     throw error;
   }

@@ -6,7 +6,7 @@ import { startTotpEnrollment } from "@/lib/mfa/totp-service";
 /** Stap 1: genereert een nieuw TOTP-geheim en de QR-code om te scannen. */
 export async function POST() {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     if (!user.email) throw new ApiError(400, "Account heeft geen e-mailadres.");
     const { secret, qrCodeDataUrl } = await startTotpEnrollment(prisma, user.id, user.email);
     // Het geheim zelf ook los teruggeven (naast de QR-code) voor gebruikers

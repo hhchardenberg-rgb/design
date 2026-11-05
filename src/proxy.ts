@@ -2,6 +2,23 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
 import { hasRole, isSectionAdmin, resolveHomePath, type AppRole } from "@/lib/roles";
+import { allowedDuringMfaSetup, MFA_SETUP_PATH } from "@/lib/auth-policy";
+
+// Apparaatcookie voor de melding "nieuwe inlog" (src/lib/login-alerts.server.ts): een willekeurige
+// waarde, verder niets. Wordt gezet op de loginpagina en op elke beveiligde pagina.
+const DEVICE_COOKIE = "hhc_device";
+function withDeviceCookie(req: Parameters<Parameters<typeof auth>[0]>[0], res: NextResponse): NextResponse {
+  if (!req.cookies.get(DEVICE_COOKIE)) {
+    res.cookies.set(DEVICE_COOKIE, crypto.randomUUID(), {
+      httpOnly: true,
+      secure: req.nextUrl.protocol === "https:",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 2 * 365 * 24 * 60 * 60,
+    });
+  }
+  return res;
+}
 
 // Gebruikt bewust de lichte, edge-safe config (geen Prisma/bcrypt) zodat
 // de Edge Function-bundel binnen Vercel's grootte-limiet blijft. De
@@ -37,8 +54,28 @@ const TICKETING_PREFIXES = ["/ticketing"];
 // beheren, ongeacht welke sectierol hij verder heeft).
 const LOGIN_ONLY_PREFIXES = ["/geen-toegang", "/account", "/commercieel"];
 
-export default auth((req) => {
+export default auth((req) => withDeviceCookie(req, guard(req)));
+
+/**
+ * Beheer (pagina's en API) alleen vanuit deze landen; Vercel geeft het land van de bezoeker mee
+ * in x-vercel-ip-country. Aanpasbaar met ADMIN_ALLOWED_COUNTRIES (bv. "NL,BE,DE,ES" tijdens een
+ * vakantie); "*" zet de beperking uit. Zonder landinformatie (lokaal) is er geen beperking.
+ */
+function adminCountryBlocked(req: Parameters<Parameters<typeof auth>[0]>[0]): boolean {
   const { pathname } = req.nextUrl;
+  if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) return false;
+  const allowed = (process.env.ADMIN_ALLOWED_COUNTRIES ?? "NL,BE,DE").toUpperCase().split(",").map((c) => c.trim()).filter(Boolean);
+  if (allowed.includes("*")) return false;
+  const country = req.headers.get("x-vercel-ip-country")?.toUpperCase();
+  return !!country && !allowed.includes(country);
+}
+
+function guard(req: Parameters<Parameters<typeof auth>[0]>[0]): NextResponse {
+  const { pathname } = req.nextUrl;
+  if (adminCountryBlocked(req)) {
+    return new NextResponse("Het beheer van de Hub is alleen bereikbaar vanuit Nederland, België en Duitsland.", { status: 403 });
+  }
+  if (pathname.startsWith("/api/")) return NextResponse.next();
   const isAdminRoute = pathname.startsWith("/admin");
   // Eén beheer, drie onderdelen: Ticketing-content (/admin/ticketing) is voor de
   // ticketingbeheerder, de overige inhoud voor de communicatiebeheerder, en de
@@ -63,6 +100,13 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Verplichte tweestapsverificatie nog niet ingesteld: eerst dat, de rest van de Hub is dicht.
+  if (user.mfaSetupRequired && !allowedDuringMfaSetup(pathname)) {
+    const url = new URL(MFA_SETUP_PATH, req.nextUrl.origin);
+    url.searchParams.set("verplicht", "1");
+    return NextResponse.redirect(url);
+  }
+
   const roles = (user.roles ?? []) as AppRole[];
   const has = (role: AppRole) => hasRole(roles, role);
   const deny = () => NextResponse.redirect(new URL(resolveHomePath(roles), req.nextUrl.origin));
@@ -75,7 +119,7 @@ export default auth((req) => {
   if (isTicketingRoute && !has("TICKETING")) return deny();
 
   return NextResponse.next();
-});
+}
 
 // Next.js parseert `matcher` statisch tijdens de build — dit moet dus een
 // letterlijke array zijn (geen `.map()` over de prefix-lijsten hierboven).
@@ -101,5 +145,9 @@ export const config = {
     "/geen-toegang/:path*",
     "/account/:path*",
     "/commercieel/:path*",
+    // Alleen voor de apparaatcookie; de pagina zelf is openbaar.
+    "/login",
+    // Alleen voor de landbeperking van het beheer; de API controleert zelf de rechten.
+    "/api/admin/:path*",
   ],
 };

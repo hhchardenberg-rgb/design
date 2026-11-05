@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/lib/auth.config";
 import { normalizeEmail } from "@/lib/utils";
 import { effectiveRoles } from "@/lib/roles";
+import { loadAuthState } from "@/lib/auth-state.server";
+import { noteSuccessfulLogin, noteFailedLogin } from "@/lib/login-alerts.server";
 import { checkLoginRateLimit, clientIpFrom, recordLoginAttempt } from "@/lib/login-rate-limit";
 import { hasTotpEnabled, verifyTotpLogin, verifyRecoveryCodeLogin } from "@/lib/mfa/totp-service";
 import { verifyPasskeyLogin, verifyPasswordlessLogin } from "@/lib/webauthn/service";
@@ -54,24 +56,31 @@ export const {
   signOut,
 } = NextAuth({
   ...authConfig,
-  session: { strategy: "jwt" },
   callbacks: {
     ...authConfig.callbacks,
-    // Rollen opnieuw ophalen (hooguit eens per minuut), zodat een gewijzigde rol
-    // niet pas na opnieuw inloggen werkt. Alleen hier, in de Node-runtime; de
-    // routebewaking leest daarna het bijgewerkte token.
+    // Rollen, sessieversie en tweestapsstatus opnieuw ophalen (hooguit eens per minuut; bij een
+    // openstaande verplichting tot tweestapsverificatie of na update() direct), zodat een gewijzigde
+    // rol of "overal uitloggen" niet pas na opnieuw inloggen werkt. Alleen hier, in de Node-runtime;
+    // de routebewaking leest daarna het bijgewerkte token.
     async jwt(params) {
       const token = authConfig.callbacks.jwt(params);
+      if (!token) return null;
       const now = Date.now();
       if (params.user) {
         token.rolesCheckedAt = now;
-      } else if (token.sub && now - ((token.rolesCheckedAt as number | undefined) ?? 0) > 60_000) {
+        return token;
+      }
+      const due = now - ((token.rolesCheckedAt as number | undefined) ?? 0) > 60_000;
+      if (token.sub && (due || token.mfaSetupRequired || params.trigger === "update")) {
         try {
-          const user = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true, roles: true } });
-          // Account verwijderd: de sessie vervalt meteen (null wist het sessiecookie), in plaats van
-          // tot 30 dagen geldig te blijven.
-          if (!user) return null;
-          token.roles = effectiveRoles(user);
+          const state = await loadAuthState(token.sub);
+          // Account verwijderd: de sessie vervalt meteen (null wist het sessiecookie).
+          if (!state) return null;
+          // Wachtwoord gewijzigd of "overal uitloggen": oudere sessies vervallen.
+          if (((token.sv as number | undefined) ?? 0) < state.sessionVersion) return null;
+          token.sv = state.sessionVersion;
+          token.roles = state.roles;
+          token.mfaSetupRequired = state.mfaSetupRequired;
           token.rolesCheckedAt = now;
         } catch {
           // Database even onbereikbaar: het bestaande token blijft gelden.
@@ -120,6 +129,7 @@ export const {
 
         if (!user || !passwordValid) {
           await recordLoginAttempt(prisma, normalizedEmail, ip, false);
+          await noteFailedLogin({ email: normalizedEmail, ip, user, reason: "password" });
           return null;
         }
 
@@ -154,17 +164,22 @@ export const {
 
           if (!codeValid) {
             await recordLoginAttempt(prisma, normalizedEmail, ip, false);
+            await noteFailedLogin({ email: normalizedEmail, ip, user, reason: "second-factor" });
             return null;
           }
         }
 
         await recordLoginAttempt(prisma, normalizedEmail, ip, true);
+        const state = await loadAuthState(user.id);
+        await noteSuccessfulLogin({ user, ip, request, method: mfaEnabled ? "wachtwoord + tweede stap" : "wachtwoord" });
 
         return {
           id: user.id,
           name: user.name,
           email: user.email,
-          roles: effectiveRoles(user),
+          roles: state?.roles ?? effectiveRoles(user),
+          sessionVersion: state?.sessionVersion ?? 0,
+          mfaSetupRequired: state?.mfaSetupRequired ?? false,
         };
       },
     }),
@@ -179,7 +194,7 @@ export const {
       credentials: {
         webauthnAssertion: { label: "Passkey", type: "text" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const raw = credentials?.webauthnAssertion as string | undefined;
         if (!raw) return null;
 
@@ -195,12 +210,16 @@ export const {
 
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) return null;
+        const state = await loadAuthState(user.id);
+        await noteSuccessfulLogin({ user, ip: clientIpFrom(request), request, method: "passkey" });
 
         return {
           id: user.id,
           name: user.name,
           email: user.email,
-          roles: effectiveRoles(user),
+          roles: state?.roles ?? effectiveRoles(user),
+          sessionVersion: state?.sessionVersion ?? 0,
+          mfaSetupRequired: false,
         };
       },
     }),

@@ -44,7 +44,7 @@ export function renderWelcomeMail(m: WelcomeMail): { subject: string; html: stri
     p(`Hoi ${escapeHtml(m.name)},`) +
     p(`Er is een account voor je aangemaakt in de HHC Hardenberg Hub. Je logt in met je e-mailadres <strong>${escapeHtml(m.email)}</strong>.`) +
     h("1. Kies je wachtwoord") +
-    p("Klik op de knop hieronder en kies zelf een wachtwoord van minimaal 8 tekens.") +
+    p("Klik op de knop hieronder en kies zelf een wachtwoord van minimaal 12 tekens.") +
     button(m.setPasswordUrl, "Wachtwoord instellen") +
     `<p style="margin:0 0 16px;font:13px/1.6 ${FONT};color:${MUTED}">Deze link werkt één keer en is geldig tot en met ${escapeHtml(m.linkValidUntil)}. Verlopen? Vraag via “Wachtwoord vergeten?” op de inlogpagina een nieuwe link aan.</p>` +
     h("2. Log in") +
@@ -76,7 +76,7 @@ export function renderWelcomeMail(m: WelcomeMail): { subject: string; html: stri
   const text = [
     `Hoi ${m.name},`,
     `Er is een account voor je aangemaakt in de HHC Hardenberg Hub. Je logt in met je e-mailadres ${m.email}.`,
-    `1. Kies je wachtwoord\nOpen deze link en kies zelf een wachtwoord van minimaal 8 tekens:\n${m.setPasswordUrl}\nDeze link werkt één keer en is geldig tot en met ${m.linkValidUntil}. Verlopen? Vraag via "Wachtwoord vergeten?" op ${loginUrl} een nieuwe link aan.`,
+    `1. Kies je wachtwoord\nOpen deze link en kies zelf een wachtwoord van minimaal 12 tekens:\n${m.setPasswordUrl}\nDeze link werkt één keer en is geldig tot en met ${m.linkValidUntil}. Verlopen? Vraag via "Wachtwoord vergeten?" op ${loginUrl} een nieuwe link aan.`,
     `2. Log in\nGa naar ${m.hubUrl} en log in met je e-mailadres en het wachtwoord dat je net hebt gekozen.`,
     `3. Zet tweestapsverificatie aan\nDaarvoor heb je een authenticator-app op je telefoon nodig, bijvoorbeeld Google Authenticator of Microsoft Authenticator.\n- Ga in de Hub naar Account > Beveiliging (${securityUrl}).\n- Klik op "Authenticator-app toevoegen" en scan de QR-code met je authenticator-app.\n- Vul de code van 6 cijfers uit de app in om het af te ronden.\n- Bewaar de herstelcodes op een veilige plek. Daarmee kom je nog binnen als je je telefoon kwijt bent.\nVanaf dan vraagt de Hub bij het inloggen, na je wachtwoord, om de code die op dat moment in je authenticator-app staat.`,
     `Vragen of lukt het niet? Neem contact op met de beheerder van de Hub.`,

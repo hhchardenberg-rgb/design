@@ -10,8 +10,8 @@ import type { PrismaClient } from "@prisma/client";
 // Beide tellen mislukte pogingen binnen een glijdend tijdvenster; een
 // geslaagde login telt niet mee (en wordt alsnog gelogd, voor eventuele
 // toekomstige "nieuwe inlogactiviteit"-detectie).
-const EMAIL_WINDOW_MS = 15 * 60 * 1000;
-const EMAIL_MAX_FAILURES = 5;
+export const EMAIL_WINDOW_MS = 15 * 60 * 1000;
+export const EMAIL_MAX_FAILURES = 5;
 const IP_WINDOW_MS = 15 * 60 * 1000;
 const IP_MAX_FAILURES = 20;
 

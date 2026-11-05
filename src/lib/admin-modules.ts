@@ -19,6 +19,7 @@ import {
   FileText,
   Ticket,
   DatabaseBackup,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react";
 import { hasRole, isSectionAdmin, type AppRole } from "@/lib/roles";
@@ -81,6 +82,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
     label: "Systeem",
     modules: [
       { title: "Gebruikers en rechten", description: "Accounts en rollen: wie mag wat in Communicatie, Ticketing en Commerciële Zaken.", href: "/admin/users", icon: UserCog, section: "systeem" },
+      { title: "Audit-log", description: "Wie deed wat: inloggen, beveiliging, accounts en rollen, back-ups en downloads.", href: "/admin/audit", icon: ScrollText, section: "hoofdadmin" },
       { title: "Back-ups", description: "Automatische, versleutelde back-ups van alle gegevens; handmatig een back-up maken of downloaden.", href: "/admin/backups", icon: DatabaseBackup, section: "hoofdadmin" },
       { title: "Documentatie", description: "PSD-conventies en handleidingen.", href: "/docs", icon: FileText, section: "hub" },
     ],
