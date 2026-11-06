@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireRole, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { buildPersberichtDocx } from "@/lib/persbericht/buildDocx";
 
 function slugify(title: string): string {
@@ -15,7 +15,7 @@ function slugify(title: string): string {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireUser();
+    await requireRole("HUB");
     const { id } = await params;
     const release = await prisma.pressRelease.findUnique({ where: { id } });
     if (!release) throw new ApiError(404, "Persbericht niet gevonden.");

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { getStorage } from "@/lib/storage";
+import { decryptFile, encryptFile, encryptionActive } from "@/lib/data-crypto";
 import { auditRecord, need, notFound, type RecordCtx } from "./ctx.server";
 import { visibleCompany } from "./companies.server";
 import { makePreview, PREVIEW_EXTENSIONS } from "./logo-preview.server";
@@ -81,13 +82,62 @@ const publicFile = (f: {
   previewMissing: !f.previewKey && !inlineImage(f.mimeType) && PREVIEW_CATEGORIES.has(f.category) && PREVIEW_EXTENSIONS.has(extOf(f.name)),
 });
 
+/**
+ * Sponsorbestanden staan versleuteld in de (openbare) Blob-opslag, met ".enc" achter de naam: een
+ * doorgestuurde of uitgelekte opslaglink levert alleen onleesbare bytes op. Openen kan alleen via
+ * de Hub, die bij elk verzoek de rechten controleert en ontsleutelt. In een preview wordt (nog)
+ * onversleuteld geschreven, zie src/lib/data-crypto.ts; lezen kan altijd beide.
+ */
+const ENCRYPTED_SUFFIX = ".enc";
+
+async function putFile(key: string, data: Buffer, contentType: string): Promise<string> {
+  if (!encryptionActive()) {
+    await getStorage().put({ key, data, contentType });
+    return key;
+  }
+  const encKey = key + ENCRYPTED_SUFFIX;
+  await getStorage().put({ key: encKey, data: encryptFile(data), contentType: "application/octet-stream" });
+  return encKey;
+}
+
+async function getFile(key: string): Promise<Buffer> {
+  return decryptFile(await getStorage().get(key));
+}
+
+/** Zet bestaande onversleutelde sponsorbestanden om naar versleutelde kopieën (nachtelijks, alleen productie). */
+export async function encryptExistingFiles(deadline: number): Promise<{ done: number; pending: number }> {
+  if (!encryptionActive()) return { done: 0, pending: 0 };
+  const rows = await prisma.commercialFile.findMany({
+    where: { OR: [{ storageKey: { not: { endsWith: ENCRYPTED_SUFFIX } } }, { previewKey: { not: { endsWith: ENCRYPTED_SUFFIX } } }] },
+    select: { id: true, storageKey: true, previewKey: true, mimeType: true },
+  });
+  let done = 0;
+  for (const r of rows) {
+    if (Date.now() > deadline) break;
+    const data: { storageKey?: string; previewKey?: string } = {};
+    const old: string[] = [];
+    if (!r.storageKey.endsWith(ENCRYPTED_SUFFIX)) {
+      data.storageKey = await putFile(r.storageKey, await getFile(r.storageKey), r.mimeType);
+      old.push(r.storageKey);
+    }
+    if (r.previewKey && !r.previewKey.endsWith(ENCRYPTED_SUFFIX)) {
+      data.previewKey = await putFile(r.previewKey, await getFile(r.previewKey), "image/png");
+      old.push(r.previewKey);
+    }
+    if (old.length === 0) continue;
+    await prisma.commercialFile.update({ where: { id: r.id }, data });
+    for (const key of old) await getStorage().delete(key);
+    done++;
+  }
+  return { done, pending: rows.length - done };
+}
+
 /** Slaat een voorbeeld op naast het origineel; null als er geen te maken is. */
 async function storePreview(storageKey: string, ext: string, data: Buffer): Promise<string | null> {
   const preview = await makePreview(ext, data);
   if (!preview) return null;
-  const key = `${storageKey}-preview-${randomUUID().slice(0, 8)}.png`;
-  await getStorage().put({ key, data: preview.png, contentType: "image/png" });
-  return key;
+  const base = storageKey.endsWith(ENCRYPTED_SUFFIX) ? storageKey.slice(0, -ENCRYPTED_SUFFIX.length) : storageKey;
+  return putFile(`${base}-preview-${randomUUID().slice(0, 8)}.png`, preview.png, "image/png");
 }
 
 export async function listFiles(ctx: RecordCtx, companyId: string, opts: { history?: boolean } = {}) {
@@ -133,9 +183,9 @@ export async function uploadFile(
   const { mime, ext } = inspectUpload(name, input.data, category);
 
   // Willekeurige sleutel zonder bestandsnaam of bedrijfsnaam; de opslag-URL verlaat de server nooit.
-  const storageKey = `commercial/${companyId}/${randomUUID()}`;
+  const plainKey = `commercial/${companyId}/${randomUUID()}`;
   const sha256 = createHash("sha256").update(input.data).digest("hex");
-  await getStorage().put({ key: storageKey, data: input.data, contentType: mime });
+  const storageKey = await putFile(plainKey, input.data, mime);
   let previewKey: string | null = null;
   try {
     previewKey = PREVIEW_CATEGORIES.has(category) ? await storePreview(storageKey, ext, input.data) : null;
@@ -173,7 +223,7 @@ export async function readFileForDownload(ctx: RecordCtx, id: string, inline: bo
   need(ctx, "files:download");
   const file = await visibleFile(ctx, id);
   if (file.archivedAt) notFound("Bestand");
-  const data = await getStorage().get(file.storageKey);
+  const data = await getFile(file.storageKey);
   await auditRecord(ctx, { action: "file.download", entity: "file", entityId: id, after: { companyId: file.companyId } });
   const asInline = inline && INLINE_MIME.has(file.mimeType);
   return { data, name: file.name, mime: file.mimeType, inline: asInline };
@@ -203,7 +253,7 @@ export async function readPreview(ctx: RecordCtx, id: string): Promise<{ data: B
   need(ctx, "files:read");
   const file = await visibleFile(ctx, id);
   if (file.archivedAt) notFound("Bestand");
-  if (file.previewKey) return { data: await getStorage().get(file.previewKey), mime: "image/png" };
-  if (inlineImage(file.mimeType)) return { data: await getStorage().get(file.storageKey), mime: file.mimeType };
+  if (file.previewKey) return { data: await getFile(file.previewKey), mime: "image/png" };
+  if (inlineImage(file.mimeType)) return { data: await getFile(file.storageKey), mime: file.mimeType };
   notFound("Voorbeeld");
 }

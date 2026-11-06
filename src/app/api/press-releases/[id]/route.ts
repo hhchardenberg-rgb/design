@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireRole, apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { isSectionAdmin } from "@/lib/roles";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireUser();
+    const user = await requireRole("HUB");
     const { id } = await params;
     const existing = await prisma.pressRelease.findUnique({ where: { id } });
     if (!existing) throw new ApiError(404, "Persbericht niet gevonden.");
@@ -32,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireUser();
+    const user = await requireRole("HUB");
     const { id } = await params;
     const existing = await prisma.pressRelease.findUnique({ where: { id } });
     if (!existing) throw new ApiError(404, "Persbericht niet gevonden.");

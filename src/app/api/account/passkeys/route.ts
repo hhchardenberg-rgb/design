@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 /** Lijst van de eigen passkeys (voor de "Accountbeveiliging"-pagina). */
 export async function GET() {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     const passkeys = await prisma.webAuthnCredential.findMany({
       where: { userId: user.id },
       select: { id: true, name: true, deviceType: true, createdAt: true, lastUsedAt: true },

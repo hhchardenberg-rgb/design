@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, apiErrorResponse } from "@/lib/api-guards";
+import { requireRole, apiErrorResponse } from "@/lib/api-guards";
 import { matchPrefill } from "@/lib/design/match-prefill";
 
 /**
@@ -9,7 +9,7 @@ import { matchPrefill } from "@/lib/design/match-prefill";
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireUser();
+    await requireRole("HUB");
     const { id } = await params;
     const versionId = new URL(request.url).searchParams.get("versionId");
     if (!versionId) return NextResponse.json({ error: "versionId ontbreekt." }, { status: 400 });

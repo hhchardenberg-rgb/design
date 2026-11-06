@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { audit, ipOf } from "@/lib/audit";
 import { apiErrorResponse } from "@/lib/api-guards";
 import { requireCommercial } from "@/lib/commercial/authz.server";
 import { buildRecordCtx } from "@/lib/commercial/ctx.server";
@@ -13,6 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { user } = await requireCommercial();
     const ctx = await buildRecordCtx(user);
     const f = await readFileForDownload(ctx, id, new URL(req.url).searchParams.get("inline") === "1");
+    if (!f.inline) await audit({ action: "file.download", actor: user, target: { type: "commercial_file", id, name: f.name }, ip: ipOf(req) });
     const ascii = f.name.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
     return new NextResponse(new Uint8Array(f.data), {
       headers: {

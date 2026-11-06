@@ -6,7 +6,7 @@ import { startPasskeyRegistration } from "@/lib/webauthn/service";
 /** Stap 1: genereert de WebAuthn-registratieopties voor `navigator.credentials.create()`. */
 export async function POST() {
   try {
-    const user = await requireUser();
+    const user = await requireUser({ allowMfaSetup: true });
     if (!user.email) throw new ApiError(400, "Account heeft geen e-mailadres.");
     const options = await startPasskeyRegistration(prisma, user.id, user.email);
     return NextResponse.json(options);

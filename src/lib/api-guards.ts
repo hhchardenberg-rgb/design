@@ -9,9 +9,17 @@ export class ApiError extends Error {
   }
 }
 
-export async function requireUser() {
+/**
+ * Vereist een ingelogde gebruiker. Wie verplicht tweestapsverificatie moet instellen en dat nog
+ * niet deed, krijgt 403 — behalve op de account-API's waarmee je dat juist instelt
+ * (`allowMfaSetup`).
+ */
+export async function requireUser(opts: { allowMfaSetup?: boolean } = {}) {
   const session = await auth();
   if (!session?.user) throw new ApiError(401, "Niet ingelogd.");
+  if (session.user.mfaSetupRequired && !opts.allowMfaSetup) {
+    throw new ApiError(403, "Stel eerst tweestapsverificatie in via Profiel > Beveiliging.");
+  }
   return session.user;
 }
 

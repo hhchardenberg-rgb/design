@@ -18,6 +18,8 @@ import {
   UserCog,
   FileText,
   Ticket,
+  DatabaseBackup,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react";
 import { hasRole, isSectionAdmin, type AppRole } from "@/lib/roles";
@@ -28,8 +30,8 @@ export interface AdminModule {
   href: string;
   icon: LucideIcon;
   // Bij welk onderdeel dit beheer hoort. "systeem" is voor alle beheerders
-  // (de pagina zelf bepaalt wat je er mag zien en doen).
-  section: "hub" | "ticketing" | "systeem";
+  // (de pagina zelf bepaalt wat je er mag zien en doen). "hoofdadmin" is alleen voor de hoofdadmin.
+  section: "hub" | "ticketing" | "systeem" | "hoofdadmin";
 }
 
 export interface AdminModuleGroup {
@@ -80,6 +82,8 @@ export const adminModuleGroups: AdminModuleGroup[] = [
     label: "Systeem",
     modules: [
       { title: "Gebruikers en rechten", description: "Accounts en rollen: wie mag wat in Communicatie, Ticketing en Commerciële Zaken.", href: "/admin/users", icon: UserCog, section: "systeem" },
+      { title: "Audit-log", description: "Wie deed wat: inloggen, beveiliging, accounts en rollen, back-ups en downloads.", href: "/admin/audit", icon: ScrollText, section: "hoofdadmin" },
+      { title: "Back-ups", description: "Automatische, versleutelde back-ups van alle gegevens; handmatig een back-up maken of downloaden.", href: "/admin/backups", icon: DatabaseBackup, section: "hoofdadmin" },
       { title: "Documentatie", description: "PSD-conventies en handleidingen.", href: "/docs", icon: FileText, section: "hub" },
     ],
   },
@@ -92,6 +96,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
  */
 export function visibleAdminGroups(roles: AppRole[] | undefined | null, canManageCommercial = false): AdminModuleGroup[] {
   const can = (section: AdminModule["section"]) => {
+    if (section === "hoofdadmin") return hasRole(roles, "ADMIN");
     if (section === "systeem") return hasRole(roles, "ADMIN") || isSectionAdmin(roles, "hub") || isSectionAdmin(roles, "ticketing") || canManageCommercial;
     return isSectionAdmin(roles, section);
   };

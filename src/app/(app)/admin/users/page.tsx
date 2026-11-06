@@ -198,7 +198,7 @@ export default function AdminUsersPage() {
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        minLength={8}
+                        minLength={12}
                         required={!sendWelcome}
                         placeholder={sendWelcome ? "Kiest de gebruiker zelf" : undefined}
                       />
@@ -277,8 +277,8 @@ export default function AdminUsersPage() {
                               size="sm"
                               disabled={busy}
                               onClick={() =>
-                                resetPassword.length < 8
-                                  ? setError("Nieuw wachtwoord moet minimaal 8 tekens zijn.")
+                                resetPassword.length < 12
+                                  ? setError("Nieuw wachtwoord moet minimaal 12 tekens zijn.")
                                   : run(() => call(`/api/admin/users/${u.id}`, "PATCH", { password: resetPassword }), () => { setResetId(null); setResetPassword(""); })
                               }
                             >

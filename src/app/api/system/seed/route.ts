@@ -40,7 +40,12 @@ export async function POST(req: Request) {
   }
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "beheer@hhchardenberg.nl";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "wijzig-dit-wachtwoord";
+  // Geen standaardwachtwoord meer: anders kon een seed een beheerder aanmaken met een wachtwoord
+  // dat in de broncode staat.
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminPassword || adminPassword.length < 12) {
+    return NextResponse.json({ error: "Zet SEED_ADMIN_PASSWORD (minstens 12 tekens) voordat je seedt." }, { status: 503 });
+  }
 
   try {
     const result = await runSeed(prisma, { adminEmail, adminPassword });

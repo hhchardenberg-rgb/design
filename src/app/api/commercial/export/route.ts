@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { audit, ipOf } from "@/lib/audit";
 import { apiErrorResponse } from "@/lib/api-guards";
 import { requireCommercial } from "@/lib/commercial/authz.server";
 import { buildRecordCtx } from "@/lib/commercial/ctx.server";
@@ -13,6 +14,7 @@ export async function GET(req: Request) {
     const ctx = await buildRecordCtx(user);
     const url = new URL(req.url);
     const kind = url.searchParams.get("kind");
+    await audit({ action: "data.export", actor: user, summary: `Export Commerciële Zaken: ${kind === "contacts" ? "contactpersonen (Excel)" : kind === "companies" ? "sponsoren (CSV)" : "contracten (CSV)"}`, ip: ipOf(req) });
     if (kind === "contacts") {
       const xlsx = await exportCompanyContactsXlsx(ctx, url.searchParams.getAll("tier"));
       return new NextResponse(Buffer.from(xlsx), {

@@ -1,3 +1,4 @@
+import { audit, ipOf } from "@/lib/audit";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-guards";
@@ -32,7 +33,9 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const manager = await requireUserManager();
-    const role = await createAccessRole(manager.actor, roleSchema.parse(await req.json()));
+    const input = roleSchema.parse(await req.json());
+    const role = await createAccessRole(manager.actor, input);
+    await audit({ action: "role.changed", actor: manager.user, target: { type: "role", id: role.id, name: input.name }, summary: `Rol aangemaakt: ${input.name}`, ip: ipOf(req) });
     return NextResponse.json({ role: { id: role.id } });
   } catch (error) {
     return apiErrorResponse(error);

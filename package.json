@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "prisma db push --accept-data-loss && next build",
+    "vercel-build": "prisma db push && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
@@ -13,16 +13,18 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\""
+    "test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\"",
+    "backup": "tsx scripts/backup.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1131.0",
+    "@aws-sdk/client-s3": "^3.1162.0",
+    "@aws-sdk/s3-request-presigner": "^3.1162.0",
     "@napi-rs/canvas": "^1.0.9",
     "@pdf-lib/fontkit": "^1.1.1",
     "@prisma/client": "^6.19.3",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.3",
-    "@vercel/blob": "^2.8.0",
+    "@vercel/blob": "^2.8.2",
     "ag-psd": "^31.0.2",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
@@ -34,7 +36,7 @@
     "konva": "^10.5.0",
     "lucide-react": "^1.46.0",
     "nanoid": "^6.0.1",
-    "next": "^16.4.0",
+    "next": "^16.4.5",
     "next-auth": "^5.0.0-beta.32",
     "node-ical": "^0.27.2",
     "otplib": "^13.5.0",
@@ -50,7 +52,7 @@
     "resend": "^6.32.1",
     "sharp": "^0.35.4",
     "tailwind-merge": "^3.7.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -74,6 +76,9 @@
     "next-auth": {
       "@simplewebauthn/browser": "$@simplewebauthn/browser",
       "@simplewebauthn/server": "$@simplewebauthn/server"
+    },
+    "@vercel/cli-config": {
+      "zod": "$zod"
     }
   },
   "allowScripts": {

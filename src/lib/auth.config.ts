@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import type { AppRole } from "@/lib/roles";
+import { adminSessionExpired, SESSION_MAX_AGE_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth-policy";
 
 /**
  * Edge-safe deel van de Auth.js-configuratie: geen providers, geen Prisma,
@@ -14,11 +15,19 @@ export const authConfig = {
     signIn: "/login",
   },
   providers: [],
+  // Sessie vervalt na 7 dagen zonder gebruik; beheerders daarnaast na 12 uur (zie auth-policy.ts).
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS, updateAge: SESSION_UPDATE_AGE_SECONDS },
   callbacks: {
     jwt({ token, user }) {
       if (user) {
         token.roles = (user as { roles: AppRole[] }).roles;
+        token.sv = (user as { sessionVersion?: number }).sessionVersion ?? 0;
+        token.mfaSetupRequired = !!(user as { mfaSetupRequired?: boolean }).mfaSetupRequired;
+        token.authAt = Date.now();
       }
+      // Sessies van vóór deze regel: de 12 uur gaan nu in.
+      if (typeof token.authAt !== "number") token.authAt = Date.now();
+      if (adminSessionExpired(token.roles as string[] | undefined, token.authAt as number)) return null;
       return token;
     },
     session({ session, token }) {
@@ -32,6 +41,7 @@ export const authConfig = {
         const fallbackRoles: AppRole[] = token.role === "ADMIN" ? ["ADMIN", "HUB"] : ["HUB"];
         const tokenRoles = token.roles as AppRole[] | undefined;
         session.user.roles = tokenRoles ?? fallbackRoles;
+        session.user.mfaSetupRequired = !!token.mfaSetupRequired;
       }
       return session;
     },

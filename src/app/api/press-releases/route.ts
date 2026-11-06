@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, apiErrorResponse, ApiError } from "@/lib/api-guards";
+import { requireRole, apiErrorResponse, ApiError } from "@/lib/api-guards";
 
 export async function GET() {
   try {
-    await requireUser();
+    await requireRole("HUB");
     const releases = await prisma.pressRelease.findMany({
       orderBy: { date: "desc" },
       include: { author: { select: { name: true } } },
@@ -17,7 +17,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const user = await requireUser();
+    const user = await requireRole("HUB");
     const body = await req.json();
     if (!body.title || !body.date || !body.lead || !body.body) {
       throw new ApiError(400, "Titel, datum, inleiding en tekst zijn verplicht.");

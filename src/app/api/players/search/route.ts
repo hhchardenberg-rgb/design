@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, apiErrorResponse } from "@/lib/api-guards";
+import { requireRole, apiErrorResponse } from "@/lib/api-guards";
 
 export async function GET(req: Request) {
   try {
-    await requireUser();
+    await requireRole("HUB");
     const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
     const players = await prisma.player.findMany({
       where: {

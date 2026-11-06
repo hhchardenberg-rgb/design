@@ -49,7 +49,8 @@ export async function GET(
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": contentTypeFor(key),
-        "Cache-Control": "public, max-age=31536000, immutable",
+        // private: deze bestanden staan achter de login en mogen niet in een gedeelde cache.
+        "Cache-Control": "private, max-age=31536000, immutable",
       },
     });
   } catch {

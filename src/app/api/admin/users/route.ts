@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { audit, ipOf } from "@/lib/audit";
+import { assertStrongPassword } from "@/lib/password-policy.server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +19,7 @@ const createUserSchema = z
     name: z.string().min(1, "Naam is verplicht."),
     email: z.email("Ongeldig e-mailadres."),
     // Leeg is toegestaan als er een welkomstmail gaat: de gebruiker kiest dan zelf een wachtwoord via de instellink.
-    password: z.union([z.literal(""), z.string().min(8, "Wachtwoord moet minimaal 8 tekens zijn.")]).optional(),
+    password: z.union([z.literal(""), z.string().min(12, "Wachtwoord moet minimaal 12 tekens zijn.")]).optional(),
     roleIds: z.array(z.string()).default([]),
     sendWelcome: z.boolean().default(true),
   })
@@ -63,6 +65,7 @@ export async function POST(req: Request) {
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) throw new ApiError(409, "Er bestaat al een account met dit e-mailadres.");
+    if (body.password) await assertStrongPassword(body.password, { email });
 
     // Zonder rollen: ["USER"] = nergens toegang (een lege set zou als "nog niet omgezet" gelden).
     const user = await prisma.user.create({
@@ -70,6 +73,7 @@ export async function POST(req: Request) {
       select: { id: true, name: true, email: true },
     });
     if (body.roleIds.length) await setUserRoles(manager.actor, user.id, body.roleIds);
+    await audit({ action: "user.created", actor: manager.user, target: { type: "user", id: user.id, name: user.name }, summary: `Account aangemaakt: ${user.name} (${user.email})`, ip: ipOf(req) });
     const welcome = body.sendWelcome ? await sendWelcome(prisma, user) : null;
     return NextResponse.json({ user, welcome });
   } catch (error) {
