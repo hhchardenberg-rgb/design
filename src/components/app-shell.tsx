@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Briefcase, Megaphone, Settings, Ticket } from "lucide-react";
 import { GroupedNavMenu, type NavMenuGroup } from "@/components/grouped-nav-menu";
 import { SectionSwitcher, type SectionLink } from "@/components/section-switcher";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
@@ -16,10 +16,12 @@ import { hasAnyAdminRole, hasRole, resolveHomePath, type AppRole } from "@/lib/r
 // Sub-navigatie bínnen het designtool-onderdeel — apart van het apps-menu,
 // zodat je niet elke keer een dropdown hoeft te openen om van "Nieuwe
 // afbeelding" naar "Mijn ontwerpen" te wisselen.
+// Staat als eigen balk onder de kopregel (geen swipe-menu): op smalle
+// schermen drie even brede knoppen met korte labels, vanaf `sm` de volle labels.
 const designtoolNav = [
-  { href: "/dashboard", label: "Overzicht" },
-  { href: "/templates", label: "Nieuwe afbeelding" },
-  { href: "/designs", label: "Mijn ontwerpen" },
+  { href: "/dashboard", label: "Overzicht", short: "Overzicht" },
+  { href: "/templates", label: "Nieuwe afbeelding", short: "Nieuw" },
+  { href: "/designs", label: "Mijn ontwerpen", short: "Ontwerpen" },
 ];
 
 // In het Onderdelen-menu staat de designtool gewoon tussen de bronnen en
@@ -52,11 +54,11 @@ function ticketingMenuGroups(newsEnabled: boolean): NavMenuGroup[] {
   ];
 }
 
-// Drie mogelijke top-level secties — enkel getoond aan wie er rechten voor
+// Top-level onderdelen ("apps") — enkel getoond aan wie er rechten voor
 // heeft. Nieuwe rol met een eigen sectie? Hier een entry toevoegen.
-const SECTION_DEFINITIONS: { key: string; role: AppRole; label: string; href: string }[] = [
-  { key: "hub", role: "HUB", label: "Communicatie", href: "/hub" },
-  { key: "ticketing", role: "TICKETING", label: "Ticketing", href: "/ticketing" },
+const SECTION_DEFINITIONS: (SectionLink & { role: AppRole })[] = [
+  { key: "hub", role: "HUB", label: "Communicatie", href: "/hub", icon: Megaphone },
+  { key: "ticketing", role: "TICKETING", label: "Ticketing", href: "/ticketing", icon: Ticket },
 ];
 
 export interface CommercialShellState {
@@ -107,13 +109,11 @@ export function AppShell({
           : "hub";
   const sections: SectionLink[] = SECTION_DEFINITIONS.filter((s) => hasRole(roles, s.role));
   // Commerciële Zaken: alleen leden (en hoofdadmins) zien deze sectie.
-  if (commercial.member) sections.push({ key: "commercial", label: "Commerciële Zaken", href: "/commercieel" });
+  if (commercial.member) sections.push({ key: "commercial", label: "Commerciële Zaken", href: "/commercieel", icon: Briefcase });
   // Eén beheer voor iedereen met beheerrechten, ongeacht het onderdeel.
-  if (hasAnyAdminRole(roles) || commercial.admin) sections.push({ key: "admin", label: "Beheer", href: "/admin" });
-  const sectionLinks: SectionLink[] = [
-    ...(sections.length > 1 ? sections : []),
-    { key: "account", label: "Profiel", href: "/account/profiel" },
-  ];
+  if (hasAnyAdminRole(roles) || commercial.admin) sections.push({ key: "admin", label: "Beheer", href: "/admin", icon: Settings });
+  // Met maar één app valt er niets te wisselen; dan alleen Profiel/Uitloggen.
+  const appLinks: SectionLink[] = sections.length > 1 ? sections.map(({ key, label, href, icon }) => ({ key, label, href, icon })) : [];
   const homeHref = resolveHomePath(roles);
 
   return (
@@ -124,26 +124,7 @@ export function AppShell({
             <Image src="/branding/hhc-logo.png" alt="HHC Hardenberg" width={32} height={40} className="h-10 w-8" priority />
             <span className="hidden sm:inline">HHC Hardenberg Hub</span>
           </Link>
-          {nav.length > 0 && (
-            <div className="relative min-w-0 flex-1">
-              <nav className="flex items-center gap-1 overflow-x-auto text-sm">
-                {nav.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "whitespace-nowrap rounded-md px-2 py-2 font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground sm:px-3",
-                      pathname?.startsWith(item.href) && "bg-surface-muted text-foreground"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface to-transparent" />
-            </div>
-          )}
-          <div className={cn("flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2", nav.length === 0 && "flex-1 justify-end")}>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2">
             {isAdminSection ? (
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : isTicketingSection ? (
@@ -151,12 +132,38 @@ export function AppShell({
             ) : isCommercialSection ? null : (
               <GroupedNavMenu groups={hubMenuGroups(news.hub)} label="Onderdelen" />
             )}
-            <SectionSwitcher items={sectionLinks} activeKey={activeSectionKey} />
-            <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
-              Uitloggen
-            </Button>
+            <SectionSwitcher
+              apps={appLinks}
+              activeKey={activeSectionKey}
+              accountHref="/account/profiel"
+              onSignOut={() => signOut({ callbackUrl: "/login" })}
+            />
           </div>
         </div>
+        {nav.length > 0 && (
+          <nav aria-label="Designtool" className="border-t border-border">
+            <div className="mx-auto grid max-w-6xl grid-cols-3 px-4 sm:flex sm:gap-2">
+              {nav.map((item) => {
+                const active = pathname?.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "relative px-1 py-2.5 text-center text-sm font-medium whitespace-nowrap transition-colors sm:px-3",
+                      active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span className="sm:hidden">{item.short}</span>
+                    <span className="hidden sm:inline">{item.label}</span>
+                    {active && <span aria-hidden className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-hhc-orange sm:inset-x-3" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        )}
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
     </div>
