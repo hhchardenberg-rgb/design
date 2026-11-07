@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Globe } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,14 @@ const quickLinks: QuickLink[] = [
     description: "Wie bellen, wie mag communiceren",
     href: "/crisis",
     icon: AlertTriangle,
+  },
+  {
+    id: "cms",
+    title: "HHC CMS",
+    description: "Website van HHC beheren",
+    href: "https://hhc.nl/cms",
+    icon: Globe,
+    external: true,
   },
 ];
 
