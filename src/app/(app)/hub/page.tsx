@@ -1,25 +1,47 @@
 import Link from "next/link";
-import { ArrowRight, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { auth } from "@/lib/auth";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { AgendaEventCard } from "@/components/agenda-event-card";
 import { NewsPosts } from "@/components/news-posts";
+import { QuickLinks, type QuickLink } from "@/components/quick-links";
+import { SocialIcon } from "@/components/social-icons";
 import { getMergedAgendaEvents } from "@/lib/agenda";
 import { isNewsEnabled, listNewsPosts } from "@/lib/news.server";
+import { SOCIAL_PLATFORM_LABELS } from "@/lib/social-channels";
+import { listSocialChannels } from "@/lib/social-channels.server";
 
 export const revalidate = 900;
 
+const quickLinks: QuickLink[] = [
+  {
+    id: featuredModule.id,
+    title: featuredModule.title,
+    description: "Clubafbeeldingen maken op basis van templates",
+    href: featuredModule.href,
+    icon: featuredModule.icon,
+  },
+  {
+    id: "crisis",
+    title: "Crisiscommunicatie",
+    description: "Wie bellen, wie mag communiceren",
+    href: "/crisis",
+    icon: AlertTriangle,
+  },
+];
+
 export default async function HubPage() {
-  const [session, { events: highlightedEvents }, newsEnabled] = await Promise.all([
+  const [session, { events: highlightedEvents }, newsEnabled, socialChannels] = await Promise.all([
     auth(),
     getMergedAgendaEvents({ onlyHighlighted: true, limit: 4 }),
     isNewsEnabled("hub"),
+    listSocialChannels(),
   ]);
   const newsPosts = newsEnabled ? await listNewsPosts("hub", 3) : [];
-  // De "crisis"-groep krijgt hierboven al een eigen, altijd-zichtbare
-  // snelkoppeling — niet nogmaals tonen tussen de gewone onderdelen-secties.
+  // Crisiscommunicatie staat al bij de snelle links bovenaan, dus de
+  // "crisis"-groep niet nogmaals tonen tussen de gewone onderdelen-secties.
   // Staat het nieuws uit, dan verdwijnt ook de Nieuws-tegel.
   const moduleGroups = hubModuleGroups
     .filter((g) => g.id !== "crisis")
@@ -35,40 +57,27 @@ export default async function HubPage() {
         </p>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        <Link href={featuredModule.href} className="sm:col-span-2">
-          <Card className="h-full bg-hhc-orange text-hhc-white transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <CardContent className="flex h-full flex-col justify-between gap-4 p-6">
-              <div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
-                  <featuredModule.icon className="h-5 w-5" />
-                </div>
-                <p className="mt-3 text-lg font-bold">{featuredModule.title}</p>
-                <p className="mt-1 text-sm text-white/80">{featuredModule.description}</p>
-              </div>
-              <span className="flex items-center gap-1 text-sm font-medium">
-                Open de designtool <ArrowRight className="h-4 w-4" />
-              </span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/crisis">
-          <Card className="h-full border-destructive/40 transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <CardContent className="flex h-full flex-col justify-between gap-4 p-6">
-              <div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-                <p className="mt-3 text-lg font-bold">Crisiscommunicatie</p>
-                <p className="mt-1 text-sm text-muted-foreground">Wie bellen, wie mag communiceren.</p>
-              </div>
-              <span className="flex items-center gap-1 text-sm font-medium text-destructive">
-                Bekijk protocollen <ArrowRight className="h-4 w-4" />
-              </span>
-            </CardContent>
-          </Card>
-        </Link>
-      </section>
+      <QuickLinks links={quickLinks}>
+        {socialChannels.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center">
+            <p className="text-sm font-medium text-muted-foreground">Volg HHC Hardenberg</p>
+            <div className="flex flex-wrap gap-2">
+              {socialChannels.map((channel) => (
+                <a
+                  key={channel.platform}
+                  href={channel.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-medium transition-colors hover:border-hhc-orange hover:text-hhc-orange-dark"
+                >
+                  <SocialIcon platform={channel.platform} className="h-4 w-4" />
+                  {SOCIAL_PLATFORM_LABELS[channel.platform]}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </QuickLinks>
 
       {highlightedEvents.length > 0 && (
         <section>

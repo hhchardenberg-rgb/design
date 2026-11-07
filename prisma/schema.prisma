@@ -567,6 +567,17 @@ model NewsSectionSetting {
   @@map("news_section_settings")
 }
 
+// Links naar de social media-kanalen van HHC Hardenberg, getoond als knoppen op de
+// Communicatie-startpagina. In te stellen via Beheer > Social media. Geen rij = niet tonen.
+model SocialChannel {
+  platform    String   @id // zie SOCIAL_PLATFORMS in src/lib/social-channels.ts
+  url         String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("social_channels")
+}
+
 // ---------------------------------------------------------------------------
 // Persberichten
 // ---------------------------------------------------------------------------

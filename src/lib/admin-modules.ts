@@ -20,6 +20,7 @@ import {
   Ticket,
   DatabaseBackup,
   ScrollText,
+  Share2,
   type LucideIcon,
 } from "lucide-react";
 import { hasRole, isSectionAdmin, type AppRole } from "@/lib/roles";
@@ -52,6 +53,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
       { title: "Kennisbank", description: "Handleidingen en werkwijzen beheren.", href: "/admin/kennisbank", icon: BookOpen, section: "hub" },
       { title: "Crisiscommunicatie", description: "Protocollen per incidenttype beheren.", href: "/admin/crisis", icon: AlertTriangle, section: "hub" },
       { title: "Contactpersonen", description: "Wie doet wat binnen Team Communicatie.", href: "/admin/contactpersonen", icon: Users, section: "hub" },
+      { title: "Social media", description: "Links naar de social media-kanalen op de Communicatie-startpagina.", href: "/admin/social-media", icon: Share2, section: "hub" },
       {
         title: "Ticketing",
         description: "Handleidingen en standaard e-mails voor het ticketingsysteem beheren.",

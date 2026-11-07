@@ -35,8 +35,8 @@ export interface HubModuleGroup {
   modules: HubModule[];
 }
 
-// De designtool is het meestgebruikte onderdeel en krijgt daarom altijd
-// een eigen, prominente tegel op de hub-homepage. In het apps-menu staat hij
+// De designtool is het meestgebruikte onderdeel en staat daarom altijd
+// bij de snelle links bovenaan de hub-homepage. In het apps-menu staat hij
 // onder "Bronnen & hulpmiddelen" (zie app-shell.tsx).
 export const featuredModule: HubModule = {
   id: "designtool",
