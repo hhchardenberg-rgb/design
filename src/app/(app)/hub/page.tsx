@@ -59,8 +59,7 @@ export default async function HubPage() {
 
       <QuickLinks links={quickLinks}>
         {socialChannels.length > 0 && (
-          <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center">
-            <p className="text-sm font-medium text-muted-foreground">Volg HHC Hardenberg</p>
+          <div className="border-t border-border p-4">
             <div className="flex flex-wrap gap-2">
               {socialChannels.map((channel) => (
                 <a
