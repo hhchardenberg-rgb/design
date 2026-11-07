@@ -2,7 +2,7 @@
 
 import { shrinkImageForUpload } from "@/lib/client/shrink-image";
 import { useEffect, useState } from "react";
-import { Upload } from "lucide-react";
+import { ClipboardPaste, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
@@ -20,6 +20,20 @@ interface Contact {
 
 const emptyForm = { name: "", role: "", email: "", phone: "", notes: "" };
 
+interface ImportPreviewRow {
+  line: number;
+  role: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  status: "nieuw" | "bestaat";
+}
+
+interface ImportResult {
+  preview: ImportPreviewRow[];
+  errors: { line: number; text: string; reason: string }[];
+}
+
 export default function AdminContactpersonenPage() {
   const toast = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -32,6 +46,46 @@ export default function AdminContactpersonenPage() {
   const [editForm, setEditForm] = useState(emptyForm);
   const [editPhoto, setEditPhoto] = useState<File | null>(null);
   const [editRemovePhoto, setEditRemovePhoto] = useState(false);
+
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importPreview, setImportPreview] = useState<ImportResult | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  async function runImport(dryRun: boolean) {
+    setImportBusy(true);
+    setImportError(null);
+    try {
+      const res = await fetch("/api/admin/contacts/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: importText, dryRun }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setImportError(data.error ?? "Inlezen mislukt.");
+        return;
+      }
+      if (dryRun) {
+        setImportPreview(data);
+        return;
+      }
+      const created = data.created ?? 0;
+      const skipped = data.skipped ?? 0;
+      toast.success(
+        `${created} contactperso${created === 1 ? "on" : "nen"} toegevoegd` + (skipped ? `, ${skipped} overgeslagen (bestond al).` : ".")
+      );
+      setImportText("");
+      setImportPreview(null);
+      setImportOpen(false);
+      await load();
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  const importNewCount = importPreview?.preview.filter((r) => r.status === "nieuw").length ?? 0;
 
   async function load() {
     const res = await fetch("/api/admin/contacts");
@@ -144,6 +198,101 @@ export default function AdminContactpersonenPage() {
               Toevoegen
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-medium">Lijst plakken</p>
+              <p className="text-sm text-muted-foreground">Voeg meerdere contactpersonen tegelijk toe vanuit Excel, Word of een mail.</p>
+            </div>
+            {!importOpen && (
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <ClipboardPaste className="h-4 w-4" />
+                Lijst plakken
+              </Button>
+            )}
+          </div>
+          {importOpen && (
+            <div className="flex flex-col gap-3">
+              <div>
+                <Label>Eén persoon per regel: functie, naam en telefoon</Label>
+                <Textarea
+                  value={importText}
+                  onChange={(e) => {
+                    setImportText(e.target.value);
+                    setImportPreview(null);
+                  }}
+                  rows={8}
+                  placeholder={"Voorzitter\tJan Jansen +31 6 12345678\nSecretaris; Anna Smit; 06 12345678"}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Kolommen gescheiden door een tab (zoals uit Excel) of een puntkomma. Namen die er al staan worden overgeslagen en niet gewijzigd.
+                </p>
+              </div>
+              {importError && <p className="text-sm text-destructive">{importError}</p>}
+              {importPreview && (
+                <div className="flex flex-col gap-2">
+                  <div className="overflow-x-auto rounded-md border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-surface-muted text-left text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 font-medium">Functie</th>
+                          <th className="px-3 py-2 font-medium">Naam</th>
+                          <th className="px-3 py-2 font-medium">Telefoon</th>
+                          <th className="px-3 py-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.preview.map((r) => (
+                          <tr key={r.line} className="border-t border-border">
+                            <td className="px-3 py-2">{r.role}</td>
+                            <td className="px-3 py-2">{r.name}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{r.phone ?? r.email ?? "–"}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {r.status === "nieuw" ? (
+                                <span className="text-hhc-orange-dark">Nieuw</span>
+                              ) : (
+                                <span className="text-muted-foreground">Bestaat al, wordt overgeslagen</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {importPreview.errors.map((err) => (
+                    <p key={err.line} className="text-sm text-destructive">
+                      Regel {err.line} ({err.text}): {err.reason}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {!importPreview ? (
+                  <Button onClick={() => runImport(true)} disabled={importBusy || !importText.trim()}>
+                    Voorbeeld bekijken
+                  </Button>
+                ) : (
+                  <Button onClick={() => runImport(false)} disabled={importBusy || importNewCount === 0}>
+                    {importNewCount === 0 ? "Niets nieuws om toe te voegen" : `${importNewCount} toevoegen`}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setImportOpen(false);
+                    setImportPreview(null);
+                    setImportError(null);
+                  }}
+                >
+                  Annuleren
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
