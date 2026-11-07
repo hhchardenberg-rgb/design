@@ -82,7 +82,11 @@ export async function ensureSystemRoles(): Promise<void> {
  * standaardrol. Een regel in het logboek markeert dat het gebeurd is, zodat een bewuste
  * verwijdering door een beheerder daarna blijft staan.
  */
-const LATER_PERMISSIONS: { roleKey: string; permission: Permission }[] = [{ roleKey: "beheerder", permission: "history:delete" }];
+const LATER_PERMISSIONS: { roleKey: string; permission: Permission }[] = [
+  { roleKey: "beheerder", permission: "history:delete" },
+  { roleKey: "beheerder", permission: "deleted_archive:read" },
+  { roleKey: "beheerder", permission: "deleted_archive:update" },
+];
 
 async function addLaterPermissions(): Promise<void> {
   for (const { roleKey, permission } of LATER_PERMISSIONS) {

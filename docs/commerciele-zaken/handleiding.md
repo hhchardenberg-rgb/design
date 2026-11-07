@@ -38,7 +38,9 @@ waarbij ze zijn aangesloten. Er is één beheer (Beheer), met drie soorten behee
 Toegang tot Commerciële Zaken geef je via Beheer > Gebruikers en rechten (blok "Commerciële Zaken" in de kaart van de gebruiker).
 
 Een bevoegdheid heet `onderdeel:actie` (bijvoorbeeld `contracts:update`, `amounts:read`, `mailings:send`).
-Er is bewust geen "verwijderen": dossiers worden gearchiveerd.
+Een dossier kun je **archiveren** (uit de actieve lijsten, voor iedereen met leesrecht terug te vinden via
+het filter "Gearchiveerd") of **verwijderen**. Verwijderen wist niets: het dossier gaat met alles wat eraan
+vastzit naar het gesloten archief (zie hieronder).
 
 **Rolsjablonen** (aanpasbaar of te vervangen):
 
@@ -158,6 +160,15 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
 
 ## 4. Beheer
 
+- **Dossier verwijderen en het gesloten archief**: in een dossier staat onder het tabblad Overzicht de knop
+  *Dossier verwijderen* (voor wie `companies:archive` heeft). Je krijgt eerst de vraag of je het zeker weet,
+  met een overzicht van wat er meegaat (contactpersonen, contactmomenten, taken, bestanden, contracten, kansen
+  en facturen) en een optionele reden; pas na het aanvinken van "Ja, ik weet het zeker" kan het. Het dossier
+  verdwijnt daarna uit alle lijsten, overzichten, rapportages, herinneringen en mailings, maar er wordt niets
+  gewist. Alleen beheerders (hoofdadmin en de rol Beheerder Commerciële Zaken, bevoegdheid
+  `deleted_archive:read`) zien het bij Toezicht > *Gesloten archief*, alleen-lezen, met wie het verwijderde,
+  wanneer en waarom. Met `deleted_archive:update` kan een beheerder het dossier daar terugzetten; dan is alles
+  weer zichtbaar zoals het was. Verwijderen en terugzetten staan in het CZ-logboek en in Beheer > Audit-log.
 - **Toegang en rechten**: één rollensysteem voor de hele Hub, bij Beheer > Gebruikers en rechten. Op het
   tabblad *Rollen* maak je rollen aan, bewerk, kopieer of verwijder je ze. Een rol zegt per onderdeel wat
   iemand mag: Communicatie en Ticketing (geen toegang, gebruiker of beheerder) en Commerciële Zaken (geen

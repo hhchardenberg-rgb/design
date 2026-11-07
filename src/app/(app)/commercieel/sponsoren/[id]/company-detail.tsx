@@ -15,6 +15,7 @@ import { ActivityList, KIND, NATURE } from "@/components/commercial/activity-lis
 import { FilesTab } from "./files-tab";
 import { MergePanel } from "./merge-panel";
 import { ContractsTab } from "./contracts-tab";
+import { DeleteCompanyButton } from "./delete-dialog";
 
 interface Company {
   id: string;
@@ -233,6 +234,7 @@ function Overview({ company, canEdit, canArchive, onSaved }: { company: Company;
       <div className="flex flex-wrap gap-2">
         {canEdit && <Button type="submit" disabled={saving}>{saving ? "Opslaan…" : "Opslaan"}</Button>}
         {canArchive && <Button type="button" variant="outline" onClick={archive}>{company.archivedAt ? "Dossier herstellen" : "Dossier archiveren"}</Button>}
+        {canArchive && <span className="sm:ml-auto"><DeleteCompanyButton companyId={company.id} /></span>}
       </div>
       {!canEdit && <p className="text-sm text-muted-foreground">Je kunt dit dossier bekijken maar niet wijzigen.</p>}
     </form>

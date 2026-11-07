@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { need, notFound, type RecordCtx } from "./ctx.server";
 import { visibleCompany } from "./companies.server";
-import { canSeeOwned, canSeeTask, taskScopeWhere } from "./scope";
+import { canSeeOwned, canSeeTask, TASK_NOT_DELETED, taskScopeWhere } from "./scope";
 
 export interface TaskFields {
   title: string;
@@ -26,8 +26,9 @@ async function assertAssignee(ctx: RecordCtx, assigneeId: string) {
 }
 
 async function visibleTask(ctx: RecordCtx, id: string) {
-  const task = await prisma.commercialTask.findUnique({ where: { id } });
-  if (!task || !canSeeTask(ctx.scope("tasks"), task, ctx.viewer)) notFound("Taak");
+  const task = await prisma.commercialTask.findUnique({ where: { id }, include: { company: { select: { deletedAt: true } } } });
+  // Taken van een verwijderd dossier staan in het gesloten archief.
+  if (!task || task.company?.deletedAt || !canSeeTask(ctx.scope("tasks"), task, ctx.viewer)) notFound("Taak");
   return task;
 }
 
@@ -46,6 +47,7 @@ export async function listTasks(ctx: RecordCtx, query: TaskListQuery) {
   const where: Prisma.CommercialTaskWhereInput = {
     AND: [
       taskScopeWhere(ctx.scope("tasks"), ctx.viewer),
+      TASK_NOT_DELETED,
       query.mine ? { assigneeId: ctx.userId } : {},
       query.status ? { status: query.status } : {},
       query.overdue ? { status: "OPEN", dueAt: { lt: new Date() } } : {},
