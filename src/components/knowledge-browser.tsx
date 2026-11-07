@@ -34,6 +34,8 @@ export function KnowledgeBrowser({
     );
   }, [articles, query, showSearch]);
 
+  const hasCategories = filtered.some((a) => a.category);
+
   return (
     <div className="flex flex-col gap-4">
       {showSearch && (
@@ -52,25 +54,34 @@ export function KnowledgeBrowser({
         <p className="text-sm text-muted-foreground">Geen handleidingen gevonden voor &quot;{query}&quot;.</p>
       )}
 
-      <div className="flex flex-col gap-2">
+      {/* Eén gedeeld raster (subgrid) zodat de labelkolom overal even breed is
+          en elke titel op dezelfde plek begint, ongeacht de lengte van het label. */}
+      <div
+        className={cn(
+          "grid gap-y-2",
+          hasCategories ? "grid-cols-[max-content_minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"
+        )}
+      >
         {filtered.map((a) => {
           const open = openId === a.id;
           return (
-            <Card key={a.id} className="overflow-hidden">
+            <Card key={a.id} className="col-span-full grid grid-cols-subgrid overflow-hidden">
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                className="col-span-full grid grid-cols-subgrid items-center gap-x-3 p-4 text-left"
                 onClick={() => setOpenId(open ? null : a.id)}
                 aria-expanded={open}
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  {a.category && <Badge variant="outline">{a.category}</Badge>}
-                  <p className="font-medium">{a.title}</p>
-                </div>
+                {hasCategories && (
+                  <span className="justify-self-start">
+                    {a.category && <Badge variant="outline">{a.category}</Badge>}
+                  </span>
+                )}
+                <p className="font-medium">{a.title}</p>
                 <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
               </button>
               {open && (
-                <div className="border-t border-border px-4 pb-4 pt-3">
+                <div className="col-span-full border-t border-border px-4 pb-4 pt-3">
                   {a.body ? (
                     <MarkdownContent>{a.body}</MarkdownContent>
                   ) : (
