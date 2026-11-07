@@ -30,6 +30,8 @@ export const AUDIT_ACTIONS = {
   "backup.download": "Back-up gedownload",
   "data.export": "Gegevens geëxporteerd",
   "file.download": "Sponsorbestand gedownload",
+  "commercial.company_deleted": "Sponsordossier verwijderd (gesloten archief)",
+  "commercial.company_restored": "Sponsordossier teruggezet uit gesloten archief",
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

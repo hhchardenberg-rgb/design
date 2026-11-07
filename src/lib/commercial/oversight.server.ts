@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { need, type RecordCtx } from "./ctx.server";
+import { TASK_NOT_DELETED } from "./scope";
 
 // Toezicht voor beheerders van Commerciële Zaken (recht 'rights:manage_rights': hoofdadmin en
 // Beheerder Commerciële Zaken). Bewust niet beperkt door het eigen recordbereik: wie bereik en rechten
@@ -73,10 +74,10 @@ export async function listPeople(ctx: RecordCtx) {
   const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, email: true }, orderBy: { name: "asc" } });
   const now = new Date();
   const [open, overdue, opps, companies] = await Promise.all([
-    prisma.commercialTask.groupBy({ by: ["assigneeId"], where: { status: "OPEN", assigneeId: { in: ids } }, _count: { _all: true } }),
-    prisma.commercialTask.groupBy({ by: ["assigneeId"], where: { status: "OPEN", dueAt: { lt: now }, assigneeId: { in: ids } }, _count: { _all: true } }),
-    prisma.commercialOpportunity.groupBy({ by: ["ownerId"], where: { archivedAt: null, stage: { notIn: ["WON", "LOST"] }, ownerId: { in: ids } }, _count: { _all: true } }),
-    prisma.commercialCompany.groupBy({ by: ["ownerId"], where: { archivedAt: null, ownerId: { in: ids } }, _count: { _all: true } }),
+    prisma.commercialTask.groupBy({ by: ["assigneeId"], where: { status: "OPEN", assigneeId: { in: ids }, ...TASK_NOT_DELETED }, _count: { _all: true } }),
+    prisma.commercialTask.groupBy({ by: ["assigneeId"], where: { status: "OPEN", dueAt: { lt: now }, assigneeId: { in: ids }, ...TASK_NOT_DELETED }, _count: { _all: true } }),
+    prisma.commercialOpportunity.groupBy({ by: ["ownerId"], where: { archivedAt: null, company: { deletedAt: null }, stage: { notIn: ["WON", "LOST"] }, ownerId: { in: ids } }, _count: { _all: true } }),
+    prisma.commercialCompany.groupBy({ by: ["ownerId"], where: { archivedAt: null, deletedAt: null, ownerId: { in: ids } }, _count: { _all: true } }),
   ]);
   const count = (rows: { _count: { _all: number } }[] & { assigneeId?: string | null; ownerId?: string | null }[], id: string) =>
     (rows as { assigneeId?: string | null; ownerId?: string | null; _count: { _all: number } }[]).find((r) => (r.assigneeId ?? r.ownerId) === id)?._count._all ?? 0;
@@ -99,10 +100,10 @@ export async function personOverview(ctx: RecordCtx, userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } });
   if (!user) throw new ApiError(404, "Persoon niet gevonden.");
   const [tasks, opps, counterparts, companies, activity] = await Promise.all([
-    prisma.commercialTask.findMany({ where: { assigneeId: userId, status: "OPEN" }, orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }], take: 100, include: { company: { select: { id: true, name: true } } } }),
-    prisma.commercialOpportunity.findMany({ where: { ownerId: userId, archivedAt: null, stage: { notIn: ["WON", "LOST"] } }, orderBy: [{ expectedCloseOn: { sort: "asc", nulls: "last" } }], take: 100, include: { company: { select: { id: true, name: true } } } }),
-    prisma.commercialCounterpart.findMany({ where: { responsibleId: userId, status: { in: ["PLANNED", "IN_PROGRESS"] } }, orderBy: [{ dueOn: { sort: "asc", nulls: "last" } }], take: 100 }),
-    prisma.commercialCompany.findMany({ where: { ownerId: userId, archivedAt: null }, orderBy: { name: "asc" }, take: 100, select: { id: true, name: true, status: true } }),
+    prisma.commercialTask.findMany({ where: { assigneeId: userId, status: "OPEN", ...TASK_NOT_DELETED }, orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }], take: 100, include: { company: { select: { id: true, name: true } } } }),
+    prisma.commercialOpportunity.findMany({ where: { ownerId: userId, archivedAt: null, company: { deletedAt: null }, stage: { notIn: ["WON", "LOST"] } }, orderBy: [{ expectedCloseOn: { sort: "asc", nulls: "last" } }], take: 100, include: { company: { select: { id: true, name: true } } } }),
+    prisma.commercialCounterpart.findMany({ where: { responsibleId: userId, status: { in: ["PLANNED", "IN_PROGRESS"] }, contract: { company: { deletedAt: null } } }, orderBy: [{ dueOn: { sort: "asc", nulls: "last" } }], take: 100 }),
+    prisma.commercialCompany.findMany({ where: { ownerId: userId, archivedAt: null, deletedAt: null }, orderBy: { name: "asc" }, take: 100, select: { id: true, name: true, status: true } }),
     prisma.commercialAuditEvent.findMany({ where: { actorId: userId }, orderBy: { createdAt: "desc" }, take: 20, select: { id: true, createdAt: true, action: true, entity: true } }),
   ]);
   const now = Date.now();
