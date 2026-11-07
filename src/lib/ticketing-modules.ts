@@ -4,6 +4,7 @@
 // met status "soon" als duidelijke plek in de structuur, zie hub-modules.ts
 // voor dat patroon).
 
+import type { QuickLink } from "@/components/quick-links";
 import { BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, Newspaper, type LucideIcon } from "lucide-react";
 
 export interface TicketingModule {
@@ -15,23 +16,16 @@ export interface TicketingModule {
   icon: LucideIcon;
 }
 
-export interface TicketingQuickLink {
-  id: string;
-  title: string;
-  description: string;
-  href: string;
-  icon: LucideIcon;
-}
-
 // Snelle links naar de externe systemen die bij ticketing horen — direct
 // zichtbaar op de Ticketing-startpagina.
-export const ticketingQuickLinks: TicketingQuickLink[] = [
+export const ticketingQuickLinks: QuickLink[] = [
   {
     id: "iapp",
     title: "iApp",
     description: "Ledenpas-beheer",
     href: "https://iapp.cloud/",
     icon: Smartphone,
+    external: true,
   },
   {
     id: "fullhouse",
@@ -39,6 +33,7 @@ export const ticketingQuickLinks: TicketingQuickLink[] = [
     description: "Ticketing-systeem",
     href: "https://dashboard.fullhouse.tech/",
     icon: Ticket,
+    external: true,
   },
   {
     id: "hhc-mail",
@@ -46,6 +41,7 @@ export const ticketingQuickLinks: TicketingQuickLink[] = [
     description: "Webmail",
     href: "https://hhc.nl/mail",
     icon: AtSign,
+    external: true,
   },
 ];
 
