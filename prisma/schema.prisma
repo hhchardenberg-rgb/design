@@ -2025,3 +2025,143 @@ model TicketAuditEvent {
   @@index([action, at])
   @@map("tickets_audit_events")
 }
+
+// ── HHC Tickets, fase 2 t/m 5 (alleen additief) ─────────────────────────────
+
+/// Verzendlog van tickets: wie, welk kanaal, uitkomst. Geen adres of inhoud (privacy).
+model TicketDelivery {
+  id        String   @id @default(cuid())
+  ticketId  String
+  // EMAIL | LINK_COPY | WHATSAPP
+  channel   String
+  // SENT | FAILED
+  status    String
+  error     String?
+  byId      String?
+  byName    String?
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("tickets_deliveries")
+}
+
+/// Bewerkbare e-mailtemplates (sleutel "ticket", "ticket_reminder").
+model TicketEmailTemplate {
+  key       String   @id
+  subject   String
+  body      String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("tickets_email_templates")
+}
+
+/// Ingang van het stadion, optioneel gekoppeld aan een vak.
+model TicketEntrance {
+  id        String          @id @default(cuid())
+  name      String
+  zoneId    String?
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  scanners  TicketScanner[]
+
+  @@map("tickets_entrances")
+}
+
+/// Scanner met inlogcode + PIN (geen Hub-account). Beheerders met een Hub-account scannen via hun eigen sessie.
+model TicketScanner {
+  id             String          @id @default(cuid())
+  name           String
+  // Korte, leesbare inlogcode (uniek) en gehashte PIN.
+  loginCode      String          @unique
+  pinHash        String
+  // Supervisor mag een geweigerde of dubbele scan met reden overrulen.
+  supervisor     Boolean         @default(false)
+  active         Boolean         @default(true)
+  entranceId     String?
+  entrance       TicketEntrance? @relation(fields: [entranceId], references: [id], onDelete: SetNull)
+  // Ophogen = alle uitgegeven sessies ongeldig.
+  tokenVersion   Int             @default(1)
+  failedAttempts Int             @default(0)
+  lockedUntil    DateTime?
+  lastSeenAt     DateTime?
+  createdAt      DateTime        @default(now())
+  scans          TicketScan[]
+
+  @@map("tickets_scanners")
+}
+
+/// Elke scanpoging (ook mislukte), vastgelegd door de server.
+model TicketScan {
+  id             String         @id @default(cuid())
+  // Door het apparaat gegenereerd; zorgt dat een offline scan nooit dubbel telt.
+  clientId       String         @unique
+  scannedAt      DateTime
+  receivedAt     DateTime       @default(now())
+  eventId        String
+  // HHC | FULLHOUSE
+  source         String
+  ticketId       String?
+  // Fullhouse: alleen een hash van de barcode, nooit de barcode zelf.
+  codeHash       String?
+  scannerId      String?
+  scanner        TicketScanner? @relation(fields: [scannerId], references: [id], onDelete: SetNull)
+  userId         String?
+  entranceId     String?
+  direction      String         @default("IN")
+  // VALID | WARNING | INVALID
+  result         String
+  reason         String?
+  reentry        Boolean        @default(false)
+  offline        Boolean        @default(false)
+  overrideById   String?
+  overrideBy     String?
+  overrideReason String?
+  note           String?
+  holderLabel    String?
+
+  @@index([eventId, scannedAt])
+  @@index([ticketId, eventId])
+  @@index([codeHash, eventId])
+  @@index([scannerId])
+  @@map("tickets_scans")
+}
+
+/// Lokale kopie van Fullhouse-tickets (alleen om te controleren; Fullhouse blijft de bron).
+model TicketExternalTicket {
+  id          String   @id @default(cuid())
+  eventExtId  String
+  externalId  String
+  // sha256 van de barcode: de barcode zelf bewaren we niet.
+  codeHash    String
+  status      String
+  ticketName  String?
+  area        String?
+  // Initialen i.p.v. naam (dataminimalisatie).
+  holderLabel String?
+  updatedAt   DateTime @updatedAt
+  syncedAt    DateTime @default(now())
+
+  @@unique([eventExtId, externalId])
+  @@index([codeHash])
+  @@index([eventExtId, status])
+  @@map("tickets_external_tickets")
+}
+
+model TicketSyncRun {
+  id         String    @id @default(cuid())
+  kind       String
+  eventExtId String?
+  // RUNNING | OK | FAILED
+  status     String
+  mode       String
+  fetched    Int       @default(0)
+  upserted   Int       @default(0)
+  error      String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  startedBy  String?
+
+  @@index([startedAt])
+  @@map("tickets_sync_runs")
+}

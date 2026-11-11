@@ -38,6 +38,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
     id: "beheer",
     label: "Beheer",
     items: [
+      { href: "/tickets/templates", label: "E-mail en wallet", requires: "templates:manage" },
       { href: "/tickets/goedkeuringen", label: "Goedkeuringen", requires: "bulk:approve" },
       { href: "/tickets/instellingen", label: "Instellingen", requires: "settings:manage" },
       { href: "/tickets/auditlog", label: "Auditlog", requires: "audit:read" },

@@ -228,6 +228,7 @@ export async function getTicket(actor: TicketsActor, id: string) {
   });
   if (!t) throw new ApiError(404, "Ticket niet gevonden.");
   const history = await prisma.ticketAuditEvent.findMany({ where: { ticketId: id }, orderBy: { at: "desc" }, take: 50 });
+  const deliveries = await prisma.ticketDelivery.findMany({ where: { ticketId: id }, orderBy: { createdAt: "desc" }, take: 10 });
   const hide = !personal || !!t.anonymizedAt;
   return {
     id: t.id,
@@ -261,6 +262,7 @@ export async function getTicket(actor: TicketsActor, id: string) {
     issuedBy: t.issuedByName,
     createdAt: t.createdAt,
     anonymizedAt: t.anonymizedAt,
+    deliveries: deliveries.map((d) => ({ id: d.id, at: d.createdAt, channel: d.channel, status: d.status, by: d.byName, error: d.error })),
     history: history.map((h) => ({ id: h.id, at: h.at, action: h.action, summary: h.summary, actor: h.actorName, oldStatus: h.oldStatus, newStatus: h.newStatus, reason: h.reason })),
   };
 }

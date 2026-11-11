@@ -144,6 +144,16 @@ export async function sendMailingEmail(mail: { to: string; name: string | null; 
   return { providerMessageId: data?.id ?? null };
 }
 
+/** Ticketmail met een persoonlijke link. Zakelijk bericht aan één ontvanger, zonder afmeldlink. */
+export async function sendTicketEmail(mail: { to: string; subject: string; bodyText: string; linkUrl: string }): Promise<{ providerMessageId: string | null }> {
+  const resend = getClient();
+  const paragraphs = mail.bodyText.split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a;max-width:560px">${paragraphs}<p style="margin:22px 0"><a href="${mail.linkUrl}" style="background:#f26a21;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold">Bekijk je ticket</a></p></div>`;
+  const { data, error } = await resend.emails.send({ from: FROM_EMAIL, to: mail.to, subject: mail.subject, html, text: mail.bodyText });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+  return { providerMessageId: data?.id ?? null };
+}
+
 /** Melding dat er een nieuw sponsorcontract is afgesloten (zie src/lib/commercial/notifications.server.ts). */
 export async function sendContractNoticeEmail(to: string, notice: Omit<ContractNotice, "url"> & { path: string }): Promise<void> {
   const resend = getClient();

@@ -41,6 +41,7 @@ interface Detail {
   issuedBy: string | null;
   createdAt: string;
   anonymizedAt: string | null;
+  deliveries: { id: string; at: string; channel: string; status: string; by: string | null; error: string | null }[];
   history: { id: string; at: string; action: string; summary: string; actor: string | null; oldStatus: string | null; newStatus: string | null; reason: string | null }[];
 }
 
@@ -73,6 +74,29 @@ export function TicketDetail({ id, canBlock, canResend, canAnonymize }: { id: st
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function deliver(kind: "mail" | "copy" | "whatsapp") {
+    setBusy(true);
+    try {
+      if (kind === "mail") {
+        await api(`/api/tickets/tickets/${id}/send`, { body: {} });
+        toast.success("Ticket verstuurd.");
+      } else {
+        const { url } = await api<{ url: string }>(`/api/tickets/tickets/${id}/link`, { body: { channel: kind === "copy" ? "LINK_COPY" : "WHATSAPP" } });
+        if (kind === "copy") {
+          await navigator.clipboard.writeText(url);
+          toast.success("Persoonlijke link gekopieerd.");
+        } else {
+          window.open(`https://wa.me/?text=${encodeURIComponent(`Je ticket voor HHC Hardenberg: ${url}`)}`, "_blank", "noopener");
+        }
+      }
+      await load();
+    } catch (e) {
+      toast.error(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function confirm() {
     if (!action) return;
@@ -185,10 +209,43 @@ export function TicketDetail({ id, canBlock, canResend, canAnonymize }: { id: st
                 <Row label="Opmerking">{t.note ?? "–"}</Row>
               </dl>
             )}
-            <p className="mt-4 text-xs text-muted-foreground">Ticketmail, persoonlijke ticketpagina, QR-code, PDF en wallet volgen in fase 2.</p>
           </CardContent>
         </Card>
       </div>
+
+      {canResend && !t.anonymizedAt && t.storedStatus === "ACTIVE" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Aflevering</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={busy || !t.email} onClick={() => deliver("mail")} title={t.email ? undefined : "Geen e-mailadres bij dit ticket"}>
+                {t.deliveries.some((d) => d.channel === "EMAIL" && d.status === "SENT") ? "Opnieuw mailen" : "Mailen"}
+              </Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => deliver("copy")}>
+                Persoonlijke link kopiëren
+              </Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => deliver("whatsapp")}>
+                Delen via WhatsApp
+              </Button>
+            </div>
+            {t.deliveries.length > 0 && (
+              <ul className="space-y-1 text-sm">
+                {t.deliveries.map((d) => (
+                  <li key={d.id} className="flex flex-wrap gap-x-2">
+                    <span className="tabular-nums text-muted-foreground">{formatDayTime(d.at)}</span>
+                    <span>{{ EMAIL: "Mail", LINK_COPY: "Link gekopieerd", WHATSAPP: "WhatsApp" }[d.channel] ?? d.channel}: {d.status === "SENT" ? "verstuurd" : "mislukt"}</span>
+                    {d.by && <span className="text-muted-foreground">· {d.by}</span>}
+                    {d.error && <span className="text-destructive">· {d.error}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-muted-foreground">De link werkt tot je hem intrekt (Acties → Ticketlink intrekken). Apple Wallet en Google Wallet volgen zodra de accounts zijn gekoppeld.</p>
+          </CardContent>
+        </Card>
+      )}
 
       {actions.length > 0 && (
         <Card>

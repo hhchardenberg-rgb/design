@@ -81,6 +81,7 @@ export type ScanReason =
   | "NOT_YET_VALID"
   | "WRONG_EVENT"
   | "EVENT_NOT_ACTIVE"
+  | "WRONG_ZONE"
   | "ALREADY_USED";
 
 export const SCAN_REASON_LABELS: Record<ScanReason, string> = {
@@ -91,6 +92,7 @@ export const SCAN_REASON_LABELS: Record<ScanReason, string> = {
   NOT_YET_VALID: "Ticket is nog niet geldig",
   WRONG_EVENT: "Ticket hoort bij een andere wedstrijd",
   EVENT_NOT_ACTIVE: "Deze wedstrijd is niet actief voor scannen",
+  WRONG_ZONE: "Ticket hoort bij een ander vak dan deze ingang",
   ALREADY_USED: "Ticket is al gebruikt",
 };
 
@@ -125,7 +127,7 @@ export function reentryAllowed(t: RuleTicket, e: RuleEvent): boolean {
  * De volledige controle voor een scan, in vaste volgorde. `priorAdmissions` is het aantal
  * eerder geregistreerde toegangen van dit ticket bij deze wedstrijd.
  */
-export function evaluateScan(t: RuleTicket | null, e: RuleEvent, priorAdmissions: number, now: Date): ScanOutcome {
+export function evaluateScan(t: RuleTicket | null, e: RuleEvent, priorAdmissions: number, now: Date, entranceZoneId: string | null = null): ScanOutcome {
   if (!t) return { result: "INVALID", reason: "NOT_FOUND" };
   if (t.status === "CANCELLED") return { result: "INVALID", reason: "CANCELLED" };
   if (t.status === "BLOCKED") return { result: "INVALID", reason: "BLOCKED" };
@@ -133,6 +135,7 @@ export function evaluateScan(t: RuleTicket | null, e: RuleEvent, priorAdmissions
   if (t.validUntil && now > t.validUntil) return { result: "INVALID", reason: "EXPIRED" };
   if (t.validFrom && now < t.validFrom && t.validityMode === "RANGE") return { result: "INVALID", reason: "NOT_YET_VALID" };
   if (!coversEvent(t, e)) return { result: "INVALID", reason: "WRONG_EVENT" };
+  if (t.zoneId && entranceZoneId && t.zoneId !== entranceZoneId) return { result: "INVALID", reason: "WRONG_ZONE" };
   if (priorAdmissions > 0) {
     if (reentryAllowed(t, e)) return { result: "VALID", reentry: true };
     return { result: "WARNING", reason: "ALREADY_USED" };

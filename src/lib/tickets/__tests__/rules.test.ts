@@ -100,3 +100,10 @@ test("vervaldatum per geldigheidsvorm", () => {
   assert.equal(computeValidUntil("SEASON", { events: [], seasonEndsOn: new Date("2027-06-30T00:00:00Z") })?.toISOString(), "2027-06-30T23:59:59.999Z");
   assert.equal(computeValidUntil("SINGLE", { events: [] }), null);
 });
+
+test("ticket voor een ander vak dan de ingang wordt geweigerd", () => {
+  assert.deepEqual(evaluateScan(tk({ zoneId: "z1" }), ev(), 0, NOW, "z2"), { result: "INVALID", reason: "WRONG_ZONE" });
+  assert.equal(evaluateScan(tk({ zoneId: "z1" }), ev(), 0, NOW, "z1").result, "VALID");
+  assert.equal(evaluateScan(tk({ zoneId: "z1" }), ev(), 0, NOW, null).result, "VALID");
+  assert.equal(evaluateScan(tk({ zoneId: null }), ev(), 0, NOW, "z2").result, "VALID");
+});
