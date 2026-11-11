@@ -23,6 +23,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
       { href: "/tickets/uitgeven", label: "Tickets uitgeven", requires: "tickets:issue" },
       { href: "/tickets/bulk", label: "Bulkuitgifte", requires: "tickets:bulk" },
       { href: "/tickets/overzicht", label: "Ticketoverzicht", requires: "tickets:read" },
+      { href: "/tickets/rapportages", label: "Rapportages en export", requires: "reports:read" },
       { href: "/tickets/seizoenskaarten", label: "Seizoenskaarten", requires: "types:read" },
     ],
   },
@@ -58,8 +59,8 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
 
 /** Wat in een volgende fase komt, voor het dashboard. */
 export const TICKETS_ROADMAP: { phase: number; title: string; items: string[] }[] = [
-  { phase: 2, title: "Aflevering", items: ["Ticketmail met beveiligde link", "Persoonlijke ticketpagina met QR-code", "PDF-download", "Apple Wallet en Google Wallet", "E-mailtemplates", "Walletconfiguratie"] },
-  { phase: 5, title: "Rapportage en uitbreiding", items: ["Rapportages en exports (CSV, Excel, PDF)", "Geplande rapportagemails", "Automatische walletupdates", "Koppeling met Commerciële Zaken"] },
+  { phase: 2, title: "Wallet", items: ["Apple Wallet en Google Wallet (wachten op de accounts van HHC)", "Automatische walletupdates bij wijzigingen"] },
+  { phase: 5, title: "Uitbreiding", items: ["Geplande rapportagemails", "Scherm voor Commerciële Zaken om tickets uit te geven (de koppeling zelf staat klaar)"] },
 ];
 
 export function visibleTicketsNav(can: (p: TicketPermission) => boolean): TicketsNavGroup[] {

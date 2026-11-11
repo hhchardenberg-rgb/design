@@ -1,4 +1,4 @@
-// Voorbereiding op de koppeling met Commerciële Zaken (fase 5). Hier komt één ingang
+// Koppeling met Commerciële Zaken (implementatie: commercial-bridge.server.ts). Dit is de ene ingang
 // waarlangs CZ (relaties, sponsorafspraken, ticketquota, bedrijfskaarten) tickets laat
 // uitgeven. Er is nu nog geen implementatie; de vorm ligt vast, zodat beide kanten erop
 // kunnen bouwen. Dezelfde regels als in het scherm: rechten, drempel/goedkeuring, audit.
@@ -6,7 +6,9 @@
 // Idempotentie: (originSystem, externalRef) is uniek op een ticket. Een tweede aanroep
 // met dezelfde referentie maakt dus nooit een dubbel ticket.
 
-import type { HolderInput } from "./schemas";
+import type { TicketsActor } from "./authz.server";
+import type { z } from "zod";
+import type { holderSchema } from "./schemas";
 
 export interface TicketIssueRequest {
   /** Bijvoorbeeld "commercial". */
@@ -19,7 +21,7 @@ export interface TicketIssueRequest {
   zoneId?: string | null;
   eventIds?: string[];
   seasonId?: string | null;
-  holder: HolderInput;
+  holder: z.input<typeof holderSchema>;
 }
 
 export interface TicketIssueResult {
@@ -29,9 +31,9 @@ export interface TicketIssueResult {
   message?: string;
 }
 
-/** Contract voor de toekomstige service; wordt in fase 5 geïmplementeerd. */
+/** Contract van de koppeling; geïmplementeerd in commercial-bridge.server.ts. */
 export interface CommercialTicketBridge {
-  issueFromCommercial(requests: TicketIssueRequest[], actor: { id: string; name: string }): Promise<TicketIssueResult[]>;
+  issueFromCommercial(actor: TicketsActor, requests: TicketIssueRequest[]): Promise<TicketIssueResult[]>;
   /** Hoeveel tickets een CZ-bedrijf in een seizoen al heeft (voor quota). */
   usageForCompany(commercialCompanyId: string, seasonId: string): Promise<{ issued: number; used: number }>;
 }

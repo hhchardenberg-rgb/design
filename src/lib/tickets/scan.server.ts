@@ -233,6 +233,23 @@ export async function scanContext(actor: ScanActor) {
   return { actor: { name: actor.name, kind: actor.kind, canOverride: actor.canOverride, canSeeStats: actor.canSeeStats, entranceId: actor.entranceId }, events, entrances };
 }
 
+type EventRow = Parameters<typeof toRuleEvent>[0];
+
+/** Actieve HHC-tickets die voor deze wedstrijd gelden (status, vervaldatum en geldigheidsregels). */
+export async function coveringTickets(event: EventRow) {
+  const ruleEvent = toRuleEvent(event);
+  const tickets = await prisma.ticket.findMany({
+    where: { status: "ACTIVE", anonymizedAt: null, OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] },
+    select: { id: true, publicId: true, qrVersion: true, firstName: true, lastName: true, category: true, validityMode: true, validFrom: true, validUntil: true, seasonId: true, competitions: true, homeOnly: true, isSeasonCard: true, zoneId: true, type: { select: { name: true } }, links: { select: { eventId: true } } },
+  });
+  return tickets.filter((t) =>
+    coversEvent(
+      { status: "ACTIVE", validityMode: t.validityMode as ValidityMode, validFrom: t.validFrom, validUntil: t.validUntil, seasonId: t.seasonId, competitions: t.competitions, eventIds: t.links.map((l) => l.eventId), homeOnly: t.homeOnly, isSeasonCard: t.isSeasonCard, zoneId: t.zoneId },
+      ruleEvent,
+    ),
+  );
+}
+
 /**
  * Lijst van tickets die voor deze wedstrijd geldig zijn, voor scannen zonder verbinding.
  * Alleen tijdens de wedstrijddag en alleen tickets die op dit moment bekend zijn. Zonder
@@ -245,19 +262,7 @@ export async function offlineCache(eventId: string) {
   if (event.status !== "ACTIVE" || now < event.startsAt.getTime() - SCAN_WINDOW_BEFORE_MS || now > event.endsAt.getTime() + SCAN_WINDOW_AFTER_MS) {
     throw new ApiError(400, "Een offline-lijst is alleen beschikbaar op de dag van een actieve wedstrijd.");
   }
-  const ruleEvent = toRuleEvent(event);
-  const tickets = await prisma.ticket.findMany({
-    where: { status: "ACTIVE", anonymizedAt: null, OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] },
-    select: { publicId: true, qrVersion: true, firstName: true, lastName: true, validityMode: true, validFrom: true, validUntil: true, seasonId: true, competitions: true, homeOnly: true, isSeasonCard: true, zoneId: true, status: true, type: { select: { name: true } }, links: { select: { eventId: true } } },
-  });
-  const hhc = tickets
-    .filter((t) =>
-      coversEvent(
-        { status: "ACTIVE", validityMode: t.validityMode as ValidityMode, validFrom: t.validFrom, validUntil: t.validUntil, seasonId: t.seasonId, competitions: t.competitions, eventIds: t.links.map((l) => l.eventId), homeOnly: t.homeOnly, isSeasonCard: t.isSeasonCard, zoneId: t.zoneId },
-        ruleEvent,
-      ),
-    )
-    .map((t) => ({ p: t.publicId, v: t.qrVersion, l: `${initialsOf(t.firstName, t.lastName)} · ${t.type.name}`, z: t.zoneId, r: t.isSeasonCard && event.allowReentry }));
+  const hhc = (await coveringTickets(event)).map((t) => ({ p: t.publicId, v: t.qrVersion, l: `${initialsOf(t.firstName, t.lastName)} · ${t.type.name}`, z: t.zoneId, r: t.isSeasonCard && event.allowReentry }));
   const external = event.externalId
     ? await prisma.ticketExternalTicket.findMany({ where: { eventExtId: event.externalId, status: "VALID" }, select: { codeHash: true, holderLabel: true, ticketName: true } })
     : [];
