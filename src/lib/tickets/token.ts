@@ -77,6 +77,8 @@ function sign(key: Buffer, purpose: Purpose, body: string): string {
 function verify(purpose: Purpose, body: string, sig: string): boolean {
   if (!SIG_RE.test(sig)) return false;
   const given = Buffer.from(sig, "base64url");
+  // Alleen de canonieke schrijfwijze: de laatste tekens van base64url dragen ongebruikte bits, waardoor twee schrijfwijzen dezelfde bytes kunnen geven.
+  if (given.toString("base64url") !== sig) return false;
   return signingKeys().some((k) => {
     const expected = Buffer.from(sign(k, purpose, body), "base64url");
     return expected.length === given.length && timingSafeEqual(expected, given);

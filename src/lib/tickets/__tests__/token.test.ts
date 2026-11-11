@@ -80,3 +80,15 @@ test("te korte sleutel wordt geweigerd", () => {
   resetSigningKeys();
   assert.throws(() => qrCodeFor(newPublicId(), 1), /32 bytes/);
 });
+
+test("een niet-canonieke schrijfwijze van de handtekening wordt geweigerd", () => {
+  for (let i = 0; i < 40; i++) {
+    const id = newPublicId();
+    const [p, , v, sig] = qrCodeFor(id, 1).split(".");
+    // De laatste base64url-letter bevat 4 bits; andere letters met dezelfde 4 hoge bits geven dezelfde bytes.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const idx = alphabet.indexOf(sig.at(-1)!);
+    const twin = alphabet[idx ^ 1];
+    assert.equal(parseQrCode(`${p}.${id}.${v}.${sig.slice(0, -1)}${twin}`), null);
+  }
+});

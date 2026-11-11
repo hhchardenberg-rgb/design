@@ -156,8 +156,16 @@ Bij een scan gelden deze stappen, in deze volgorde:
 
 | Fase | Inhoud | Status |
 |---|---|---|
-| 1 Fundament | Module, datamodel, wedstrijden, vakken, tickettypes, interne tickets (enkel, meerdere en CSV met goedkeuring), statussen (blokkeren, annuleren, heractiveren, opnieuw uitgeven), rollen, auditlog, basisdashboard, QR-token, regels en tests | In aanbouw |
-| 2 Aflevering | Ticketmail, persoonlijke ticketpagina met QR, PDF, Apple Wallet, Google Wallet, intrekken, opnieuw versturen, deelbare link | |
-| 3 Scanner | PWA `/scan`, PIN, ingangen, realtime en offline, dubbele scans, overrides, scanhistorie, Fullhouse-scan via de adapter | |
-| 4 Fullhouse | Evenementen importeren en activeren, ticketcache, webhooks, periodieke synchronisatie (cron), synclog, terugmelden van offline scans | |
-| 5 Uitbreiding | Uitgebreide rapportages, Excel- en PDF-export, geplande rapportagemails, walletupdates, koppeling met CZ | |
+| 1 Fundament | Module, datamodel, wedstrijden, vakken, tickettypes, interne tickets (enkel, meerdere en CSV met goedkeuring), statussen (blokkeren, annuleren, heractiveren, opnieuw uitgeven), rollen, auditlog, basisdashboard, QR-token, regels en tests | Gebouwd |
+| 2 Aflevering | Ticketmail (template), persoonlijke ticketpagina `/t/<link>` met QR, PDF, link intrekken, opnieuw versturen, link kopiëren en WhatsApp, verzendlog | Gebouwd. Apple Wallet en Google Wallet wachten op de accounts van HHC. |
+| 3 Scanner | PWA `/scan` (camera, handmatige invoer, scanner-hardware), inlog met code + PIN of Hub-account, ingangen met vakcontrole, dubbele scans, herintrede, supervisor-override met reden, offline-lijst en terugmelden, scanbeheer en scanhistorie | Gebouwd |
+| 4 Fullhouse | Alleen-lezen provider voor vivenu, evenementen ophalen, ticketkopie (hash + initialen), handmatige en dagelijkse synchronisatie, webhook met handtekening, synchronisatielog, bewaartermijnen | Gebouwd, nog niet getest tegen een echt Fullhouse-account (zie §13) |
+| 5 Uitbreiding | Rapportages per wedstrijd, export CSV/Excel/PDF, koppeling met CZ (idempotente uitgifte en gebruik per bedrijf) | Gebouwd. Geplande rapportagemails en walletupdates volgen. |
+
+## 13. Wat nog moet gebeuren voordat dit live scant
+
+- **Fullhouse controleren in de sandbox.** De velden van de antwoorden van Fullhouse (ticket, evenement) zijn niet tegen een echt account gecontroleerd. De provider faalt veilig (een onverwacht antwoord geeft een foutmelding, geen gok). Zet `FULLHOUSE_MODE=sandbox` en `FULLHOUSE_ACCESS_TOKEN`, klik onder Fullhouse op "Controleer koppeling" en vergelijk de getoonde veldnamen met `vivenu-provider.ts` (`mapTicket`).
+- **Het formaat van een Fullhouse-barcode** is niet gedocumenteerd. De Hub herkent HHC-codes aan het voorvoegsel `HHC1.` en stuurt al het andere naar Fullhouse.
+- **Schrijven naar Fullhouse** (inchecken, offline scans terugmelden) staat uit (`FULLHOUSE_ALLOW_WRITES`) en is ook nog niet aangesloten. De Hub registreert scans zelf; Fullhouse weet dus niet dat een ticket is gescand. Als alle ingangen de HHC-scanner gebruiken, is dubbel gebruik alsnog uitgesloten.
+- **Een echte wedstrijddag-test** met meerdere telefoons, slecht bereik en vliegtuigmodus.
+- Apple Developer- en Google Wallet-accounts voor wallet-passen.
