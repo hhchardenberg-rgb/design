@@ -47,6 +47,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
     id: "beheer",
     label: "Beheer",
     items: [
+      { href: "/tickets/fullhouse", label: "Fullhouse", requires: "sync:read" },
       { href: "/tickets/templates", label: "E-mail en wallet", requires: "templates:manage" },
       { href: "/tickets/goedkeuringen", label: "Goedkeuringen", requires: "bulk:approve" },
       { href: "/tickets/instellingen", label: "Instellingen", requires: "settings:manage" },
@@ -58,7 +59,6 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
 /** Wat in een volgende fase komt, voor het dashboard. */
 export const TICKETS_ROADMAP: { phase: number; title: string; items: string[] }[] = [
   { phase: 2, title: "Aflevering", items: ["Ticketmail met beveiligde link", "Persoonlijke ticketpagina met QR-code", "PDF-download", "Apple Wallet en Google Wallet", "E-mailtemplates", "Walletconfiguratie"] },
-  { phase: 4, title: "Fullhouse", items: ["Evenementen importeren en activeren", "Tickets van Fullhouse controleren", "Webhooks en synchronisaties", "Orders en externe tickets"] },
   { phase: 5, title: "Rapportage en uitbreiding", items: ["Rapportages en exports (CSV, Excel, PDF)", "Geplande rapportagemails", "Automatische walletupdates", "Koppeling met Commerciële Zaken"] },
 ];
 

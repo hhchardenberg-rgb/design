@@ -1,10 +1,11 @@
 import { createMockProvider } from "./mock-provider";
+import { createVivenuProvider } from "./vivenu-provider";
 import type { FullhouseMode, TicketProvider } from "./types";
 
 /**
  * Welke Fullhouse-provider actief is. Zonder volledige configuratie altijd de testprovider,
  * nooit stilletjes productie. Een preview gebruikt nooit de productie-API.
- * De echte vivenu-provider wordt in fase 3/4 aangesloten (zie architectuur §2).
+ * De echte vivenu-provider (alleen lezen) staat in vivenu-provider.ts.
  */
 export function fullhouseMode(): FullhouseMode {
   const m = process.env.FULLHOUSE_MODE;
@@ -25,9 +26,19 @@ export function fullhouseConfigured(): { mode: FullhouseMode; apiKey: boolean; a
 
 let provider: TicketProvider | null = null;
 
+/** Echte provider alleen bij modus sandbox/production én een ingesteld scanapparaat-token; anders de testprovider. */
 export function ticketProvider(): TicketProvider {
   if (provider) return provider;
-  // Fase 1: alleen de testprovider. De vivenu-provider volgt met de scanner.
-  provider = createMockProvider();
+  const c = fullhouseConfigured();
+  const token = process.env.FULLHOUSE_ACCESS_TOKEN;
+  provider =
+    c.mode !== "mock" && token
+      ? createVivenuProvider({ mode: c.mode, baseUrl: c.baseUrl, accessToken: token, allowWrites: process.env.FULLHOUSE_ALLOW_WRITES === "true" })
+      : createMockProvider();
   return provider;
+}
+
+/** Alleen voor tests. */
+export function resetTicketProvider() {
+  provider = null;
 }
