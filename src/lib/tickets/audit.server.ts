@@ -16,6 +16,7 @@ export const TICKET_AUDIT_ACTIONS = {
   "ticket.mailed": "Ticket per e-mail verstuurd",
   "ticket.link_shared": "Ticketlink gedeeld",
   "template.updated": "E-mailtemplate gewijzigd",
+  "scanner.login": "Scanner ingelogd",
   "scanner.saved": "Scanner opgeslagen",
   "scanner.pin_reset": "Scanner-PIN opnieuw ingesteld",
   "entrance.saved": "Ingang opgeslagen",

@@ -35,6 +35,15 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
     ],
   },
   {
+    id: "scannen",
+    label: "Scannen",
+    items: [
+      { href: "/scan", label: "Scanner openen", requires: "scan:scan" },
+      { href: "/tickets/scans", label: "Scanhistorie", requires: "scan:history" },
+      { href: "/tickets/scanners", label: "Scanners en ingangen", requires: "scanners:manage" },
+    ],
+  },
+  {
     id: "beheer",
     label: "Beheer",
     items: [
@@ -49,7 +58,6 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
 /** Wat in een volgende fase komt, voor het dashboard. */
 export const TICKETS_ROADMAP: { phase: number; title: string; items: string[] }[] = [
   { phase: 2, title: "Aflevering", items: ["Ticketmail met beveiligde link", "Persoonlijke ticketpagina met QR-code", "PDF-download", "Apple Wallet en Google Wallet", "E-mailtemplates", "Walletconfiguratie"] },
-  { phase: 3, title: "Scanner", items: ["Mobiele scanner (PWA) met camera", "Scanner-PIN en ingangen", "Offline-cache", "Dubbele scans en supervisor-overrides", "Scannerbeheer"] },
   { phase: 4, title: "Fullhouse", items: ["Evenementen importeren en activeren", "Tickets van Fullhouse controleren", "Webhooks en synchronisaties", "Orders en externe tickets"] },
   { phase: 5, title: "Rapportage en uitbreiding", items: ["Rapportages en exports (CSV, Excel, PDF)", "Geplande rapportagemails", "Automatische walletupdates", "Koppeling met Commerciële Zaken"] },
 ];

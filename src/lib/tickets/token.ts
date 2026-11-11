@@ -17,7 +17,7 @@ const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford base32, zonder
 const PUBLIC_ID_LENGTH = 16; // 80 bits
 const SIG_BYTES = 16; // 128 bits
 
-type Purpose = "qr" | "link";
+type Purpose = "qr" | "link" | "scanner";
 
 /** Willekeurig, niet-oplopend ticketkenmerk zonder betekenis. */
 export function newPublicId(): string {
@@ -130,4 +130,17 @@ export function parseLinkToken(raw: string): CodeRef | null {
   if (!PUBLIC_ID_RE.test(publicId) || !VERSION_RE.test(v)) return null;
   if (!verify("link", `${publicId}.${v}`, sig)) return null;
   return { publicId, version: Number(v) };
+}
+
+/** Algemene ondertekening voor korte sessiecodes (scanner). Zelfde sleutel, eigen domeinlabel. */
+export function signSession(body: string): string {
+  return `${body}.${sign(signingKeys()[0], "scanner", body)}`;
+}
+
+/** Geeft de body terug als de handtekening klopt, anders null. */
+export function verifySession(token: string): string | null {
+  const i = token.lastIndexOf(".");
+  if (i < 1) return null;
+  const body = token.slice(0, i);
+  return verify("scanner", body, token.slice(i + 1)) ? body : null;
 }
