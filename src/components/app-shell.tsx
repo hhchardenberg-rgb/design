@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { Briefcase, Megaphone, Settings, Ticket } from "lucide-react";
+import { Briefcase, Megaphone, QrCode, Settings, Ticket } from "lucide-react";
 import { GroupedNavMenu, type NavMenuGroup } from "@/components/grouped-nav-menu";
 import { SectionSwitcher, type SectionLink } from "@/components/section-switcher";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
@@ -71,10 +71,13 @@ export interface CommercialShellState {
 export function AppShell({
   children,
   commercial,
+  tickets = false,
   news,
 }: {
   children: React.ReactNode;
   commercial: CommercialShellState;
+  /** Toegang tot HHC Tickets (server-side bepaald: flag + rol). */
+  tickets?: boolean;
   /** Of het nieuws van Communicatie en Ticketing aan staat (server-side uit de database). */
   news: { hub: boolean; ticketing: boolean };
 }) {
@@ -85,6 +88,8 @@ export function AppShell({
   const isAdminSection = pathname?.startsWith("/admin");
   const isTicketingSection = !isAdminSection && pathname?.startsWith("/ticketing");
   const isCommercialSection = !isAdminSection && pathname?.startsWith("/commercieel");
+  // Let op: "/ticketing" begint niet met "/tickets/", dus de twee onderdelen lopen niet door elkaar.
+  const isTicketsSection = !isAdminSection && (pathname === "/tickets" || !!pathname?.startsWith("/tickets/"));
   const isDesigntoolSection =
     !isAdminSection &&
     !isTicketingSection &&
@@ -106,10 +111,13 @@ export function AppShell({
         ? "ticketing"
         : isCommercialSection
           ? "commercial"
-          : "hub";
+          : isTicketsSection
+            ? "tickets"
+            : "hub";
   const sections: SectionLink[] = SECTION_DEFINITIONS.filter((s) => hasRole(roles, s.role));
   // Commerciële Zaken: alleen leden (en hoofdadmins) zien deze sectie.
   if (commercial.member) sections.push({ key: "commercial", label: "Commerciële Zaken", href: "/commercieel", icon: Briefcase });
+  if (tickets) sections.push({ key: "tickets", label: "HHC Tickets", href: "/tickets", icon: QrCode });
   // Eén beheer voor iedereen met beheerrechten, ongeacht het onderdeel.
   if (hasAnyAdminRole(roles) || commercial.admin) sections.push({ key: "admin", label: "Beheer", href: "/admin", icon: Settings });
   // Met maar één app valt er niets te wisselen; dan alleen Profiel/Uitloggen.
@@ -129,7 +137,7 @@ export function AppShell({
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : isTicketingSection ? (
               <GroupedNavMenu groups={ticketingMenuGroups(news.ticketing)} label="Onderdelen" />
-            ) : isCommercialSection ? null : (
+            ) : isCommercialSection || isTicketsSection ? null : (
               <GroupedNavMenu groups={hubMenuGroups(news.hub)} label="Onderdelen" />
             )}
             <SectionSwitcher

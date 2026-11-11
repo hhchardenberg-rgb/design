@@ -25,5 +25,9 @@ export async function encryptExistingFields(): Promise<number> {
     await prisma.commercialCompany.update({ where: { id: c.id }, data: { internalNotes: c.internalNotes } });
     n++;
   }
+  for (const t of await prisma.ticket.findMany({ where: plain("phone"), select: { id: true, phone: true } })) {
+    await prisma.ticket.update({ where: { id: t.id }, data: { phone: t.phone } });
+    n++;
+  }
   return n;
 }

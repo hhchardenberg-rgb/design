@@ -114,21 +114,24 @@ model User {
 // inlogtoken, routebewaking en de bestaande CZ-code ongewijzigd blijven werken.
 
 model AccessRole {
-  id               String          @id @default(cuid())
-  name             String          @unique
-  description      String?
+  id                 String          @id @default(cuid())
+  name               String          @unique
+  description        String?
   // Vaste rol (Hoofdadmin): niet te verwijderen of in te perken.
-  isSystem         Boolean         @default(false)
+  isSystem           Boolean         @default(false)
   // Hoofdadmin: ziet en beheert alles.
-  isAdmin          Boolean         @default(false)
+  isAdmin            Boolean         @default(false)
   // NONE | USER | ADMIN
-  hubLevel         String          @default("NONE")
-  ticketingLevel   String          @default("NONE")
+  hubLevel           String          @default("NONE")
+  ticketingLevel     String          @default("NONE")
   // Toegang tot Commerciële Zaken; de bevoegdheden staan in de gekoppelde CommercialRole.
-  commercialRoleId String?         @unique
-  commercialRole   CommercialRole? @relation(fields: [commercialRoleId], references: [id], onDelete: SetNull)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  commercialRoleId   String?         @unique
+  commercialRole     CommercialRole? @relation(fields: [commercialRoleId], references: [id], onDelete: SetNull)
+  // Toegang tot HHC Tickets met deze bevoegdheden (zie src/lib/tickets/permissions.ts).
+  ticketsAccess      Boolean         @default(false)
+  ticketsPermissions String[]        @default([])
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   users UserAccessRole[]
 
@@ -358,6 +361,7 @@ model TemplateVersion {
   fields           TemplateField[]
   assets           TemplateAsset[]   @relation("VersionAssets")
   generatedDesigns GeneratedDesign[]
+  ticketEvents     TicketEvent[]
   activeFor        Template?         @relation("ActiveVersion")
 
   @@unique([templateId, versionNumber])
@@ -809,8 +813,9 @@ model Match {
 
   generatedDesigns GeneratedDesign[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  ticketEvents TicketEvent[]
 
   @@map("matches")
 }
@@ -1788,4 +1793,235 @@ model KnownDevice {
 
   @@unique([userId, deviceHash])
   @@map("known_devices")
+}
+
+// ---------------------------------------------------------------------------
+// HHC Tickets: eigen interne tickets naast Fullhouse (docs/hhc-tickets/architectuur.md).
+// Alleen additieve tabellen met het voorvoegsel tickets_.
+// ---------------------------------------------------------------------------
+
+model TicketSeason {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  startsOn  DateTime @db.Date
+  endsOn    DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events  TicketEvent[]
+  types   TicketType[]
+  tickets Ticket[]
+
+  @@map("tickets_seasons")
+}
+
+/// Toegangstype of vak (bv. Tribune, VIP-ruimte, Pers).
+model TicketZone {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  types   TicketType[]
+  tickets Ticket[]
+
+  @@map("tickets_zones")
+}
+
+/// Wedstrijd of ander evenement. Bron HHC (zelf aangemaakt) of FULLHOUSE (geïmporteerd, fase 4).
+model TicketEvent {
+  id           String        @id @default(cuid())
+  title        String
+  opponent     String?
+  competition  String?
+  isHome       Boolean       @default(true)
+  location     String?
+  startsAt     DateTime
+  // Na dit moment vervallen tickets voor alleen deze wedstrijd automatisch.
+  endsAt       DateTime
+  seasonId     String?
+  season       TicketSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  // DRAFT | ACTIVE | CLOSED | CANCELLED
+  status       String        @default("DRAFT")
+  // Herintrede voor seizoenskaarten bij deze wedstrijd.
+  allowReentry Boolean       @default(false)
+  capacity     Int?
+  // HHC | FULLHOUSE
+  source       String        @default("HHC")
+  externalId   String?       @unique
+  // Geïmporteerde Fullhouse-evenementen: door een beheerder zichtbaar/actief gemaakt.
+  visible      Boolean       @default(true)
+  matchId      String?
+  match        Match?        @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  links             TicketEventLink[]
+  templateVersion   TemplateVersion?  @relation(fields: [templateVersionId], references: [id])
+  templateVersionId String?
+
+  @@index([startsAt])
+  @@index([seasonId])
+  @@map("tickets_events")
+}
+
+model TicketType {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  description  String?
+  // FREE | VIP | SPONSOR | PRESS | STAFF | BOARD | TEAM | INVITATION | PROMOTION | SEASON
+  category     String
+  // SINGLE | MULTI | SEASON | RANGE
+  validityMode String        @default("SINGLE")
+  isSeasonCard Boolean       @default(false)
+  seasonId     String?
+  season       TicketSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  competitions String[]      @default([])
+  homeOnly     Boolean       @default(true)
+  validFrom    DateTime?
+  validUntil   DateTime?
+  zoneId       String?
+  zone         TicketZone?   @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  color        String?
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tickets Ticket[]
+
+  @@map("tickets_types")
+}
+
+model Ticket {
+  id                  String        @id @default(cuid())
+  // Willekeurig kenmerk in QR en link; geen persoonsgegevens, niet oplopend.
+  publicId            String        @unique
+  qrVersion           Int           @default(1)
+  linkVersion         Int           @default(1)
+  // Altijd HHC; Fullhouse-tickets staan in de eigen cache (fase 4).
+  source              String        @default("HHC")
+  firstName           String
+  lastName            String
+  email               String?
+  // Versleuteld opgeslagen (src/lib/prisma.ts).
+  phone               String?
+  company             String?
+  category            String
+  typeId              String
+  type                TicketType    @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  zoneId              String?
+  zone                TicketZone?   @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  relation            String?
+  note                String?
+  photoKey            String?
+  // ACTIVE | BLOCKED | CANCELLED ("verlopen" en "gebruikt" worden afgeleid)
+  status              String        @default("ACTIVE")
+  statusReason        String?
+  validityMode        String
+  seasonId            String?
+  season              TicketSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  competitions        String[]      @default([])
+  homeOnly            Boolean       @default(true)
+  isSeasonCard        Boolean       @default(false)
+  validFrom           DateTime?
+  validUntil          DateTime?
+  issuedById          String?
+  issuedByName        String?
+  batchId             String?
+  batch               TicketBatch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  // Voorbereid op Commerciële Zaken (fase 5): bron en idempotente referentie.
+  originSystem        String?
+  externalRef         String?
+  commercialCompanyId String?
+  anonymizedAt        DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  links TicketEventLink[]
+
+  @@unique([originSystem, externalRef])
+  @@index([status])
+  @@index([typeId])
+  @@index([createdAt])
+  @@index([lastName])
+  @@map("tickets_tickets")
+}
+
+model TicketEventLink {
+  ticketId String
+  ticket   Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  eventId  String
+  event    TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, eventId])
+  @@index([eventId])
+  @@map("tickets_event_links")
+}
+
+/// Bulkuitgifte (CSV/Excel of meerdere tegelijk). Boven de drempel eerst goedkeuring.
+model TicketBatch {
+  id            String    @id @default(cuid())
+  name          String
+  // CSV | XLSX | MANUAL | LIST | COMMERCIAL
+  origin        String    @default("CSV")
+  // PENDING_APPROVAL | ISSUED | REJECTED
+  status        String
+  rowCount      Int
+  // De gecontroleerde regels, tot de uitgifte; daarna leeggemaakt (dataminimalisatie).
+  payload       Json?
+  requestedById String?
+  requestedBy   String?
+  reviewedById  String?
+  reviewedBy    String?
+  reviewNote    String?
+  createdAt     DateTime  @default(now())
+  reviewedAt    DateTime?
+  issuedAt      DateTime?
+
+  tickets Ticket[]
+
+  @@index([status])
+  @@map("tickets_batches")
+}
+
+/// Eén rij met instellingen.
+model TicketSettings {
+  id                      String   @id @default("default")
+  bulkApprovalThreshold   Int      @default(50)
+  retentionPersonalMonths Int      @default(24)
+  retentionScanMonths     Int      @default(24)
+  retentionTechnicalDays  Int      @default(90)
+  updatedAt               DateTime @updatedAt
+  updatedBy               String?
+
+  @@map("tickets_settings")
+}
+
+/// Auditlog van HHC Tickets. Geen persoonsgegevens in meta: alleen id's.
+model TicketAuditEvent {
+  id        String   @id @default(cuid())
+  at        DateTime @default(now())
+  action    String
+  actorId   String?
+  actorName String?
+  ticketId  String?
+  eventId   String?
+  batchId   String?
+  scannerId String?
+  entrance  String?
+  oldStatus String?
+  newStatus String?
+  reason    String?
+  device    String?
+  ip        String?
+  summary   String
+  meta      Json?
+
+  @@index([at])
+  @@index([ticketId, at])
+  @@index([action, at])
+  @@map("tickets_audit_events")
 }

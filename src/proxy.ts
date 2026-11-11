@@ -52,7 +52,8 @@ const TICKETING_PREFIXES = ["/ticketing"];
 // toegang"-pagina voor gebruikers zonder enige rol, en
 // accountbeveiliging — élke gebruiker moet zijn eigen MFA kunnen
 // beheren, ongeacht welke sectierol hij verder heeft).
-const LOGIN_ONLY_PREFIXES = ["/geen-toegang", "/account", "/commercieel"];
+// HHC Tickets (/tickets) controleert de rechten zelf server-side, net als Commerciële Zaken.
+const LOGIN_ONLY_PREFIXES = ["/geen-toegang", "/account", "/commercieel", "/tickets"];
 
 export default auth((req) => withDeviceCookie(req, guard(req)));
 
@@ -145,6 +146,7 @@ export const config = {
     "/geen-toegang/:path*",
     "/account/:path*",
     "/commercieel/:path*",
+    "/tickets/:path*",
     // Alleen voor de apparaatcookie; de pagina zelf is openbaar.
     "/login",
     // Alleen voor de landbeperking van het beheer; de API controleert zelf de rechten.

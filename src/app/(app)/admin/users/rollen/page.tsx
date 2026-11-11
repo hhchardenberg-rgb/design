@@ -11,6 +11,8 @@ import { AccessTabs, groupRoles, summaryOf, type RoleView } from "@/components/a
 import { ACTION_NAMES, Matrix } from "@/components/commercial/rights-parts";
 import { findInconsistencies, isPermission, type Permission } from "@/lib/commercial/permissions";
 import { ROLE_TEMPLATES } from "@/lib/commercial/role-templates";
+import { TicketsRights } from "@/components/tickets/role-rights";
+import { isTicketPermission, ticketPermissionIssues, type TicketPermission } from "@/lib/tickets/permissions";
 import { LEVEL_LABELS, type SectionLevel } from "@/lib/access/model";
 import { formatDayTime } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
@@ -42,9 +44,11 @@ interface Draft {
   ticketingLevel: SectionLevel;
   commercialOn: boolean;
   commercial: Set<Permission>;
+  ticketsOn: boolean;
+  tickets: Set<TicketPermission>;
 }
 
-const EMPTY: Draft = { id: null, isSystem: false, name: "", description: "", hubLevel: "NONE", ticketingLevel: "NONE", commercialOn: false, commercial: new Set() };
+const EMPTY: Draft = { id: null, isSystem: false, name: "", description: "", hubLevel: "NONE", ticketingLevel: "NONE", commercialOn: false, commercial: new Set(), ticketsOn: false, tickets: new Set() };
 
 const SECTION_HINTS: Record<"hub" | "ticketing", Record<SectionLevel, string>> = {
   hub: { NONE: "Ziet Communicatie niet.", USER: "Designtool, agenda, nieuws, kennisbank en meer.", ADMIN: "Gebruiker, plus de inhoud beheren en anderen toegang geven." },
@@ -115,7 +119,7 @@ export default function RolesPage() {
 
   function edit(r: RoleView | null, copy = false) {
     if (!r) {
-      setDraft({ ...EMPTY, commercial: new Set() });
+      setDraft({ ...EMPTY, commercial: new Set(), tickets: new Set() });
     } else {
       setDraft({
         id: copy ? null : r.id,
@@ -126,6 +130,8 @@ export default function RolesPage() {
         ticketingLevel: r.ticketingLevel,
         commercialOn: r.commercial !== null,
         commercial: new Set((r.commercial ?? []).filter(isPermission)),
+        ticketsOn: r.tickets != null,
+        tickets: new Set((r.tickets ?? []).filter(isTicketPermission)),
       });
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -140,6 +146,7 @@ export default function RolesPage() {
       hubLevel: draft.hubLevel,
       ticketingLevel: draft.ticketingLevel,
       commercial: draft.commercialOn ? [...draft.commercial] : null,
+      tickets: draft.ticketsOn ? [...draft.tickets] : null,
     };
     const res = await fetch(draft.id ? `/api/admin/roles/${draft.id}` : "/api/admin/roles", {
       method: draft.id ? "PUT" : "POST",
@@ -172,6 +179,7 @@ export default function RolesPage() {
   }
 
   const issues = draft?.commercialOn ? findInconsistencies(draft.commercial) : [];
+  const ticketIssues = draft?.ticketsOn ? ticketPermissionIssues(draft.tickets) : [];
   const canLevel = (section: "hub" | "ticketing") => (lvl: SectionLevel) =>
     !!manager && (manager.full || lvl === "NONE" || (lvl === "USER" && (section === "hub" ? manager.hubAdmin : manager.ticketingAdmin)));
 
@@ -263,11 +271,19 @@ export default function RolesPage() {
                     </div>
                   )}
                 </fieldset>
+
+                <TicketsRights
+                  on={draft.ticketsOn}
+                  value={draft.tickets}
+                  canGrant={!!manager?.full}
+                  onChange={(on, next) => setDraft({ ...draft, ticketsOn: on, tickets: next })}
+                  issues={ticketIssues}
+                />
               </>
             )}
 
             <div className="flex gap-2">
-              <Button onClick={save} disabled={saving || !draft.name.trim() || issues.length > 0}>{saving ? "Opslaan…" : draft.id ? "Rol opslaan" : "Rol aanmaken"}</Button>
+              <Button onClick={save} disabled={saving || !draft.name.trim() || issues.length > 0 || ticketIssues.length > 0}>{saving ? "Opslaan…" : draft.id ? "Rol opslaan" : "Rol aanmaken"}</Button>
               <Button variant="ghost" onClick={() => setDraft(null)}>Annuleren</Button>
             </div>
           </CardContent>

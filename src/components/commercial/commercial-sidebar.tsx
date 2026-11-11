@@ -16,21 +16,21 @@ export interface SidebarGroup {
  * Menu van Commerciële Zaken: een vaste kolom naast de pagina op brede schermen,
  * een uitklapmenu boven de pagina op smalle schermen. De actieve pagina is gemarkeerd.
  */
-export function CommercialSidebar({ groups }: { groups: SidebarGroup[] }) {
+export function CommercialSidebar({ groups, homeHref = "/commercieel", label = "Commerciële Zaken", homeLabel = "Startpagina" }: { groups: SidebarGroup[]; homeHref?: string; label?: string; homeLabel?: string }) {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(false);
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const current = groups.flatMap((g) => g.items).find((i) => isActive(i.href));
 
   const list = (
-    <nav aria-label="Commerciële Zaken" className="space-y-4 text-sm">
+    <nav aria-label={label} className="space-y-4 text-sm">
       <Link
-        href="/commercieel"
+        href={homeHref}
         onClick={() => setOpen(false)}
-        className={cn("flex items-center gap-2 rounded-md px-3 py-2 font-medium hover:bg-surface-muted", pathname === "/commercieel" && "bg-surface-muted text-foreground")}
-        aria-current={pathname === "/commercieel" ? "page" : undefined}
+        className={cn("flex items-center gap-2 rounded-md px-3 py-2 font-medium hover:bg-surface-muted", pathname === homeHref && "bg-surface-muted text-foreground")}
+        aria-current={pathname === homeHref ? "page" : undefined}
       >
-        <Home className="h-4 w-4" /> Startpagina
+        <Home className="h-4 w-4" /> {homeLabel}
       </Link>
       {groups.map((g) => (
         <div key={g.id}>
@@ -69,7 +69,7 @@ export function CommercialSidebar({ groups }: { groups: SidebarGroup[] }) {
           onClick={() => setOpen((v) => !v)}
           className="flex w-full items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium"
         >
-          <span>{current?.label ?? "Startpagina"}</span>
+          <span>{current?.label ?? homeLabel}</span>
           <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
         </button>
         {open && <div className="mt-2 rounded-md border border-border bg-surface p-2">{list}</div>}

@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
+import { isTicketsEnabled } from "@/lib/tickets/flag";
+import { loadTicketsAccess } from "@/lib/tickets/authz.server";
 import { ShieldOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -15,6 +17,11 @@ export default async function GeenToegangPage() {
   if (isCommercialEnabled()) {
     const session = await auth();
     if (session?.user && (await loadCommercialAccess(session.user.id)).isMember) redirect("/commercieel");
+  }
+  // Idem voor wie alleen HHC Tickets heeft (bv. een scanner of ticketuitgever).
+  if (isTicketsEnabled()) {
+    const session = await auth();
+    if (session?.user && (await loadTicketsAccess(session.user.id)).hasAccess) redirect("/tickets");
   }
   return (
     <div className="mx-auto max-w-md">
