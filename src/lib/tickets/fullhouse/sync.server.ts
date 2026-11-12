@@ -39,6 +39,10 @@ export async function fullhouseOverview(actor: TicketsActor) {
 /** Evenementen van Fullhouse als concept in de Hub zetten; een beheerder activeert ze zelf. */
 export async function importFullhouseEvents(actor: TicketsActor) {
   need(actor, "sync:manage");
+  return importEventsAs({ id: actor.id, name: actor.name });
+}
+
+async function importEventsAs(actor: { id: string | null; name: string }) {
   const run = await prisma.ticketSyncRun.create({ data: { kind: "events", status: "RUNNING", mode: ticketProvider().mode, startedBy: actor.name } });
   try {
     const list = await ticketProvider().listEvents();
@@ -162,11 +166,18 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
   return out;
 }
 
-/** Voor de cron: alle Fullhouse-evenementen van de komende week en recent, stil bij fouten per evenement. */
+/** Voor de cron: alle Fullhouse-wedstrijden van gisteren tot 120 dagen vooruit (ook concepten), stil bij fouten per evenement. */
 export async function syncUpcoming() {
   if (ticketProvider().mode === "mock") return { skipped: "testmodus" };
+  // Nieuwe Fullhouse-evenementen komen automatisch als concept binnen; een fout hier stopt de ticketsynchronisatie niet.
+  let imported: { fetched: number; created: number } | { error: string };
+  try {
+    imported = await importEventsAs({ id: null, name: "Automatisch" });
+  } catch (e) {
+    imported = { error: errMsg(e) };
+  }
   const events = await prisma.ticketEvent.findMany({
-    where: { source: "FULLHOUSE", externalId: { not: null }, visible: true, status: "ACTIVE", startsAt: { lte: new Date(Date.now() + 7 * 86_400_000) }, endsAt: { gte: new Date(Date.now() - 86_400_000) } },
+    where: { source: "FULLHOUSE", externalId: { not: null }, status: { not: "CANCELLED" }, startsAt: { lte: new Date(Date.now() + 120 * 86_400_000) }, endsAt: { gte: new Date(Date.now() - 86_400_000) } },
     select: { externalId: true },
   });
   const results: { ok: number; failed: number } = { ok: 0, failed: 0 };
@@ -178,5 +189,5 @@ export async function syncUpcoming() {
       results.failed++;
     }
   }
-  return results;
+  return { ...results, events: imported };
 }

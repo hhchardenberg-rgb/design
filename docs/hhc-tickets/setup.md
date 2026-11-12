@@ -59,7 +59,7 @@ Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja
 - Standaard draait alles op de testprovider. Voor een echte koppeling: `FULLHOUSE_MODE=sandbox` (eerst!) of `production`, en `FULLHOUSE_API_KEY` (alleen lezen). Een access-user-token (`FULLHOUSE_ACCESS_TOKEN`) is een alternatief.
 - Onder **Fullhouse**: koppeling controleren (toont alleen veldnamen), evenementen ophalen (komen als concept binnen; activeer ze bij Wedstrijden), tickets synchroniseren (volledig of alleen wijzigingen) en het synchronisatielog.
 - Webhook-URL voor Fullhouse: `https://<domein>/api/webhooks/fullhouse`, met `FULLHOUSE_WEBHOOK_SECRET` als sleutel. Een gebeurtenis start alleen een gerichte, alleen-lezen synchronisatie.
-- Dagelijks om 04:00 draait `/api/cron/tickets` (met `CRON_SECRET`): synchronisatie van komende wedstrijden en de bewaartermijnen (anonimiseren, oude scans en logs wissen).
+- Dagelijks om 04:00 draait `/api/cron/tickets` (met `CRON_SECRET`): nieuwe Fullhouse-evenementen worden als concept opgehaald, de tickets van alle wedstrijden van gisteren tot 120 dagen vooruit worden gesynchroniseerd (alleen lezen), en de bewaartermijnen lopen (anonimiseren, oude scans en logs wissen). Vaker dan dagelijks kan alleen via de webhook of een betaald Vercel-abonnement.
 - De Hub bewaart van Fullhouse-tickets alleen een hash van de barcode en initialen van de naam.
 
 ## Rapportages en CZ (fase 5)
