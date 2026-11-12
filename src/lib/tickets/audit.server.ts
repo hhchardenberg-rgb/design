@@ -34,6 +34,8 @@ export const TICKET_AUDIT_ACTIONS = {
   "type.updated": "Tickettype gewijzigd",
   "zone.saved": "Vak opgeslagen",
   "season.saved": "Seizoen opgeslagen",
+  "list.saved": "Gastenlijst opgeslagen",
+  "list.deleted": "Gastenlijst verwijderd",
   "settings.updated": "Instellingen gewijzigd",
   "export.created": "Export gemaakt",
   "sync.completed": "Synchronisatie uitgevoerd",

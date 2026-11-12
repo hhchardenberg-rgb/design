@@ -37,6 +37,7 @@ async function wipe() {
   await db.ticketZone.deleteMany();
   await db.ticketSeason.deleteMany();
   await db.ticketAuditEvent.deleteMany();
+  await db.ticketGuestList.deleteMany();
 }
 
 async function issue(typeId: string, eventIds: string[], extra: Record<string, unknown> = {}) {
@@ -256,4 +257,20 @@ test("seizoenspassen: overzicht, verlengen (idempotent) en overdragen maakt de o
   assert.equal((await db.ticket.findUniqueOrThrow({ where: { id: card.id } })).firstName, "Bram");
   const audit = await db.ticketAuditEvent.findFirst({ where: { ticketId: card.id, action: "ticket.transferred" } });
   assert.ok(audit && !JSON.stringify(audit).includes("Jansen"), "geen namen in het auditlog");
+});
+
+test("gastenlijst: uitgeven per wedstrijd, extra tickets op 'Gast van', geen dubbele uitgifte", { skip }, async () => {
+  const gl = await import("../guestlist.server");
+  const { id } = await gl.saveGuestList(admin, null, { name: "Businessclub", kind: "SPONSOR" });
+  const added = await gl.addMembers(admin, id, { text: "Jan Smit; jan@bakkerij.nl; Bakkerij Smit; 3\nAnna Bos" });
+  assert.equal(added.added, 2);
+  const body = { issue: { typeId: typeSingle, zoneId: null, eventIds: [eventId], seasonId: null, validFrom: null, validUntil: null } };
+  const r1 = await gl.issueFromList(admin, id, body);
+  assert.equal(r1.count, 4);
+  assert.equal(r1.skipped, 0);
+  const guests = await db.ticket.count({ where: { firstName: "Gast van", relation: "Businessclub" } });
+  assert.equal(guests, 2);
+  const r2 = await gl.issueFromList(admin, id, body);
+  assert.equal(r2.count, 0);
+  assert.equal(r2.skipped, 2);
 });

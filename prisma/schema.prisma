@@ -1800,6 +1800,39 @@ model KnownDevice {
 // Alleen additieve tabellen met het voorvoegsel tickets_.
 // ---------------------------------------------------------------------------
 
+/// Vaste lijst met relaties (sponsoren, gasten, jeugdteams) waarvoor je per wedstrijd in één keer tickets uitgeeft.
+model TicketGuestList {
+  id        String   @id @default(cuid())
+  name      String
+  // SPONSOR | GUEST | OTHER
+  kind      String   @default("GUEST")
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members TicketGuestMember[]
+
+  @@index([name])
+  @@map("tickets_guest_lists")
+}
+
+model TicketGuestMember {
+  id        String          @id @default(cuid())
+  listId    String
+  list      TicketGuestList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String
+  email     String?
+  company   String?
+  // Aantal tickets voor deze relatie per uitgifte (de eerste op naam, de rest als "Gast van ...").
+  seats     Int             @default(1)
+  createdAt DateTime        @default(now())
+
+  @@index([listId])
+  @@map("tickets_guest_members")
+}
+
 model TicketSeason {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -2129,21 +2162,21 @@ model TicketScan {
 
 /// Lokale kopie van Fullhouse-tickets (alleen om te controleren; Fullhouse blijft de bron).
 model TicketExternalTicket {
-  id          String   @id @default(cuid())
-  eventExtId  String
-  externalId  String
+  id           String   @id @default(cuid())
+  eventExtId   String
+  externalId   String
   // sha256 van de barcode: de barcode zelf bewaren we niet.
-  codeHash    String
-  status      String
-  ticketName  String?
+  codeHash     String
+  status       String
+  ticketName   String?
   // Kaarttype- en categorie-verwijzing uit Fullhouse (zone/vak), zodat je ze per wedstrijd kunt zien.
   ticketTypeId String?
   categoryRef  String?
-  area        String?
+  area         String?
   // Initialen i.p.v. naam (dataminimalisatie).
-  holderLabel String?
-  updatedAt   DateTime @updatedAt
-  syncedAt    DateTime @default(now())
+  holderLabel  String?
+  updatedAt    DateTime @updatedAt
+  syncedAt     DateTime @default(now())
 
   @@unique([eventExtId, externalId])
   @@index([codeHash])

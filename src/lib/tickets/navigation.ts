@@ -22,6 +22,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
     items: [
       { href: "/tickets/uitgeven", label: "Tickets uitgeven", requires: "tickets:issue" },
       { href: "/tickets/bulk", label: "Bulkuitgifte", requires: "tickets:bulk" },
+      { href: "/tickets/gastenlijsten", label: "Gastenlijsten", requires: "tickets:bulk" },
       { href: "/tickets/overzicht", label: "Ticketoverzicht", requires: "tickets:read" },
       { href: "/tickets/rapportages", label: "Rapportages en export", requires: "reports:read" },
       { href: "/tickets/seizoenskaarten", label: "Seizoenskaarten", requires: "types:read" },

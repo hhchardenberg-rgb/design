@@ -90,11 +90,27 @@ export async function sendTicketMailTo(actor: TicketsActor, id: string) {
   return { ok: true };
 }
 
+/** Tickets van een wedstrijd (actief, met e-mailadres) die nog geen verzonden mail hebben; voor het opnieuw versturen. */
+async function unsentIdsForEvent(eventId: string) {
+  const tickets = await prisma.ticket.findMany({ where: { status: "ACTIVE", anonymizedAt: null, email: { not: null }, links: { some: { eventId } } }, select: { id: true } });
+  const sent = new Set((await prisma.ticketDelivery.findMany({ where: { ticketId: { in: tickets.map((t) => t.id) }, channel: "EMAIL", status: "SENT" }, select: { ticketId: true } })).map((d) => d.ticketId));
+  return { all: tickets.length, ids: tickets.map((t) => t.id).filter((id) => !sent.has(id)) };
+}
+
+/** Hoeveel tickets van deze wedstrijd hebben nog geen mail gehad? */
+export async function unsentMailCount(actor: TicketsActor, eventId: string) {
+  need(actor, "tickets:resend");
+  const r = await unsentIdsForEvent(eventId);
+  return { total: r.all, unsent: r.ids.length };
+}
+
 /** Meerdere tickets mailen (max. 150 per aanroep); een fout bij één ticket stopt de rest niet. */
-export async function sendTicketMails(actor: TicketsActor, raw: { ticketIds?: string[]; batchId?: string }) {
+export async function sendTicketMails(actor: TicketsActor, raw: { ticketIds?: string[]; batchId?: string; eventId?: string }) {
   need(actor, "tickets:resend");
   let ids = raw.ticketIds ?? [];
   if (raw.batchId) ids = (await prisma.ticket.findMany({ where: { batchId: raw.batchId, status: "ACTIVE", email: { not: null } }, select: { id: true }, orderBy: { createdAt: "asc" } })).map((t) => t.id);
+  // Per wedstrijd: alleen wie nog geen mail kreeg, zodat opnieuw proberen niemand dubbel mailt.
+  if (raw.eventId) ids = (await unsentIdsForEvent(raw.eventId)).ids;
   if (ids.length === 0) throw new ApiError(400, "Geen tickets om te versturen.");
   // Al verstuurde tickets in deze batch overslaan, zodat opnieuw proberen veilig is.
   const already = raw.batchId ? new Set((await prisma.ticketDelivery.findMany({ where: { ticketId: { in: ids }, channel: "EMAIL", status: "SENT" }, select: { ticketId: true } })).map((d) => d.ticketId)) : new Set<string>();

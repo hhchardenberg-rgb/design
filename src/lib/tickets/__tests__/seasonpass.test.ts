@@ -21,3 +21,21 @@ test("gemiste duels op rij tellen vanaf het laatste duel", () => {
   assert.equal(missedStreak(["a", "b"], new Set()), 2);
   assert.equal(missedStreak([], new Set()), 0);
 });
+
+import { parseMembers } from "../guestlist.server";
+
+test("gastenlijst: plakregels met puntkomma, komma en aantal worden gelezen", () => {
+  const r = parseMembers("Jan Smit; jan@bakkerij.nl; Bakkerij Smit; 4\nAnna de Vries, anna@example.nl\n\nAlleen");
+  assert.equal(r.members.length, 2);
+  assert.deepEqual(r.members[0], { firstName: "Jan", lastName: "Smit", email: "jan@bakkerij.nl", company: "Bakkerij Smit", seats: 4 });
+  assert.equal(r.members[1].lastName, "de Vries");
+  assert.equal(r.members[1].seats, 1);
+  assert.equal(r.errors.length, 1);
+  assert.equal(r.errors[0].line, 4);
+});
+
+test("gastenlijst: ongeldig e-mailadres of aantal wordt gemeld", () => {
+  const r = parseMembers("Jan Smit; geen-mail\nPiet Pot; p@x.nl; ; 99");
+  assert.equal(r.members.length, 0);
+  assert.equal(r.errors.length, 2);
+});
