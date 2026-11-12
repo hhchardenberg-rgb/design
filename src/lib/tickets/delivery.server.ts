@@ -12,7 +12,12 @@ import { linkTokenFor, parseLinkToken, qrCodeFor } from "./token";
 
 // Aflevering van tickets: mail, persoonlijke link, ticketpagina en PDF.
 
-const APP_URL = () => process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+/** Basisadres voor ticketlinks: NEXTAUTH_URL (productie), anders het adres van deze preview, anders localhost. */
+const APP_URL = () => {
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL;
+  const host = process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL;
+  return host ? `https://${host}` : "http://localhost:3000";
+};
 export const ticketLink = (publicId: string, linkVersion: number) => `${APP_URL()}/t/${linkTokenFor(publicId, linkVersion)}`;
 const actorOf = (a: TicketsActor) => ({ id: a.id, name: a.name });
 
