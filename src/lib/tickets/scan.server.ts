@@ -18,6 +18,8 @@ import { detectSource, parseQrCode } from "./token";
 
 export const scanInputSchema = z.object({
   eventId: z.string().min(1).max(40),
+  /** Bij meerdere wedstrijden tegelijk: de server kiest per scan de wedstrijd waar het ticket bij hoort. */
+  eventIds: z.array(z.string().min(1).max(40)).min(1).max(10).optional(),
   code: z.string().min(1).max(300),
   entranceId: z.string().max(40).nullish(),
   clientId: z.string().min(8).max(64),
@@ -37,6 +39,7 @@ export interface ScanResponse {
   reentry: boolean;
   overridden: boolean;
   source: "HHC" | "FULLHOUSE";
+  eventId: string;
   label: string | null;
   previous: { at: string; where: string | null } | null;
   /** Een supervisor mag deze uitslag met reden overrulen. */
@@ -70,6 +73,7 @@ const rowToResponse = async (row: { id: string; clientId: string; result: string
     reentry: row.reentry,
     overridden: !!row.overrideById || false,
     source: row.source as "HHC" | "FULLHOUSE",
+    eventId: row.eventId,
     label: row.holderLabel,
     previous,
     overridable: !!actor?.canOverride && row.result !== "VALID" && !!reason && !NOT_OVERRIDABLE.includes(reason),
@@ -86,12 +90,45 @@ const clampTime = (iso: string | null | undefined, offline: boolean | undefined)
   return new Date(Math.min(now + 5 * 60000, Math.max(now - 24 * 3600000, t)));
 };
 
+/**
+ * Welke wedstrijd hoort bij deze scan? Bij één gekozen wedstrijd die wedstrijd; bij meerdere de wedstrijd
+ * waar het ticket bij hoort (Fullhouse: waar het ticket staat, HHC: waar het ticket geldt). Past het nergens,
+ * dan de eerste gekozen wedstrijd, zodat de uitslag een nette reden toont.
+ */
+async function resolveEvent(input: ScanInput) {
+  const ids = [...new Set([...(input.eventIds ?? []), input.eventId])];
+  if (ids.length === 1) return prisma.ticketEvent.findUnique({ where: { id: input.eventId } });
+  const events = (await prisma.ticketEvent.findMany({ where: { id: { in: ids } } })).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  if (events.length === 0) return null;
+  const first = events.find((e) => e.id === input.eventId) ?? events[0];
+  if (detectSource(input.code) === "HHC") {
+    const ref = parseQrCode(input.code);
+    const ticket = ref ? await prisma.ticket.findUnique({ where: { publicId: ref.publicId }, include: { links: { select: { eventId: true } } } }) : null;
+    if (!ticket) return first;
+    const rt: RuleTicket = { status: ticket.status as TicketStatus, validityMode: ticket.validityMode as ValidityMode, validFrom: ticket.validFrom, validUntil: ticket.validUntil, seasonId: ticket.seasonId, competitions: ticket.competitions, eventIds: ticket.links.map((l) => l.eventId), homeOnly: ticket.homeOnly, isSeasonCard: ticket.isSeasonCard, zoneId: ticket.zoneId };
+    return events.find((e) => coversEvent(rt, toRuleEvent(e))) ?? first;
+  }
+  const hash = codeHash(input.code);
+  const extIds = events.map((e) => e.externalId).filter((x): x is string => !!x);
+  if (extIds.length) {
+    const local = await prisma.ticketExternalTicket.findFirst({ where: { codeHash: hash, eventExtId: { in: extIds } }, select: { eventExtId: true } });
+    const hit = local && events.find((e) => e.externalId === local.eventExtId);
+    if (hit) return hit;
+    for (const e of events) {
+      if (!e.externalId) continue;
+      const ext = await externalTicket(e.externalId, input.code, hash);
+      if (ext.found && ext.found.eventExtId === e.externalId) return e;
+    }
+  }
+  return first;
+}
+
 export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanResponse> {
   const input = scanInputSchema.parse(raw);
   const existing = await prisma.ticketScan.findUnique({ where: { clientId: input.clientId } });
   if (existing) return rowToResponse(existing, actor);
 
-  const event = await prisma.ticketEvent.findUnique({ where: { id: input.eventId } });
+  const event = await resolveEvent(input);
   if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
   const entranceId = input.entranceId ?? actor.entranceId ?? null;
   const entrance = entranceId ? await prisma.ticketEntrance.findUnique({ where: { id: entranceId } }) : null;
@@ -144,7 +181,7 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
       const f = ext.found;
       const label = [f.holderLabel, f.ticketName].filter(Boolean).join(" · ") || null;
       if (f.eventExtId !== event.externalId) return mk("INVALID", "WRONG_EVENT", label);
-      if (event.status !== "ACTIVE") return mk("INVALID", "EVENT_NOT_ACTIVE", label);
+      if (event.status === "CANCELLED") return mk("INVALID", "EVENT_NOT_ACTIVE", label);
       // Alleen VALID geeft toegang (vivenu); al het andere wordt geweigerd.
       if (f.status !== "VALID") return mk("INVALID", f.status === "INVALID" ? "CANCELLED" : "BLOCKED", label ? `${label} (${f.status})` : f.status);
       const prior = await tx.ticketScan.count({ where: { codeHash: hash, eventId: event.id, result: "VALID" } });
@@ -224,9 +261,10 @@ export async function scanContext(actor: ScanActor) {
   const now = Date.now();
   const [events, entrances] = await Promise.all([
     prisma.ticketEvent.findMany({
-      where: { status: "ACTIVE", startsAt: { lte: new Date(now + SCAN_WINDOW_BEFORE_MS) }, endsAt: { gte: new Date(now - SCAN_WINDOW_AFTER_MS) } },
+      // Ook concept- en afgesloten wedstrijden zijn te kiezen (niet afgelaste), van een week terug tot een half jaar vooruit.
+      where: { status: { not: "CANCELLED" }, startsAt: { lte: new Date(now + 180 * 86_400_000) }, endsAt: { gte: new Date(now - 7 * 86_400_000) } },
       orderBy: { startsAt: "asc" },
-      select: { id: true, title: true, startsAt: true, endsAt: true, source: true, externalId: true, allowReentry: true },
+      select: { id: true, title: true, status: true, startsAt: true, endsAt: true, source: true, externalId: true, allowReentry: true },
     }),
     prisma.ticketEntrance.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, zoneId: true } }),
   ]);
@@ -259,8 +297,8 @@ export async function offlineCache(eventId: string) {
   const event = await prisma.ticketEvent.findUnique({ where: { id: eventId } });
   if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
   const now = Date.now();
-  if (event.status !== "ACTIVE" || now < event.startsAt.getTime() - SCAN_WINDOW_BEFORE_MS || now > event.endsAt.getTime() + SCAN_WINDOW_AFTER_MS) {
-    throw new ApiError(400, "Een offline-lijst is alleen beschikbaar op de dag van een actieve wedstrijd.");
+  if (event.status === "CANCELLED" || now < event.startsAt.getTime() - SCAN_WINDOW_BEFORE_MS || now > event.endsAt.getTime() + SCAN_WINDOW_AFTER_MS) {
+    throw new ApiError(400, "Een offline-lijst is alleen beschikbaar op de dag van de wedstrijd.");
   }
   const hhc = (await coveringTickets(event)).map((t) => ({ p: t.publicId, v: t.qrVersion, l: `${initialsOf(t.firstName, t.lastName)} · ${t.type.name}`, z: t.zoneId, r: t.isSeasonCard && event.allowReentry }));
   const external = event.externalId

@@ -91,7 +91,7 @@ export const SCAN_REASON_LABELS: Record<ScanReason, string> = {
   EXPIRED: "Ticket is verlopen",
   NOT_YET_VALID: "Ticket is nog niet geldig",
   WRONG_EVENT: "Ticket hoort bij een andere wedstrijd",
-  EVENT_NOT_ACTIVE: "Deze wedstrijd is niet actief voor scannen",
+  EVENT_NOT_ACTIVE: "Deze wedstrijd is afgelast (of de offline-lijst is verlopen)",
   WRONG_ZONE: "Ticket hoort bij een ander vak dan deze ingang",
   ALREADY_USED: "Ticket is al gebruikt",
 };
@@ -131,7 +131,8 @@ export function evaluateScan(t: RuleTicket | null, e: RuleEvent, priorAdmissions
   if (!t) return { result: "INVALID", reason: "NOT_FOUND" };
   if (t.status === "CANCELLED") return { result: "INVALID", reason: "CANCELLED" };
   if (t.status === "BLOCKED") return { result: "INVALID", reason: "BLOCKED" };
-  if (e.status !== "ACTIVE") return { result: "INVALID", reason: "EVENT_NOT_ACTIVE" };
+  // Alleen een afgelaste wedstrijd kan niet gescand worden; een scanner mag ook concept- of afgesloten wedstrijden kiezen.
+  if (e.status === "CANCELLED") return { result: "INVALID", reason: "EVENT_NOT_ACTIVE" };
   if (t.validUntil && now > t.validUntil) return { result: "INVALID", reason: "EXPIRED" };
   if (t.validFrom && now < t.validFrom && t.validityMode === "RANGE") return { result: "INVALID", reason: "NOT_YET_VALID" };
   if (!coversEvent(t, e)) return { result: "INVALID", reason: "WRONG_EVENT" };

@@ -51,7 +51,8 @@ test("ticket voor een andere wedstrijd", () => {
 });
 
 test("wedstrijd niet actief", () => {
-  assert.deepEqual(evaluateScan(tk(), ev({ status: "DRAFT" }), 0, NOW), { result: "INVALID", reason: "EVENT_NOT_ACTIVE" });
+  assert.deepEqual(evaluateScan(tk(), ev({ status: "CANCELLED" }), 0, NOW), { result: "INVALID", reason: "EVENT_NOT_ACTIVE" });
+  assert.equal(evaluateScan(tk(), ev({ status: "DRAFT" }), 0, NOW).result, "VALID");
 });
 
 test("gewoon ticket kan niet opnieuw worden gebruikt: tweede scan is een waarschuwing", () => {

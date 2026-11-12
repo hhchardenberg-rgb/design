@@ -173,3 +173,32 @@ test("aantallen en historie", { skip }, async () => {
   const h = await scan.scanHistory({ eventId, result: "WARNING" });
   assert.ok(h.rows.every((r) => r.result === "WARNING"));
 });
+
+test("concept- en afgesloten wedstrijden zijn te kiezen en te scannen, afgelaste niet", { skip }, async () => {
+  const soon = new Date(Date.now() + 3600_000).toISOString();
+  const draft = (await catalog.saveEvent(admin, null, { title: "Concept-duel", startsAt: soon, status: "DRAFT" }))!.id;
+  const cancelled = (await catalog.saveEvent(admin, null, { title: "Afgelast duel", startsAt: soon, status: "ACTIVE" }))!.id;
+  const t2 = await issue(typeSingle, [cancelled]);
+  await db.ticketEvent.update({ where: { id: cancelled }, data: { status: "CANCELLED" } });
+  const ctx = await scan.scanContext(scanner());
+  const ids = ctx.events.map((e) => e.id);
+  assert.ok(ids.includes(draft), "een conceptwedstrijd staat in de keuzelijst");
+  assert.ok(!ids.includes(cancelled), "een afgelaste wedstrijd staat er niet in");
+  const t = await issue(typeSingle, [draft]);
+  assert.equal((await doScan(scanner(), draft, t.code)).result, "VALID");
+  assert.deepEqual(((r) => [r.result, r.reason])(await doScan(scanner(), cancelled, t2.code)), ["INVALID", "EVENT_NOT_ACTIVE"]);
+});
+
+test("meerdere wedstrijden tegelijk: de server kiest de wedstrijd waar het ticket bij hoort", { skip }, async () => {
+  const soon = new Date(Date.now() + 3600_000).toISOString();
+  const second = (await catalog.saveEvent(admin, null, { title: "Tweede duel", startsAt: soon, status: "ACTIVE" }))!.id;
+  const t = await issue(typeSingle, [second]);
+  const r = await doScan(scanner(), eventId, t.code, { eventIds: [eventId, second] });
+  assert.equal(r.result, "VALID");
+  assert.equal(r.eventId, second);
+  const fh = await doScan(scanner(), noFhEventId, "FH-TEST-0003", { eventIds: [noFhEventId, fhEventId] });
+  assert.equal(fh.result, "VALID");
+  assert.equal(fh.eventId, fhEventId);
+  const none = await doScan(scanner(), fhEventId, "ONBEKEND-456", { eventIds: [fhEventId, second] });
+  assert.equal(none.reason, "NOT_FOUND");
+});

@@ -11,11 +11,12 @@ import { checkOffline, cacheExpired, parseHhcCode, type OfflineCache } from "@/l
 
 interface Ctx {
   actor: { name: string; kind: "scanner" | "user"; canOverride: boolean; canSeeStats: boolean; entranceId: string | null };
-  events: { id: string; title: string; startsAt: string; endsAt: string; source: string; externalId: string | null }[];
+  events: { id: string; title: string; status?: string; startsAt: string; endsAt: string; source: string; externalId: string | null }[];
   entrances: { id: string; name: string; zoneId: string | null }[];
 }
 interface Resp {
   scanId?: string;
+  eventId?: string;
   result: "VALID" | "WARNING" | "INVALID";
   reasonLabel: string | null;
   reentry: boolean;
@@ -111,7 +112,9 @@ function beep(kind: "ok" | "warn" | "bad") {
 export function ScannerApp() {
   const [phase, setPhase] = useState<"checking" | "login" | "ready">("checking");
   const [ctx, setCtx] = useState<Ctx | null>(null);
-  const [eventId, setEventId] = useState("");
+  const [eventIds, setEventIds] = useState<string[]>([]);
+  // De eerste gekozen wedstrijd is de "hoofdwedstrijd" voor tellingen; bij meerdere wedstrijden kiest de server per scan.
+  const eventId = eventIds[0] ?? "";
   const [entranceId, setEntranceId] = useState("");
   const [result, setResult] = useState<Resp | null>(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
@@ -156,21 +159,23 @@ export function ScannerApp() {
 
   useEffect(() => {
     if (!ctx) return;
-    const sel = read<{ eventId?: string; entranceId?: string }>(LS.sel, {});
-    setEventId(ctx.events.some((e) => e.id === sel.eventId) ? sel.eventId! : ctx.events[0]?.id ?? "");
+    const sel = read<{ eventId?: string; eventIds?: string[]; entranceId?: string }>(LS.sel, {});
+    const saved = (sel.eventIds ?? (sel.eventId ? [sel.eventId] : [])).filter((id) => ctx.events.some((e) => e.id === id));
+    setEventIds(saved.length ? saved : ctx.events[0] ? [(ctx.events.find((e) => e.status === "ACTIVE") ?? ctx.events[0]).id] : []);
     setEntranceId(ctx.actor.entranceId ?? (ctx.entrances.some((e) => e.id === sel.entranceId) ? sel.entranceId! : ""));
   }, [ctx]);
   useEffect(() => {
-    if (eventId) write(LS.sel, { eventId, entranceId });
-  }, [eventId, entranceId]);
+    if (eventIds.length) write(LS.sel, { eventIds, entranceId });
+  }, [eventIds, entranceId]);
 
-  const loadCacheInfo = useCallback((id: string) => {
-    const c = read<OfflineCache | null>(LS.cache(id), null);
-    setCacheInfo(c && !cacheExpired(c) ? { count: c.hhc.length + c.fullhouse.length, expiresAt: c.expiresAt } : null);
+  const loadCacheInfo = useCallback((ids: string[]) => {
+    const caches = ids.map((id) => read<OfflineCache | null>(LS.cache(id), null)).filter((c): c is OfflineCache => !!c && !cacheExpired(c));
+    setCacheInfo(caches.length ? { count: caches.reduce((n, c) => n + c.hhc.length + c.fullhouse.length, 0), expiresAt: caches.map((c) => c.expiresAt).sort()[0] } : null);
   }, []);
+  const eventKey = eventIds.join(",");
   useEffect(() => {
-    if (eventId) loadCacheInfo(eventId);
-  }, [eventId, loadCacheInfo]);
+    if (eventKey) loadCacheInfo(eventKey.split(","));
+  }, [eventKey, loadCacheInfo]);
 
   // Terugmelden van offline scans.
   const sync = useCallback(async () => {
@@ -230,7 +235,7 @@ export function ScannerApp() {
       const scannedAt = new Date().toISOString();
       let r: Resp;
       try {
-        r = await call<Resp>("/api/scan/scan", { body: { eventId, code, entranceId: entr, clientId, ...(override ? { override: { reason: override } } : {}) } });
+        r = await call<Resp>("/api/scan/scan", { body: { eventId, ...(eventIds.length > 1 ? { eventIds } : {}), code, entranceId: entr, clientId, ...(override ? { override: { reason: override } } : {}) } });
         setOnline(true);
       } catch (e) {
         if (e instanceof AuthError) {
@@ -244,8 +249,8 @@ export function ScannerApp() {
           return;
         }
         setOnline(false);
-        const cache = read<OfflineCache | null>(LS.cache(eventId), null);
-        if (!cache) {
+        const caches = eventIds.map((id) => ({ id, cache: read<OfflineCache | null>(LS.cache(id), null) })).filter((x): x is { id: string; cache: OfflineCache } => !!x.cache);
+        if (!caches.length) {
           setMessage("Geen verbinding en geen offline-lijst geladen voor deze wedstrijd.");
           beep("bad");
           return;
@@ -253,14 +258,24 @@ export function ScannerApp() {
         const isHhc = !!parseHhcCode(code);
         const hash = isHhc ? null : await sha256(code);
         const queue = read<Queued[]>(LS.queue, []);
-        const usedLocally = new Map<string, string>(queue.filter((q) => q.key && q.eventId === eventId && q.local === "VALID").map((q) => [q.key!, q.scannedAt]));
         const zone = ctx?.entrances.find((x) => x.id === entr)?.zoneId ?? null;
-        const o = checkOffline(cache, code, hash, usedLocally, zone);
+        // Bij meerdere wedstrijden: de eerste lijst waar het ticket in staat, anders de eerste lijst.
+        let matched = caches[0].id;
+        let o = checkOffline(caches[0].cache, code, hash, new Map<string, string>(queue.filter((q) => q.key && q.eventId === caches[0].id && q.local === "VALID").map((q) => [q.key!, q.scannedAt])), zone);
+        for (const { id, cache } of caches) {
+          const used = new Map<string, string>(queue.filter((q) => q.key && q.eventId === id && q.local === "VALID").map((q) => [q.key!, q.scannedAt]));
+          const res = checkOffline(cache, code, hash, used, zone);
+          if (!("reason" in res) || res.reason !== "NOT_FOUND") {
+            matched = id;
+            o = res;
+            break;
+          }
+        }
         const key = parseHhcCode(code)?.publicId ?? hash;
         // Nooit een offline-override: een supervisor doet dat met verbinding.
-        write(LS.queue, [...queue, { clientId, eventId, code, entranceId: entr, scannedAt, offline: true, key, local: o.result } satisfies Queued]);
+        write(LS.queue, [...queue, { clientId, eventId: matched, code, entranceId: entr, scannedAt, offline: true, key, local: o.result } satisfies Queued]);
         setPending(queue.length + 1);
-        r = { result: o.result, reasonLabel: o.reason === "ALREADY_USED" ? "Ticket is al gebruikt" : o.reason === "NOT_FOUND" ? "Ticket staat niet in de offline-lijst" : o.reason === "WRONG_ZONE" ? "Ticket hoort bij een ander vak dan deze ingang" : o.reason ? "Offline-lijst is verlopen" : null, reentry: o.reentry, label: o.label, previous: o.result === "WARNING" ? { at: o.previousAt, where: null } : null, overridable: false, offline: true };
+        r = { result: o.result, reasonLabel: o.reason === "ALREADY_USED" ? "Ticket is al gebruikt" : o.reason === "NOT_FOUND" ? "Ticket staat niet in de offline-lijst" : o.reason === "WRONG_ZONE" ? "Ticket hoort bij een ander vak dan deze ingang" : o.reason ? "Offline-lijst is verlopen" : null, reentry: o.reentry, label: o.label, previous: o.result === "WARNING" ? { at: o.previousAt, where: null } : null, overridable: false, offline: true, eventId: matched };
       }
       setMessage(null);
       setResult(r);
@@ -268,7 +283,7 @@ export function ScannerApp() {
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
       if (r.result === "VALID") dismissTimer.current = setTimeout(() => setResult(null), 1800);
     },
-    [eventId, entranceId, ctx],
+    [eventId, eventIds, entranceId, ctx],
   );
 
   // Camera + QR-herkenning.
@@ -338,10 +353,19 @@ export function ScannerApp() {
   async function downloadCache() {
     setBusy(true);
     try {
-      const c = await call<OfflineCache>(`/api/scan/cache?eventId=${eventId}`);
-      write(LS.cache(eventId), c);
-      loadCacheInfo(eventId);
-      setMessage(`Offline-lijst geladen: ${c.hhc.length + c.fullhouse.length} tickets.`);
+      let total = 0;
+      const failed: string[] = [];
+      for (const id of eventIds) {
+        try {
+          const c = await call<OfflineCache>(`/api/scan/cache?eventId=${id}`);
+          write(LS.cache(id), c);
+          total += c.hhc.length + c.fullhouse.length;
+        } catch (e) {
+          failed.push(`${ctx?.events.find((x) => x.id === id)?.title ?? id}: ${e instanceof Error ? e.message : "mislukt"}`);
+        }
+      }
+      loadCacheInfo(eventIds);
+      setMessage(`Offline-lijst geladen: ${total} tickets.${failed.length ? " Niet gelukt: " + failed.join(" · ") : ""}`);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Laden mislukt.");
     } finally {
@@ -362,7 +386,6 @@ export function ScannerApp() {
   if (phase === "login") return <Login onDone={(c) => (setCtx(c), setPhase("ready"))} />;
   if (!ctx) return null;
 
-  const event = ctx.events.find((e) => e.id === eventId);
   const tone = result?.result === "VALID" ? "bg-green-600" : result?.result === "WARNING" ? "bg-amber-500" : "bg-red-600";
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
@@ -381,16 +404,25 @@ export function ScannerApp() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 p-4">
-            <label className="text-xs text-neutral-400">
-              Wedstrijd
-              <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="mt-1 w-full rounded bg-neutral-800 p-2 text-sm text-white">
+            <div className="text-xs text-neutral-400">
+              Wedstrijden ({eventIds.length} gekozen)
+              <div className="mt-1 max-h-32 space-y-1 overflow-y-auto rounded bg-neutral-800 p-2 text-sm text-white">
                 {ctx.events.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
-                  </option>
+                  <label key={e.id} className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={eventIds.includes(e.id)}
+                      onChange={(ev) => setEventIds((cur) => (ev.target.checked ? [...cur, e.id] : cur.length > 1 ? cur.filter((x) => x !== e.id) : cur))}
+                      className="mt-1"
+                    />
+                    <span>
+                      {e.title}
+                      {e.status && e.status !== "ACTIVE" && <span className="ml-1 text-xs text-amber-400">({e.status === "DRAFT" ? "concept" : "afgesloten"})</span>}
+                    </span>
+                  </label>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
             <label className="text-xs text-neutral-400">
               Ingang
               <select value={entranceId} onChange={(e) => setEntranceId(e.target.value)} disabled={!!ctx.actor.entranceId} className="mt-1 w-full rounded bg-neutral-800 p-2 text-sm text-white">
@@ -431,7 +463,7 @@ export function ScannerApp() {
                 {cacheInfo ? "Vernieuwen" : "Laden"}
               </button>
             </div>
-            {event && <p>Laad de lijst vóór de wedstrijd, met verbinding. Zonder verbinding controleert de scanner alleen tickets uit die lijst en meldt alles later terug.</p>}
+            {eventIds.length > 0 && <p>Laad de lijst vóór de wedstrijd, met verbinding. Zonder verbinding controleert de scanner alleen tickets uit die lijst en meldt alles later terug.</p>}
           </div>
         </>
       )}
@@ -440,6 +472,7 @@ export function ScannerApp() {
         <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 p-8 text-center ${tone}`} onClick={result.result === "VALID" ? dismiss : undefined}>
           <p className="text-5xl font-black tracking-tight">{result.result === "VALID" ? (result.reentry ? "OPNIEUW BINNEN" : "GELDIG") : result.result === "WARNING" ? "AL GEBRUIKT" : "NIET GELDIG"}</p>
           {result.label && <p className="text-xl font-semibold">{result.label}</p>}
+          {eventIds.length > 1 && result.eventId && <p className="text-sm opacity-90">{ctx.events.find((x) => x.id === result.eventId)?.title}</p>}
           {result.overridden && <p className="rounded bg-black/30 px-3 py-1 text-sm">Door supervisor toegelaten</p>}
           {result.reasonLabel && result.result !== "VALID" && <p className="text-lg">{result.reasonLabel}</p>}
           {result.previous && (
