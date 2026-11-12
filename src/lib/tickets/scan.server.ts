@@ -261,8 +261,8 @@ export async function scanContext(actor: ScanActor) {
   const now = Date.now();
   const [events, entrances] = await Promise.all([
     prisma.ticketEvent.findMany({
-      // Ook concept- en afgesloten wedstrijden zijn te kiezen (niet afgelaste), van een week terug tot een half jaar vooruit.
-      where: { status: { not: "CANCELLED" }, startsAt: { lte: new Date(now + 180 * 86_400_000) }, endsAt: { gte: new Date(now - 7 * 86_400_000) } },
+      // Ook concept- en afgesloten wedstrijden zijn te kiezen (niet afgelaste), van een week terug tot ruim een jaar vooruit (het hele seizoen).
+      where: { status: { not: "CANCELLED" }, startsAt: { lte: new Date(now + 400 * 86_400_000) }, endsAt: { gte: new Date(now - 7 * 86_400_000) } },
       orderBy: { startsAt: "asc" },
       select: { id: true, title: true, status: true, startsAt: true, endsAt: true, source: true, externalId: true, allowReentry: true },
     }),
