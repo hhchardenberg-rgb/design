@@ -304,8 +304,9 @@ export async function offlineCache(eventId: string) {
   const event = await prisma.ticketEvent.findUnique({ where: { id: eventId } });
   if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
   const now = Date.now();
-  if (event.status === "CANCELLED" || now < event.startsAt.getTime() - SCAN_WINDOW_BEFORE_MS || now > event.endsAt.getTime() + SCAN_WINDOW_AFTER_MS) {
-    throw new ApiError(400, "Een offline-lijst is alleen beschikbaar op de dag van de wedstrijd.");
+  // Altijd te laden voor elk gekozen duel (ook concept, afgesloten, seizoenspassen); alleen afgelaste duels niet.
+  if (event.status === "CANCELLED") {
+    throw new ApiError(400, "Voor een afgelaste wedstrijd is geen offline-lijst beschikbaar.");
   }
   const hhc = (await coveringTickets(event)).map((t) => ({ p: t.publicId, v: t.qrVersion, l: `${initialsOf(t.firstName, t.lastName)} · ${t.type.name}`, z: t.zoneId, r: t.isSeasonCard && event.allowReentry }));
   const external = event.externalId
@@ -316,7 +317,8 @@ export async function offlineCache(eventId: string) {
   return {
     event: { id: event.id, title: event.title, startsAt: event.startsAt, endsAt: event.endsAt, allowReentry: event.allowReentry },
     generatedAt: new Date().toISOString(),
-    expiresAt: new Date(event.endsAt.getTime() + SCAN_WINDOW_AFTER_MS).toISOString(),
+    // Minstens 24 uur geldig vanaf het laden, en tot 6 uur na afloop van de wedstrijd als dat later is.
+    expiresAt: new Date(Math.max(event.endsAt.getTime() + SCAN_WINDOW_AFTER_MS, now + 24 * 3600000)).toISOString(),
     hhc,
     fullhouse: external.map((e) => ({ h: e.codeHash, l: [e.holderLabel, e.ticketName].filter(Boolean).join(" · ") })),
     used: used.map((u) => ({ k: (u.ticketId && pids.get(u.ticketId)) || u.codeHash, at: u.scannedAt.toISOString() })),
