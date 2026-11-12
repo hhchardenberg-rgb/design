@@ -26,6 +26,8 @@ let n = 0;
 const cid = () => `test-client-${Date.now()}-${n++}`;
 
 async function wipe() {
+  await db.ticketPromoClaim.deleteMany();
+  await db.ticketPromo.deleteMany();
   await db.ticketScan.deleteMany();
   await db.ticketScanner.deleteMany();
   await db.ticketEntrance.deleteMany();
@@ -38,6 +40,7 @@ async function wipe() {
   await db.ticketSeason.deleteMany();
   await db.ticketAuditEvent.deleteMany();
   await db.ticketGuestList.deleteMany();
+  await db.ticketPublicHit.deleteMany();
 }
 
 async function issue(typeId: string, eventIds: string[], extra: Record<string, unknown> = {}) {
@@ -299,4 +302,22 @@ test("afgelasten en verplaatsen: tickets blijven geldig, geldigheid loopt mee, g
   // Opnieuw plannen zet de wedstrijd weer actief.
   await ec.changeEvent(admin, ev, { action: "MOVE", startsAt: new Date(start.getTime() + 30 * 86_400_000).toISOString(), sendMail: false });
   assert.equal((await db.ticketEvent.findUniqueOrThrow({ where: { id: ev } })).status, "ACTIVE");
+});
+
+test("actiecode: inwisselen maakt tickets, respecteert maximum en één per e-mailadres, en beperkt pogingen", { skip }, async () => {
+  const pr = await import("../promo.server");
+  const { code } = await pr.savePromo(admin, { name: "Neem een vriend mee", typeId: typeSingle, eventIds: [eventId], maxClaims: 2, maxPerEmail: 1, ticketsPerClaim: 2 });
+  const info = await pr.publicPromoInfo(code);
+  assert.equal(info.available, true);
+  const r1 = await pr.claimPromo({ code, firstName: "Eva", lastName: "Bakker", email: "eva@test.nl" }, "1.1.1.1");
+  assert.equal(r1.count, 2);
+  await assert.rejects(() => pr.claimPromo({ code, firstName: "Eva", lastName: "Bakker", email: "EVA@test.nl" }, "1.1.1.1"), /al ingewisseld/);
+  await pr.claimPromo({ code, firstName: "Tom", lastName: "Dijk", email: "tom@test.nl" }, "2.2.2.2");
+  await assert.rejects(() => pr.claimPromo({ code, firstName: "Kim", lastName: "Wit", email: "kim@test.nl" }, "3.3.3.3"), /op/);
+  assert.equal((await pr.publicPromoInfo(code)).available, false);
+  assert.equal(await db.ticket.count({ where: { originSystem: "PROMO" } }), 4);
+  // Beperking per IP: na 15 pogingen per uur wordt alles geweigerd.
+  for (let i = 0; i < 16; i++) await pr.claimPromo({ code: "BESTAATNIET", firstName: "A", lastName: "B", email: `x${i}@test.nl` }, "9.9.9.9").catch(() => {});
+  await assert.rejects(() => pr.claimPromo({ code, firstName: "Z", lastName: "Z", email: "z@test.nl" }, "9.9.9.9"), /Te veel pogingen/);
+  await assert.rejects(() => pr.savePromo(admin, { name: "Dubbel", code, typeId: typeSingle, eventIds: [eventId], maxClaims: 1 }), /bestaat al/);
 });

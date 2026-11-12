@@ -27,6 +27,8 @@ async function wipe() {
   await db.ticketEventLink.deleteMany();
   await db.ticket.deleteMany();
   await db.ticketBatch.deleteMany();
+  await db.ticketPromoClaim.deleteMany();
+  await db.ticketPromo.deleteMany();
   await db.ticketType.deleteMany();
   await db.ticketEvent.deleteMany();
   await db.ticketSeason.deleteMany();

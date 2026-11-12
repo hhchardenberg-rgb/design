@@ -37,6 +37,7 @@ export const TICKET_AUDIT_ACTIONS = {
   "zone.saved": "Vak opgeslagen",
   "season.saved": "Seizoen opgeslagen",
   "list.saved": "Gastenlijst opgeslagen",
+  "promo.saved": "Actiecode opgeslagen",
   "list.deleted": "Gastenlijst verwijderd",
   "settings.updated": "Instellingen gewijzigd",
   "export.created": "Export gemaakt",

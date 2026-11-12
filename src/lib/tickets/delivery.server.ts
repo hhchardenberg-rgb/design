@@ -71,22 +71,27 @@ const describeValidity = (t: { validityMode: string; season: { name: string } | 
 /** Eén ticket mailen. Alleen actieve tickets met een e-mailadres; elke poging komt in het verzendlog. */
 export async function sendTicketMailTo(actor: TicketsActor, id: string) {
   need(actor, "tickets:resend");
+  return deliverTicketMail(id, { id: actor.id, name: actor.name });
+}
+
+/** Zelfde als hierboven maar zonder ingelogde medewerker: voor acties van het systeem (actiecodes, ticket opnieuw opvragen). */
+export async function deliverTicketMail(id: string, by: { id: string | null; name: string }) {
   const t = await ticketForDelivery(id);
   if (t.anonymizedAt) throw new ApiError(400, "Dit ticket is geanonimiseerd.");
   if (t.status !== "ACTIVE") throw new ApiError(400, "Alleen actieve tickets worden verstuurd.");
   if (!t.email) throw new ApiError(400, "Dit ticket heeft geen e-mailadres.");
   const tpl = await loadTemplate("ticket");
   const link = ticketLink(t.publicId, t.linkVersion);
-  const vars = { voornaam: t.firstName, achternaam: t.lastName, type: t.type.name, wedstrijd: describeValidity(t), link };
+  const vars = { voornaam: t.firstName, achternaam: t.lastName, type: t.type.name, wedstrijd: describeValidity(t), link, datum: "", oudedatum: "", bericht: "" };
   try {
     await sendTicketEmail({ to: t.email, subject: fillTemplate(tpl.subject, vars), bodyText: fillTemplate(tpl.body, vars), linkUrl: link });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
-    await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "FAILED", error: message.slice(0, 300), byId: actor.id, byName: actor.name } });
+    await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "FAILED", error: message.slice(0, 300), byId: by.id, byName: by.name } });
     throw new ApiError(502, `Versturen mislukt: ${message}`);
   }
-  await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "SENT", kind: "TICKET", byId: actor.id, byName: actor.name } });
-  await ticketAudit({ action: "ticket.mailed", actor: actorOf(actor), ticketId: id });
+  await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "SENT", kind: "TICKET", byId: by.id, byName: by.name } });
+  await ticketAudit({ action: "ticket.mailed", actor: by, ticketId: id });
   return { ok: true };
 }
 

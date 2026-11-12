@@ -27,6 +27,8 @@ const reader = actor("reader", ["dashboard:read", "events:read", "types:read", "
 let typeSingle: string, typeSeason: string, eventId: string, cancelledEvent: string, seasonId: string;
 
 async function wipe() {
+  await db.ticketPromoClaim.deleteMany();
+  await db.ticketPromo.deleteMany();
   await db.ticketEventLink.deleteMany();
   await db.ticket.deleteMany();
   await db.ticketBatch.deleteMany();

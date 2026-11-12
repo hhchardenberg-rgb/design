@@ -1833,6 +1833,59 @@ model TicketGuestMember {
   @@map("tickets_guest_members")
 }
 
+/// Tellers voor openbare ticket-eindpunten (actiecodes, ticket opnieuw opvragen): beperkt misbruik per IP en per e-mailadres.
+/// `key` is een hash, nooit een IP-adres of e-mailadres in leesbare vorm.
+model TicketPublicHit {
+  id        String   @id @default(cuid())
+  kind      String
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([kind, key, createdAt])
+  @@map("tickets_public_hits")
+}
+
+/// Actiecode: wie de code invult krijgt zelf tickets (bijvoorbeeld "neem een vriend mee" of een code voor een jeugdteam).
+model TicketPromo {
+  id              String     @id @default(cuid())
+  code            String     @unique
+  name            String
+  note            String?
+  typeId          String
+  type            TicketType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  zoneId          String?
+  seasonId        String?
+  eventIds        String[]   @default([])
+  // Het tijdvak waarin de code ingewisseld kan worden.
+  claimFrom       DateTime?
+  claimUntil      DateTime?
+  maxClaims       Int
+  maxPerEmail     Int        @default(1)
+  // 2 = "neem een vriend mee": de tweede is een ticket op "Gast van ...".
+  ticketsPerClaim Int        @default(1)
+  active          Boolean    @default(true)
+  createdBy       String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  claims TicketPromoClaim[]
+
+  @@map("tickets_promos")
+}
+
+model TicketPromoClaim {
+  id        String      @id @default(cuid())
+  promoId   String
+  promo     TicketPromo @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  // Alleen ter controle op "maximaal per e-mailadres"; het ticket zelf bevat de gegevens.
+  emailHash String
+  ticketIds String[]
+  createdAt DateTime    @default(now())
+
+  @@index([promoId, emailHash])
+  @@map("tickets_promo_claims")
+}
+
 model TicketSeason {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -1924,6 +1977,8 @@ model TicketType {
   updatedAt    DateTime      @updatedAt
 
   tickets Ticket[]
+
+  promos TicketPromo[]
 
   @@map("tickets_types")
 }

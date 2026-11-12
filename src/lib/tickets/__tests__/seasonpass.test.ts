@@ -51,3 +51,20 @@ test("verplaatsen: één mail per e-mailadres, ongeacht hoofdletters", () => {
   ]);
   assert.deepEqual(r.map((x) => x.id), ["a", "c"]);
 });
+
+import { newPromoCode, normalizeCode, promoAvailability } from "../promo.server";
+
+test("actiecode: leesbaar, zonder verwarrende tekens en normaliseert invoer", () => {
+  for (let i = 0; i < 50; i++) assert.match(newPromoCode(), /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
+  assert.equal(normalizeCode(" ab12 cd "), "AB12CD");
+});
+
+test("actiecode: beschikbaarheid volgt status, tijdvak en maximum", () => {
+  const base = { active: true, claimFrom: null, claimUntil: null, maxClaims: 2, claimed: 0 };
+  const now = new Date("2026-11-14T12:00:00Z");
+  assert.equal(promoAvailability(base, now).ok, true);
+  assert.equal(promoAvailability({ ...base, active: false }, now).ok, false);
+  assert.equal(promoAvailability({ ...base, claimed: 2 }, now).ok, false);
+  assert.equal(promoAvailability({ ...base, claimFrom: new Date("2026-11-15T00:00:00Z") }, now).ok, false);
+  assert.equal(promoAvailability({ ...base, claimUntil: new Date("2026-11-13T00:00:00Z") }, now).ok, false);
+});
