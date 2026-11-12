@@ -121,6 +121,26 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
   const provider = ticketProvider();
   const out: { mode: string; events: number | null; ticketKeys: string[]; note: string } = { mode: provider.mode, events: null, ticketKeys: [], note: "" };
   if (provider.mode === "mock") out.note = "Testmodus: er is geen echte koppeling. Zet FULLHOUSE_MODE en FULLHOUSE_API_KEY in Vercel.";
+  // Bij een API-sleutel: eerst controleren welke inlogvorm Fullhouse accepteert (alleen statuscodes, geen waarden).
+  const key = process.env.FULLHOUSE_API_KEY;
+  if (provider.mode !== "mock" && key) {
+    const base = fullhouseConfigured().baseUrl;
+    const tries: [string, Record<string, string>][] = [
+      ["Authorization: Bearer", { Authorization: `Bearer ${key}` }],
+      ["Authorization (alleen sleutel)", { Authorization: key }],
+      ["x-api-key", { "x-api-key": key }],
+    ];
+    const seen: string[] = [];
+    for (const [label, headers] of tries) {
+      try {
+        const r = await fetch(`${base}/events?top=1&skip=0`, { headers: { ...headers, Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(10_000) });
+        seen.push(`${label}: ${r.status}`);
+      } catch {
+        seen.push(`${label}: niet bereikbaar`);
+      }
+    }
+    out.note = `Inlogvormen getest op ${base}/events — ${seen.join(" · ")}`;
+  }
   try {
     const events = await provider.listEvents();
     out.events = events.length;
@@ -129,7 +149,7 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
       out.ticketKeys = page.tickets[0] ? Object.entries(page.tickets[0]).filter(([, v]) => v !== null).map(([k]) => k) : [];
     }
   } catch (e) {
-    throw new ApiError(502, errMsg(e));
+    throw new ApiError(502, out.note ? `${errMsg(e)} ${out.note}` : errMsg(e));
   }
   return out;
 }
