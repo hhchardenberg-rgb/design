@@ -10,7 +10,7 @@ import { visibleCompany } from "./companies.server";
 // facturen) blijft bewaard en is alleen te zien voor wie 'deleted_archive:read' heeft
 // (hoofdadmin en de rol Beheerder Commerciële Zaken). Terugzetten maakt alles weer zichtbaar.
 //
-// Verwijderen vraagt 'companies:archive' (uit de actieve lijsten halen, blijft bewaard).
+// Verwijderen is alleen voor beheerders: het vraagt 'companies:archive' én 'deleted_archive:update'.
 // Verborgen gaat via companyScopeWhere (deletedAt: null) en visibleCompany.
 
 const REASON_MAX = 500;
@@ -32,8 +32,18 @@ export async function linkedCounts(companyId: string) {
 export type LinkedCounts = Awaited<ReturnType<typeof linkedCounts>>;
 
 /** Voor de bevestigingsvraag: wat gaat er mee naar het archief? */
-export async function deletePreview(ctx: RecordCtx, id: string) {
+/** Alleen beheerders (met beheer over het gesloten archief) mogen een dossier verwijderen. */
+export function canDeleteCompanies(ctx: Pick<RecordCtx, "can">): boolean {
+  return ctx.can("companies:archive") && ctx.can("deleted_archive:update");
+}
+
+function needDelete(ctx: RecordCtx) {
   need(ctx, "companies:archive");
+  need(ctx, "deleted_archive:update");
+}
+
+export async function deletePreview(ctx: RecordCtx, id: string) {
+  needDelete(ctx);
   const company = await visibleCompany(ctx, id);
   const [counts, activeContracts] = await Promise.all([
     linkedCounts(id),
@@ -43,7 +53,7 @@ export async function deletePreview(ctx: RecordCtx, id: string) {
 }
 
 export async function deleteCompany(ctx: RecordCtx, id: string, input: { confirm: boolean; reason?: string | null }) {
-  need(ctx, "companies:archive");
+  needDelete(ctx);
   if (input.confirm !== true) throw new ApiError(400, "Bevestig eerst dat je dit dossier wilt verwijderen.");
   const company = await visibleCompany(ctx, id);
   const reason = input.reason?.trim().slice(0, REASON_MAX) || null;

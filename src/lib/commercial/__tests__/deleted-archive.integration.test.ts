@@ -81,8 +81,13 @@ test("verwijderen naar gesloten archief en terugzetten", { skip }, async () => {
   const s1 = await ct.saveSeason(cm, null, { name: "2026/2027", startsOn: "2026-07-01", endsOn: "2027-06-30", status: "ACTIVE" });
   await ct.createContract(cm, x.id, { seasonId: s1, startsOn: "2026-07-01", endsOn: "2027-06-30", amountCents: 100_000 });
 
-  // Zonder bevoegdheid geen verwijderen en geen archief.
+  // Alleen beheerders verwijderen: ook met archiveerrecht (via uitzondering) mag een relatiebeheerder het niet.
   await rejects(arch.deleteCompany(cr, x.id, { confirm: true }), 403);
+  await rejects(arch.deletePreview(cr, x.id), 403);
+  const crArchive = { ...cr, can: (p: string) => p === "companies:archive" || cr.can(p as never) } as typeof cr;
+  await rejects(arch.deleteCompany(crArchive, x.id, { confirm: true }), 403);
+  assert.equal(arch.canDeleteCompanies(crArchive), false);
+  assert.equal(arch.canDeleteCompanies(cm), true);
   await rejects(arch.listDeletedCompanies(cr, {}), 403);
   // Zonder bevestiging niets.
   await rejects(arch.deleteCompany(ca, x.id, { confirm: false }), 400);

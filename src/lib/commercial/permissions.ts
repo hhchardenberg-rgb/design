@@ -95,7 +95,7 @@ export const AREAS: Record<AreaKey, AreaInfo> = {
   rights: { label: "Gebruikers- en rechtenbeheer", description: "Wie mag wat binnen Commerciële Zaken.", group: "Beheer", actions: ["read", "manage_rights"] },
   deleted_archive: {
     label: "Gesloten archief",
-    description: "Verwijderde sponsordossiers inzien ('bekijken') en terugzetten ('wijzigen'). Bedoeld voor beheerders.",
+    description: "Verwijderde sponsordossiers inzien ('bekijken'), dossiers verwijderen en terugzetten ('wijzigen'). Bedoeld voor beheerders.",
     group: "Beheer",
     actions: ["read", "update"],
   },

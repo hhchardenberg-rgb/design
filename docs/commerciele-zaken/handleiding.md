@@ -161,7 +161,8 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
 ## 4. Beheer
 
 - **Dossier verwijderen en het gesloten archief**: in een dossier staat onder het tabblad Overzicht de knop
-  *Dossier verwijderen* (voor wie `companies:archive` heeft). Je krijgt eerst de vraag of je het zeker weet,
+  *Dossier verwijderen*, alleen voor beheerders (`companies:archive` én `deleted_archive:update`: hoofdadmin
+  en de rol Beheerder Commerciële Zaken). Je krijgt eerst de vraag of je het zeker weet,
   met een overzicht van wat er meegaat (contactpersonen, contactmomenten, taken, bestanden, contracten, kansen
   en facturen) en een optionele reden; pas na het aanvinken van "Ja, ik weet het zeker" kan het. Het dossier
   verdwijnt daarna uit alle lijsten, overzichten, rapportages, herinneringen en mailings, maar er wordt niets
