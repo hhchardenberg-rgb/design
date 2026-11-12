@@ -6,6 +6,9 @@ export const TEMPLATE_VARIABLES = [
   { key: "type", label: "Tickettype" },
   { key: "wedstrijd", label: "Wedstrijd of geldigheid" },
   { key: "link", label: "Persoonlijke ticketlink" },
+  { key: "datum", label: "Nieuwe datum en tijd (alleen bij verplaatsen)" },
+  { key: "oudedatum", label: "Oorspronkelijke datum en tijd (alleen bij verplaatsen)" },
+  { key: "bericht", label: "Eigen toelichting van de organisatie" },
 ] as const;
 
 export const DEFAULT_TEMPLATES: Record<string, { name: string; subject: string; body: string }> = {
@@ -13,6 +16,16 @@ export const DEFAULT_TEMPLATES: Record<string, { name: string; subject: string; 
     name: "Ticketmail",
     subject: "Jouw ticket voor {wedstrijd}",
     body: "Hallo {voornaam},\n\nHierbij je ticket ({type}) voor {wedstrijd}. Via de knop hieronder open je je persoonlijke ticket met QR-code. Toon die bij de ingang, op je telefoon of geprint.\n\nDeel deze link niet met anderen: het ticket is persoonlijk.\n\nTot ziens bij HHC Hardenberg!",
+  },
+  event_moved: {
+    name: "Wedstrijd verplaatst",
+    subject: "{wedstrijd} is verplaatst",
+    body: "Hallo {voornaam},\n\nDe wedstrijd {wedstrijd} is verplaatst van {oudedatum} naar {datum}.\n\nJe ticket ({type}) blijft geldig voor de nieuwe datum. Je hoeft niets te doen: via de knop hieronder open je je ticket.\n\n{bericht}\n\nTot ziens bij HHC Hardenberg!",
+  },
+  event_cancelled: {
+    name: "Wedstrijd afgelast",
+    subject: "{wedstrijd} is afgelast",
+    body: "Hallo {voornaam},\n\nHelaas is de wedstrijd {wedstrijd} ({oudedatum}) afgelast.\n\nZodra er een nieuwe datum is, laten we het je weten. Je ticket ({type}) blijft bewaard.\n\n{bericht}\n\nBedankt voor je begrip,\nHHC Hardenberg",
   },
 };
 

@@ -39,3 +39,15 @@ test("gastenlijst: ongeldig e-mailadres of aantal wordt gemeld", () => {
   assert.equal(r.members.length, 0);
   assert.equal(r.errors.length, 2);
 });
+
+import { dedupeRecipients } from "../eventchange.server";
+
+test("verplaatsen: één mail per e-mailadres, ongeacht hoofdletters", () => {
+  const r = dedupeRecipients([
+    { id: "b", email: "Jan@Test.nl" },
+    { id: "a", email: "jan@test.nl" },
+    { id: "c", email: "anna@test.nl" },
+    { id: "d", email: null },
+  ]);
+  assert.deepEqual(r.map((x) => x.id), ["a", "c"]);
+});

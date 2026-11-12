@@ -2072,9 +2072,13 @@ model TicketDelivery {
   error     String?
   byId      String?
   byName    String?
+  // TICKET (gewone ticketmail) of een bericht bij een wijziging, bijvoorbeeld "EVENT_MOVED:<nieuwe aftrap>" of "EVENT_CANCELLED".
+  kind      String   @default("TICKET")
+  eventId   String?
   createdAt DateTime @default(now())
 
   @@index([ticketId, createdAt])
+  @@index([eventId, kind])
   @@map("tickets_deliveries")
 }
 

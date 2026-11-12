@@ -30,6 +30,8 @@ export const TICKET_AUDIT_ACTIONS = {
   "batch.issued": "Bulkuitgifte uitgegeven",
   "event.created": "Wedstrijd aangemaakt",
   "event.updated": "Wedstrijd gewijzigd",
+  "event.moved": "Wedstrijd verplaatst",
+  "event.cancelled": "Wedstrijd afgelast",
   "type.created": "Tickettype aangemaakt",
   "type.updated": "Tickettype gewijzigd",
   "zone.saved": "Vak opgeslagen",

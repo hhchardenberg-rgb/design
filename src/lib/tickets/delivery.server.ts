@@ -22,7 +22,7 @@ const APP_URL = () => {
 export const ticketLink = (publicId: string, linkVersion: number) => `${APP_URL()}/t/${linkTokenFor(publicId, linkVersion)}`;
 const actorOf = (a: TicketsActor) => ({ id: a.id, name: a.name });
 
-async function loadTemplate(key: string) {
+export async function loadTemplate(key: string) {
   const row = await prisma.ticketEmailTemplate.findUnique({ where: { key } });
   const d = DEFAULT_TEMPLATES[key];
   return { subject: row?.subject ?? d.subject, body: row?.body ?? d.body };
@@ -85,7 +85,7 @@ export async function sendTicketMailTo(actor: TicketsActor, id: string) {
     await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "FAILED", error: message.slice(0, 300), byId: actor.id, byName: actor.name } });
     throw new ApiError(502, `Versturen mislukt: ${message}`);
   }
-  await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "SENT", byId: actor.id, byName: actor.name } });
+  await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "SENT", kind: "TICKET", byId: actor.id, byName: actor.name } });
   await ticketAudit({ action: "ticket.mailed", actor: actorOf(actor), ticketId: id });
   return { ok: true };
 }
@@ -93,7 +93,7 @@ export async function sendTicketMailTo(actor: TicketsActor, id: string) {
 /** Tickets van een wedstrijd (actief, met e-mailadres) die nog geen verzonden mail hebben; voor het opnieuw versturen. */
 async function unsentIdsForEvent(eventId: string) {
   const tickets = await prisma.ticket.findMany({ where: { status: "ACTIVE", anonymizedAt: null, email: { not: null }, links: { some: { eventId } } }, select: { id: true } });
-  const sent = new Set((await prisma.ticketDelivery.findMany({ where: { ticketId: { in: tickets.map((t) => t.id) }, channel: "EMAIL", status: "SENT" }, select: { ticketId: true } })).map((d) => d.ticketId));
+  const sent = new Set((await prisma.ticketDelivery.findMany({ where: { ticketId: { in: tickets.map((t) => t.id) }, channel: "EMAIL", status: "SENT", kind: "TICKET" }, select: { ticketId: true } })).map((d) => d.ticketId));
   return { all: tickets.length, ids: tickets.map((t) => t.id).filter((id) => !sent.has(id)) };
 }
 
@@ -113,7 +113,7 @@ export async function sendTicketMails(actor: TicketsActor, raw: { ticketIds?: st
   if (raw.eventId) ids = (await unsentIdsForEvent(raw.eventId)).ids;
   if (ids.length === 0) throw new ApiError(400, "Geen tickets om te versturen.");
   // Al verstuurde tickets in deze batch overslaan, zodat opnieuw proberen veilig is.
-  const already = raw.batchId ? new Set((await prisma.ticketDelivery.findMany({ where: { ticketId: { in: ids }, channel: "EMAIL", status: "SENT" }, select: { ticketId: true } })).map((d) => d.ticketId)) : new Set<string>();
+  const already = raw.batchId ? new Set((await prisma.ticketDelivery.findMany({ where: { ticketId: { in: ids }, channel: "EMAIL", status: "SENT", kind: "TICKET" }, select: { ticketId: true } })).map((d) => d.ticketId)) : new Set<string>();
   const todo = ids.filter((i) => !already.has(i)).slice(0, 150);
   let sent = 0;
   const failed: string[] = [];

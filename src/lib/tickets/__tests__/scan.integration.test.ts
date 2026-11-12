@@ -274,3 +274,29 @@ test("gastenlijst: uitgeven per wedstrijd, extra tickets op 'Gast van', geen dub
   assert.equal(r2.count, 0);
   assert.equal(r2.skipped, 2);
 });
+
+test("afgelasten en verplaatsen: tickets blijven geldig, geldigheid loopt mee, geen dubbele mail bij proefrun", { skip }, async () => {
+  const ec = await import("../eventchange.server");
+  const start = new Date(Date.now() + 5 * 86_400_000);
+  const ev = (await catalog.saveEvent(admin, null, { title: "Te verplaatsen", startsAt: start.toISOString(), status: "ACTIVE", seasonId }))!.id;
+  const t = await issue(typeSingle, [ev]);
+  const dry = await ec.changeEvent(admin, ev, { action: "MOVE", startsAt: new Date(start.getTime() + 14 * 86_400_000).toISOString(), sendMail: true, dryRun: true });
+  assert.equal(dry.dryRun, true);
+  assert.ok(dry.recipients >= 1);
+  const newStart = new Date(start.getTime() + 14 * 86_400_000);
+  await ec.changeEvent(admin, ev, { action: "MOVE", startsAt: newStart.toISOString(), sendMail: false });
+  const moved = await db.ticketEvent.findUniqueOrThrow({ where: { id: ev } });
+  assert.equal(moved.startsAt.getTime(), newStart.getTime());
+  const tk = await db.ticket.findUniqueOrThrow({ where: { id: t.id } });
+  assert.equal(tk.validUntil?.getTime(), moved.endsAt.getTime());
+  // Afgelast: scannen niet mogelijk, het ticket zelf blijft actief.
+  await ec.changeEvent(admin, ev, { action: "CANCEL", sendMail: false });
+  assert.equal((await db.ticketEvent.findUniqueOrThrow({ where: { id: ev } })).status, "CANCELLED");
+  assert.equal((await db.ticket.findUniqueOrThrow({ where: { id: t.id } })).status, "ACTIVE");
+  const res = await doScan(supervisor, ev, t.code);
+  assert.equal(res.reason, "EVENT_NOT_ACTIVE");
+  await assert.rejects(() => ec.changeEvent(admin, ev, { action: "CANCEL", sendMail: false }), /al afgelast/);
+  // Opnieuw plannen zet de wedstrijd weer actief.
+  await ec.changeEvent(admin, ev, { action: "MOVE", startsAt: new Date(start.getTime() + 30 * 86_400_000).toISOString(), sendMail: false });
+  assert.equal((await db.ticketEvent.findUniqueOrThrow({ where: { id: ev } })).status, "ACTIVE");
+});

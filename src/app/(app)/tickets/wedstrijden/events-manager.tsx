@@ -10,6 +10,7 @@ import { formatDayTime } from "@/lib/date-format";
 import { EVENT_STATUS_LABELS } from "@/lib/tickets/rules";
 import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 import { api, errorText, EventStatusBadge, fromLocalInput, PageTitle, toLocalInput } from "@/components/tickets/parts";
+import { ChangeEvent } from "./change-event";
 
 interface EventRow {
   id: string;
@@ -62,7 +63,7 @@ interface Draft {
 
 const EMPTY: Draft = { id: null, title: "", opponent: "", competition: "", isHome: true, location: "", startsAt: "", endsAt: "", seasonId: "", status: "DRAFT", allowReentry: false, capacity: "", matchId: "" };
 
-export function EventsManager({ canManage }: { canManage: boolean }) {
+export function EventsManager({ canManage, canMail = false }: { canManage: boolean; canMail?: boolean }) {
   const toast = useStableToast();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -289,6 +290,7 @@ export function EventsManager({ canManage }: { canManage: boolean }) {
                       <Pencil className="h-4 w-4" />
                     </Button>
                   )}
+                  {canManage && e.status !== "CLOSED" && <ChangeEvent event={e} canMail={canMail} onDone={() => void load()} />}
                 </li>
               ))}
             </ul>
