@@ -40,6 +40,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
     label: "Scannen",
     items: [
       { href: "/scan", label: "Scanner openen", requires: "scan:scan" },
+      { href: "/tickets/wedstrijddag", label: "Wedstrijddag (live)", requires: "scan:history" },
       { href: "/tickets/scans", label: "Scanhistorie", requires: "scan:history" },
       { href: "/tickets/scanners", label: "Scanners en ingangen", requires: "scanners:manage" },
     ],

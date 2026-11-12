@@ -211,3 +211,17 @@ test("seizoenspassen met een voorbije datum blijven kiesbaar, gewone oude duels 
   assert.ok(ids.includes(pass));
   assert.ok(!ids.includes(oldMatch));
 });
+
+test("handmatig inchecken: loopt door de scanlogica en wordt als override vastgelegd", { skip }, async () => {
+  const md = await import("../matchday.server");
+  const t = await issue(typeSingle, [eventId]);
+  const first = await md.manualCheckIn(admin, { eventId, ticketId: t.id, reason: "telefoon leeg" });
+  assert.equal(first.result, "VALID");
+  const row = await db.ticketScan.findFirstOrThrow({ where: { ticketId: t.id }, orderBy: { scannedAt: "desc" } });
+  assert.match(row.note ?? "", /Handmatig ingecheckt: telefoon leeg/);
+  const over = await md.matchdayOverview(eventId);
+  assert.ok(over.inside >= 1);
+  await assert.rejects(() => md.manualCheckIn(admin, { eventId, ticketId: t.id, reason: "x" }));
+  const noPerm: TicketsActor = { ...admin, access: { ...admin.access, can: () => false } };
+  await assert.rejects(() => md.manualCheckIn(noPerm, { eventId, ticketId: t.id, reason: "geen recht" }));
+});
