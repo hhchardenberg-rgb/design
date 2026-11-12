@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { loadCommercialAccess } from "./authz.server";
 import { clubDay, dayNumber } from "./club-day";
+import { TASK_NOT_DELETED } from "./scope";
 import { computeContactGaps } from "./contact-moments.server";
 import { effectiveDigestFrequency, isDigestDay, nextDigestDay } from "./digest-frequency";
 import { loadDefaultDigestFrequency, mutedCompanyIds } from "./reminder-settings.server";
@@ -41,7 +42,7 @@ async function collect(now: Date): Promise<Pending[]> {
   const pending: Pending[] = [];
 
   const tasks = await prisma.commercialTask.findMany({
-    where: { status: "OPEN", assigneeId: { not: null }, dueAt: { not: null, lt: new Date(now.getTime() + (TASK_LOOKAHEAD_DAYS + 1) * 86_400_000) } },
+    where: { ...TASK_NOT_DELETED, status: "OPEN", assigneeId: { not: null }, dueAt: { not: null, lt: new Date(now.getTime() + (TASK_LOOKAHEAD_DAYS + 1) * 86_400_000) } },
     include: { company: { select: { name: true, archivedAt: true } } },
   });
   for (const t of tasks) {
@@ -51,7 +52,7 @@ async function collect(now: Date): Promise<Pending[]> {
   }
 
   const contracts = await prisma.commercialContract.findMany({
-    where: { status: "ACTIVE", archivedAt: null, noticeUntil: { not: null }, company: { ownerId: { not: null }, archivedAt: null } },
+    where: { status: "ACTIVE", archivedAt: null, noticeUntil: { not: null }, company: { ownerId: { not: null }, archivedAt: null, deletedAt: null } },
     include: { company: { select: { name: true, ownerId: true } } },
   });
   for (const c of contracts) {

@@ -1072,6 +1072,12 @@ model CommercialCompany {
   archivedAt      DateTime?
   // Gezet als dit dossier is samengevoegd in een ander dossier (blijft bewaard, gearchiveerd).
   mergedIntoId    String?
+  // Verwijderd: uit alle lijsten, alleen zichtbaar in het gesloten archief (beheerders).
+  // Niets wordt gewist; terugzetten maakt deletedAt weer leeg.
+  deletedAt       DateTime?
+  deletedById     String?
+  deletedByLabel  String?
+  deleteReason    String?
   createdById     String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -1089,6 +1095,7 @@ model CommercialCompany {
   @@index([teamId])
   @@index([sponsorTier])
   @@index([archivedAt])
+  @@index([deletedAt])
   @@map("commercial_companies")
 }
 

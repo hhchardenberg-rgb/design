@@ -59,7 +59,8 @@ export type AreaKey =
   | "reports"
   | "exports"
   | "settings"
-  | "rights";
+  | "rights"
+  | "deleted_archive";
 
 export interface AreaInfo {
   label: string;
@@ -92,6 +93,12 @@ export const AREAS: Record<AreaKey, AreaInfo> = {
   exports: { label: "Gegevensexports", description: "Exporteren naar CSV of Excel.", group: "Communicatie", actions: ["export"] },
   settings: { label: "Commerciële instellingen", description: "Seizoenen, pakketten, statussen en templates.", group: "Beheer", actions: ["read", "manage_settings"] },
   rights: { label: "Gebruikers- en rechtenbeheer", description: "Wie mag wat binnen Commerciële Zaken.", group: "Beheer", actions: ["read", "manage_rights"] },
+  deleted_archive: {
+    label: "Gesloten archief",
+    description: "Verwijderde sponsordossiers inzien ('bekijken'), dossiers verwijderen en terugzetten ('wijzigen'). Bedoeld voor beheerders.",
+    group: "Beheer",
+    actions: ["read", "update"],
+  },
 };
 
 export type Permission = `${AreaKey}:${Action}`;

@@ -63,6 +63,7 @@ export const COMMERCIAL_NAV_GROUPS: CommercialNavGroup[] = [
     items: [
       { href: "/commercieel/toezicht/personen", label: "Per persoon", description: "Openstaande taken, kansen en tegenprestaties per persoon.", requires: "rights:manage_rights" },
       { href: "/commercieel/toezicht/logboek", label: "Logboek", description: "Wie heeft wat gedaan: wijzigingen, verzendingen en downloads.", requires: "rights:manage_rights" },
+      { href: "/commercieel/toezicht/archief", label: "Gesloten archief", description: "Verwijderde sponsordossiers bekijken en zo nodig terugzetten. Alleen voor beheerders.", requires: "deleted_archive:read" },
     ],
   },
   {
