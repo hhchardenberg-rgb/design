@@ -262,7 +262,14 @@ export async function scanContext(actor: ScanActor) {
   const [events, entrances] = await Promise.all([
     prisma.ticketEvent.findMany({
       // Ook concept- en afgesloten wedstrijden zijn te kiezen (niet afgelaste), van een week terug tot ruim een jaar vooruit (het hele seizoen).
-      where: { status: { not: "CANCELLED" }, startsAt: { lte: new Date(now + 400 * 86_400_000) }, endsAt: { gte: new Date(now - 7 * 86_400_000) } },
+      where: {
+        status: { not: "CANCELLED" },
+        // Seizoenspassen (titel met "seizoen") blijven altijd kiesbaar, ook als de datum voorbij is.
+        OR: [
+          { startsAt: { lte: new Date(now + 400 * 86_400_000) }, endsAt: { gte: new Date(now - 7 * 86_400_000) } },
+          { title: { contains: "seizoen", mode: "insensitive" } },
+        ],
+      },
       orderBy: { startsAt: "asc" },
       select: { id: true, title: true, status: true, startsAt: true, endsAt: true, source: true, externalId: true, allowReentry: true },
     }),

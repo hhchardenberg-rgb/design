@@ -202,3 +202,12 @@ test("meerdere wedstrijden tegelijk: de server kiest de wedstrijd waar het ticke
   const none = await doScan(scanner(), fhEventId, "ONBEKEND-456", { eventIds: [fhEventId, second] });
   assert.equal(none.reason, "NOT_FOUND");
 });
+
+test("seizoenspassen met een voorbije datum blijven kiesbaar, gewone oude duels niet", { skip }, async () => {
+  const old = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const pass = (await catalog.saveEvent(admin, null, { title: "Seizoenspas 2025/26", startsAt: old, status: "ACTIVE" }))!.id;
+  const oldMatch = (await catalog.saveEvent(admin, null, { title: "Oud duel", startsAt: old, status: "ACTIVE" }))!.id;
+  const ids = (await scan.scanContext(scanner())).events.map((e) => e.id);
+  assert.ok(ids.includes(pass));
+  assert.ok(!ids.includes(oldMatch));
+});

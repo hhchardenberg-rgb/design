@@ -166,7 +166,7 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
   return out;
 }
 
-/** Voor de cron: alle Fullhouse-wedstrijden van gisteren tot 120 dagen vooruit (ook concepten), stil bij fouten per evenement. */
+/** Voor de cron: alle Fullhouse-wedstrijden van gisteren tot 120 dagen vooruit (ook concepten) en alle seizoenspassen, stil bij fouten per evenement. */
 export async function syncUpcoming() {
   if (ticketProvider().mode === "mock") return { skipped: "testmodus" };
   // Nieuwe Fullhouse-evenementen komen automatisch als concept binnen; een fout hier stopt de ticketsynchronisatie niet.
@@ -177,7 +177,13 @@ export async function syncUpcoming() {
     imported = { error: errMsg(e) };
   }
   const events = await prisma.ticketEvent.findMany({
-    where: { source: "FULLHOUSE", externalId: { not: null }, status: { not: "CANCELLED" }, startsAt: { lte: new Date(Date.now() + 120 * 86_400_000) }, endsAt: { gte: new Date(Date.now() - 86_400_000) } },
+    where: {
+      source: "FULLHOUSE",
+      externalId: { not: null },
+      status: { not: "CANCELLED" },
+      // Seizoenspassen (titel met "seizoen") worden altijd gesynchroniseerd, ook als de datum voorbij is.
+      OR: [{ startsAt: { lte: new Date(Date.now() + 120 * 86_400_000) }, endsAt: { gte: new Date(Date.now() - 86_400_000) } }, { title: { contains: "seizoen", mode: "insensitive" } }],
+    },
     select: { externalId: true },
   });
   const results: { ok: number; failed: number } = { ok: 0, failed: 0 };
