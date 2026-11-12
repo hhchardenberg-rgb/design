@@ -29,6 +29,8 @@ export function IssueForm({ canMultiple, initialTypeId }: { canMultiple: boolean
   const [holders, setHolders] = useState<Holder[]>([{ ...EMPTY }]);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  const [mailNow, setMailNow] = useState(true);
+  const [mailInfo, setMailInfo] = useState<string | null>(null);
 
   const set = (i: number, patch: Partial<Holder>) => setHolders((hs) => hs.map((h, j) => (j === i ? { ...h, ...patch } : h)));
   const ready = settings.typeId && holders.every((h) => h.firstName.trim() && h.lastName.trim());
@@ -38,6 +40,19 @@ export function IssueForm({ canMultiple, initialTypeId }: { canMultiple: boolean
     try {
       const r = await api<Result>("/api/tickets/tickets", { body: issueBody(settings, holders) });
       setResult(r);
+      setMailInfo(null);
+      if (!r.pendingApproval && mailNow) {
+        const withMail = holders.filter((h) => h.email.trim()).length;
+        if (withMail === 0) setMailInfo("Er is geen e-mailadres ingevuld, dus er is niets verstuurd.");
+        else {
+          try {
+            const m = await api<{ sent: number; failed: number }>("/api/tickets/send", { body: { ticketIds: r.ticketIds } });
+            setMailInfo(m.failed ? `${m.sent} verstuurd, ${m.failed} mislukt (zie het ticket voor de reden).` : `${m.sent} per e-mail verstuurd.`);
+          } catch (e) {
+            setMailInfo(`Versturen mislukt: ${errorText(e)}. Je kunt het ticket later opnieuw versturen.`);
+          }
+        }
+      }
       if (r.pendingApproval) toast.success(`Aanvraag voor ${r.count} tickets ingediend; wacht op goedkeuring.`);
       else toast.success(r.count === 1 ? "Ticket uitgegeven." : `${r.count} tickets uitgegeven.`);
       setHolders([{ ...EMPTY }]);
@@ -61,7 +76,7 @@ export function IssueForm({ canMultiple, initialTypeId }: { canMultiple: boolean
               </span>
             ) : (
               <span>
-                {result.count === 1 ? "Het ticket is uitgegeven." : `${result.count} tickets zijn uitgegeven.`} Versturen per e-mail en de ticketpagina met QR-code volgen in fase 2.
+                {result.count === 1 ? "Het ticket is uitgegeven." : `${result.count} tickets zijn uitgegeven.`} {mailInfo ?? "Je kunt het ticket versturen vanuit het ticket zelf."}
               </span>
             )}
             {!result.pendingApproval && result.count === 1 && (
@@ -74,6 +89,11 @@ export function IssueForm({ canMultiple, initialTypeId }: { canMultiple: boolean
       )}
 
       <IssueSettings value={settings} onChange={setSettings} initialTypeId={initialTypeId} />
+
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={mailNow} onChange={(e) => setMailNow(e.target.checked)} />
+        Direct per e-mail versturen naar tickethouders met een e-mailadres
+      </label>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
