@@ -98,7 +98,7 @@ export function SettingsForm() {
               <Check ok={config.signing} label="Sleutel voor QR-codes en ticketlinks (TICKETS_SIGNING_KEY)" />
               <Check ok={config.fullhouse.mode !== "mock"} label={`Fullhouse-modus: ${config.fullhouse.mode === "mock" ? "testdata (geen echte koppeling)" : config.fullhouse.mode}`} hint={config.fullhouse.baseUrl} />
               <Check ok={config.fullhouse.apiKey} label="Fullhouse API-sleutel (FULLHOUSE_API_KEY)" />
-              <Check ok={config.fullhouse.accessToken} label="Fullhouse scanapparaat-token (FULLHOUSE_ACCESS_TOKEN)" hint="Maak in Fullhouse een access user aan voor de Hub." />
+              <Check ok={config.fullhouse.apiKey || config.fullhouse.accessToken} label="Fullhouse API-sleutel (FULLHOUSE_API_KEY) of scanapparaat-token" hint="De API-sleutel (alleen lezen) heeft voorrang; een access-user-token is een alternatief." />
               <Check ok={config.fullhouse.webhookSecret} label="Fullhouse webhooksleutel (FULLHOUSE_WEBHOOK_SECRET)" />
             </ul>
           </CardContent>

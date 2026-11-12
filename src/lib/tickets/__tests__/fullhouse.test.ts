@@ -63,3 +63,23 @@ test("vivenu-provider: schrijfacties staan standaard uit", async () => {
   await assert.rejects(p.pushOfflineScans("e", []), /Schrijven naar Fullhouse staat uit/);
   assert.equal(calls.length, 0, "er is geen enkel verzoek gedaan");
 });
+
+test("vivenu-provider met API-sleutel: Bearer, gewone lijsten, rows en lookup op barcode", async () => {
+  const calls: { url: string; headers: Record<string, string> }[] = [];
+  const fetchImpl = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, headers: (init?.headers ?? {}) as Record<string, string> });
+    if (url.includes("/events")) return json({ rows: [{ _id: "e1", name: "HHC - Test", start: "2026-12-01T19:00:00.000Z" }] });
+    if (url.includes("barcode=")) return json({ rows: [] });
+    return json({ rows: [{ _id: "t1", barcode: "B1", status: "VALID", eventId: "e1" }] });
+  }) as unknown as typeof fetch;
+  const p = createVivenuProvider({ mode: "production", baseUrl: "https://vivenu.com/api", apiKey: "key_x", allowWrites: false, fetchImpl });
+  assert.equal((await p.listEvents())[0].name, "HHC - Test");
+  assert.match(calls[0].url, /\/events\?top=100&skip=0$/);
+  assert.equal(calls[0].headers.Authorization, "Bearer key_x");
+  assert.equal(calls[0].headers.token, undefined);
+  const page = await p.fetchTicketsPage("e1", { top: 1000, skip: 0 });
+  assert.equal(page.tickets.length, 1);
+  assert.equal(page.total, 1);
+  assert.match(calls[1].url, /\/tickets\?event=e1&top=1000&skip=0$/);
+  assert.equal(await p.lookupBarcode("ONBEKEND", "e1"), null);
+});

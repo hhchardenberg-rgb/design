@@ -20,8 +20,8 @@ Zie `architectuur.md` voor het ontwerp van het hele product. Dit bestand beschri
 | `TICKETS_SIGNING_KEY` | 1 | Handtekening van QR en links |
 | `FULLHOUSE_MODE` | 4 | `mock` (standaard), `sandbox` of `production`. Een preview gebruikt nooit `production`. |
 | `FULLHOUSE_API_BASE` | 4 | Standaard `https://vivenu.com/api` (sandbox: `https://vivenu.dev/api`) |
-| `FULLHOUSE_API_KEY` | 4 | API-sleutel (alleen lezen), nooit in code of chat |
-| `FULLHOUSE_ACCESS_TOKEN` | 4 | Token van een access user (scanapparaat) in het Fullhouse-dashboard |
+| `FULLHOUSE_API_KEY` | 4 | API-sleutel (alleen lezen, Bearer). Heeft voorrang; leest de gewone lijsten `/events` en `/tickets`. Nooit in code of chat |
+| `FULLHOUSE_ACCESS_TOKEN` | 4 | Alternatief zonder API-sleutel: token van een access user (scanapparaat) |
 | `FULLHOUSE_WEBHOOK_SECRET` | 4 | HMAC-sleutel van de webhook |
 | `FULLHOUSE_ALLOW_WRITES` | 4 | Standaard uit. Zet nooit aan zonder overleg (schrijfacties naar Fullhouse zijn nog niet aangesloten). |
 | `CRON_SECRET` | 4 | Staat al ingesteld voor de andere crons |
@@ -56,7 +56,7 @@ Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja
 
 ## Fullhouse (fase 4)
 
-- Standaard draait alles op de testprovider. Voor een echte koppeling: `FULLHOUSE_MODE=sandbox` (eerst!) of `production`, en `FULLHOUSE_ACCESS_TOKEN` (token van een access user in het Fullhouse-dashboard). De API-sleutel zelf is voor deze alleen-lezen koppeling niet nodig.
+- Standaard draait alles op de testprovider. Voor een echte koppeling: `FULLHOUSE_MODE=sandbox` (eerst!) of `production`, en `FULLHOUSE_API_KEY` (alleen lezen). Een access-user-token (`FULLHOUSE_ACCESS_TOKEN`) is een alternatief.
 - Onder **Fullhouse**: koppeling controleren (toont alleen veldnamen), evenementen ophalen (komen als concept binnen; activeer ze bij Wedstrijden), tickets synchroniseren (volledig of alleen wijzigingen) en het synchronisatielog.
 - Webhook-URL voor Fullhouse: `https://<domein>/api/webhooks/fullhouse`, met `FULLHOUSE_WEBHOOK_SECRET` als sleutel. Een gebeurtenis start alleen een gerichte, alleen-lezen synchronisatie.
 - Dagelijks om 04:00 draait `/api/cron/tickets` (met `CRON_SECRET`): synchronisatie van komende wedstrijden en de bewaartermijnen (anonimiseren, oude scans en logs wissen).

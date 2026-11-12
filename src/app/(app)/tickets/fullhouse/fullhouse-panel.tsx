@@ -58,7 +58,7 @@ export function FullhousePanel({ canManage }: { canManage: boolean }) {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p>
-            Scanapparaat-token: <b>{d.config.accessToken ? "ingesteld" : "ontbreekt"}</b> · Webhooksleutel: <b>{d.config.webhookSecret ? "ingesteld" : "ontbreekt"}</b> · Schrijven naar Fullhouse: <b>{d.writesEnabled ? "aan" : "uit (alleen lezen)"}</b>
+            API-sleutel: <b>{d.config.apiKey ? "ingesteld" : "ontbreekt"}</b> · Scanapparaat-token (alternatief): <b>{d.config.accessToken ? "ingesteld" : "niet nodig"}</b> · Webhooksleutel: <b>{d.config.webhookSecret ? "ingesteld" : "ontbreekt"}</b> · Schrijven naar Fullhouse: <b>{d.writesEnabled ? "aan" : "uit (alleen lezen)"}</b>
           </p>
           {canManage && (
             <div className="flex flex-wrap gap-2">

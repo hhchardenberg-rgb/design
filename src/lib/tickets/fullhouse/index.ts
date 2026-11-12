@@ -26,14 +26,15 @@ export function fullhouseConfigured(): { mode: FullhouseMode; apiKey: boolean; a
 
 let provider: TicketProvider | null = null;
 
-/** Echte provider alleen bij modus sandbox/production én een ingesteld scanapparaat-token; anders de testprovider. */
+/** Echte provider alleen bij modus sandbox/production én een ingestelde API-sleutel (heeft voorrang) of scanapparaat-token; anders de testprovider. */
 export function ticketProvider(): TicketProvider {
   if (provider) return provider;
   const c = fullhouseConfigured();
   const token = process.env.FULLHOUSE_ACCESS_TOKEN;
+  const apiKey = process.env.FULLHOUSE_API_KEY;
   provider =
-    c.mode !== "mock" && token
-      ? createVivenuProvider({ mode: c.mode, baseUrl: c.baseUrl, accessToken: token, allowWrites: process.env.FULLHOUSE_ALLOW_WRITES === "true" })
+    c.mode !== "mock" && (apiKey || token)
+      ? createVivenuProvider({ mode: c.mode, baseUrl: c.baseUrl, apiKey: apiKey || undefined, accessToken: apiKey ? undefined : token, allowWrites: process.env.FULLHOUSE_ALLOW_WRITES === "true" })
       : createMockProvider();
   return provider;
 }

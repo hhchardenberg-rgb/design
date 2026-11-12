@@ -120,7 +120,7 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
   need(actor, "sync:manage");
   const provider = ticketProvider();
   const out: { mode: string; events: number | null; ticketKeys: string[]; note: string } = { mode: provider.mode, events: null, ticketKeys: [], note: "" };
-  if (provider.mode === "mock") out.note = "Testmodus: er is geen echte koppeling. Zet FULLHOUSE_MODE en FULLHOUSE_ACCESS_TOKEN in Vercel.";
+  if (provider.mode === "mock") out.note = "Testmodus: er is geen echte koppeling. Zet FULLHOUSE_MODE en FULLHOUSE_API_KEY in Vercel.";
   try {
     const events = await provider.listEvents();
     out.events = events.length;
