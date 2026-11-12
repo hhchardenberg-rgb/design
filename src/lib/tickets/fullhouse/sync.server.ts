@@ -144,10 +144,18 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
   try {
     const events = await provider.listEvents();
     out.events = events.length;
-    if (events[0]) {
-      const page = await provider.fetchTicketsPage(events[0].externalId, { top: 1, skip: 0 });
-      out.ticketKeys = page.tickets[0] ? Object.entries(page.tickets[0]).filter(([, v]) => v !== null).map(([k]) => k) : [];
+    // Per evenement hoeveel tickets Fullhouse teruggeeft (eerste pagina), zodat zichtbaar is waar de tickets staan.
+    const lines: string[] = [];
+    for (const ev of events.slice(0, 30)) {
+      try {
+        const page = await provider.fetchTicketsPage(ev.externalId, { top: 100, skip: 0 });
+        lines.push(`${ev.name.slice(0, 40)}: ${page.tickets.length}${page.total > page.tickets.length ? "+" : ""}`);
+        if (!out.ticketKeys.length && page.tickets[0]) out.ticketKeys = Object.entries(page.tickets[0]).filter(([, v]) => v !== null).map(([k]) => k);
+      } catch (e) {
+        lines.push(`${ev.name.slice(0, 40)}: fout (${errMsg(e)})`);
+      }
     }
+    if (lines.length) out.note = `${out.note ? out.note + " — " : ""}Tickets per evenement: ${lines.join(" · ")}`;
   } catch (e) {
     throw new ApiError(502, out.note ? `${errMsg(e)} ${out.note}` : errMsg(e));
   }
