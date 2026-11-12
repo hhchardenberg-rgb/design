@@ -12,6 +12,7 @@ export const TICKET_AUDIT_ACTIONS = {
   "ticket.reissued": "Ticket opnieuw uitgegeven (oude QR ongeldig)",
   "ticket.link_revoked": "Ticketlink ingetrokken",
   "ticket.updated": "Ticketgegevens gewijzigd",
+  "ticket.transferred": "Ticket overgedragen aan een andere houder",
   "ticket.anonymized": "Persoonsgegevens geanonimiseerd",
   "ticket.mailed": "Ticket per e-mail verstuurd",
   "ticket.link_shared": "Ticketlink gedeeld",

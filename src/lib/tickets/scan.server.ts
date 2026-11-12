@@ -254,7 +254,6 @@ export function initialsFromFullName(name: string): string {
 
 // ── Context, offline-cache en synchronisatie ──
 
-const SCAN_WINDOW_BEFORE_MS = 12 * 3600000;
 const SCAN_WINDOW_AFTER_MS = 6 * 3600000;
 
 export async function scanContext(actor: ScanActor) {

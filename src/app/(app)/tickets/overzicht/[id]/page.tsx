@@ -10,5 +10,5 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   const a = await ticketsPageAccess("tickets:read");
   if (!a.allowed) return <NoAccess what="tickets" />;
   const { id } = await params;
-  return <TicketDetail id={id} canBlock={a.can("tickets:block")} canResend={a.can("tickets:resend")} canAnonymize={a.can("tickets:anonymize")} />;
+  return <TicketDetail id={id} canBlock={a.can("tickets:block")} canResend={a.can("tickets:resend")} canAnonymize={a.can("tickets:anonymize")} canTransfer={a.can("tickets:issue") && a.can("tickets:resend")} />;
 }

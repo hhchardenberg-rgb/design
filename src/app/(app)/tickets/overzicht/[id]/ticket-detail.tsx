@@ -10,6 +10,7 @@ import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { formatDay, formatDayTime } from "@/lib/date-format";
 import { TICKET_CATEGORIES, TICKET_STATUS_LABELS, VALIDITY_MODES, type TicketCategory, type TicketStatus, type ValidityMode } from "@/lib/tickets/rules";
 import { api, errorText, TicketStatusBadge } from "@/components/tickets/parts";
+import { Transfer } from "../../seizoenspassen/[id]/pass-detail";
 
 interface Detail {
   id: string;
@@ -56,7 +57,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export function TicketDetail({ id, canBlock, canResend, canAnonymize }: { id: string; canBlock: boolean; canResend: boolean; canAnonymize: boolean }) {
+export function TicketDetail({ id, canBlock, canResend, canAnonymize, canTransfer = false }: { id: string; canBlock: boolean; canResend: boolean; canAnonymize: boolean; canTransfer?: boolean }) {
   const toast = useStableToast();
   const [t, setT] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -277,6 +278,8 @@ export function TicketDetail({ id, canBlock, canResend, canAnonymize }: { id: st
           </CardContent>
         </Card>
       )}
+
+      {canTransfer && !t.anonymizedAt && t.storedStatus === "ACTIVE" && <Transfer id={t.id} canPersonal={t.canSeePersonal} toast={toast} onDone={() => void load()} />}
 
       <Card>
         <CardHeader>

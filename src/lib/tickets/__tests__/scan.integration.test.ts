@@ -225,3 +225,35 @@ test("handmatig inchecken: loopt door de scanlogica en wordt als override vastge
   const noPerm: TicketsActor = { ...admin, access: { ...admin.access, can: () => false } };
   await assert.rejects(() => md.manualCheckIn(noPerm, { eventId, ticketId: t.id, reason: "geen recht" }));
 });
+
+test("seizoenspassen: overzicht, verlengen (idempotent) en overdragen maakt de oude QR ongeldig", { skip }, async () => {
+  const sp = await import("../seasonpass.server");
+  const past = new Date(Date.now() - 2 * 86_400_000).toISOString();
+  const pastEv = (await catalog.saveEvent(admin, null, { title: "Thuis verleden", startsAt: past, status: "ACTIVE", seasonId, isHome: true }))!.id;
+  const card = await issue(typeSeason, []);
+  const before = await sp.seasonPassOverview(admin, { seasonId });
+  const row = before.rows.find((r) => r.id === card.id)!;
+  assert.ok(row.eligible >= 1);
+  assert.equal(row.attended, 0);
+  assert.equal(row.streak, row.eligible);
+  await db.ticketScan.create({ data: { clientId: cid(), scannedAt: new Date(), eventId: pastEv, source: "HHC", ticketId: card.id, result: "VALID" } });
+  const after = (await sp.seasonPassOverview(admin, { seasonId })).rows.find((r) => r.id === card.id)!;
+  assert.equal(after.attended, 1);
+  const detail = await sp.seasonPassDetail(admin, card.id);
+  assert.equal(detail.games.find((g) => g.id === pastEv)?.attended, true);
+
+  const next = (await catalog.saveSeason(admin, null, { name: "Test 2100", startsOn: "2099-07-01", endsOn: "2100-06-30" }))!.id;
+  const r1 = await sp.renewSeasonPasses(admin, { fromSeasonId: seasonId, toSeasonId: next });
+  assert.ok(r1.created >= 1);
+  const r2 = await sp.renewSeasonPasses(admin, { fromSeasonId: seasonId, toSeasonId: next });
+  assert.equal(r2.created, 0);
+  assert.ok(r2.skipped >= 1);
+
+  await sp.transferTicket(admin, card.id, { holder: { firstName: "Bram", lastName: "Jansen", email: "b@test.nl" }, reason: "pas overgenomen" });
+  const res = await doScan(supervisor, eventId, card.code);
+  assert.equal(res.result, "INVALID");
+  assert.equal(res.reason, "NOT_FOUND");
+  assert.equal((await db.ticket.findUniqueOrThrow({ where: { id: card.id } })).firstName, "Bram");
+  const audit = await db.ticketAuditEvent.findFirst({ where: { ticketId: card.id, action: "ticket.transferred" } });
+  assert.ok(audit && !JSON.stringify(audit).includes("Jansen"), "geen namen in het auditlog");
+});
