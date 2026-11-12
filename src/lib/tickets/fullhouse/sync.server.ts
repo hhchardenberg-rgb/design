@@ -15,10 +15,11 @@ const errMsg = (e: unknown) => (e instanceof FullhouseError ? e.message : e inst
 
 export async function fullhouseOverview(actor: TicketsActor) {
   need(actor, "sync:read");
-  const [events, runs, counts] = await Promise.all([
+  const [events, runs, counts, kinds] = await Promise.all([
     prisma.ticketEvent.findMany({ where: { source: "FULLHOUSE" }, orderBy: { startsAt: "desc" }, take: 50 }),
     prisma.ticketSyncRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 }),
     prisma.ticketExternalTicket.groupBy({ by: ["eventExtId", "status"], _count: { _all: true } }),
+    prisma.ticketExternalTicket.groupBy({ by: ["eventExtId", "ticketName", "categoryRef", "area"], where: { status: "VALID" }, _count: { _all: true } }),
   ]);
   return {
     config: fullhouseConfigured(),
@@ -31,6 +32,8 @@ export async function fullhouseOverview(actor: TicketsActor) {
       status: e.status,
       externalId: e.externalId,
       counts: Object.fromEntries(counts.filter((c) => c.eventExtId === e.externalId).map((c) => [c.status, c._count._all])),
+      // Geldige tickets per kaarttype en zone/categorie zoals Fullhouse ze meegeeft.
+      kinds: kinds.filter((k) => k.eventExtId === e.externalId).map((k) => ({ type: k.ticketName, zone: k.area ?? k.categoryRef, count: k._count._all })).sort((a, b) => b.count - a.count),
     })),
     runs,
   };
@@ -86,7 +89,7 @@ export async function syncEventTickets(who: { id: string | null; name: string },
       for (let i = 0; i < page.tickets.length; i += 100) {
         await prisma.$transaction(
           page.tickets.slice(i, i + 100).map((t) => {
-            const data = { codeHash: codeHash(t.barcode), status: String(t.status), ticketName: t.ticketName, area: t.area, holderLabel: t.name ? initialsFromFullName(t.name) : null, syncedAt: now };
+            const data = { codeHash: codeHash(t.barcode), status: String(t.status), ticketName: t.ticketName, ticketTypeId: t.ticketTypeId, categoryRef: t.categoryRef, area: t.area, holderLabel: t.name ? initialsFromFullName(t.name) : null, syncedAt: now };
             return prisma.ticketExternalTicket.upsert({ where: { eventExtId_externalId: { eventExtId: t.eventId || eventExtId, externalId: t.externalId } }, create: { eventExtId: t.eventId || eventExtId, externalId: t.externalId, ...data }, update: data });
           }),
         );

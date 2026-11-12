@@ -11,7 +11,7 @@ interface Overview {
   config: { mode: string; apiKey: boolean; accessToken: boolean; webhookSecret: boolean; baseUrl: string };
   provider: string;
   writesEnabled: boolean;
-  events: { id: string; title: string; startsAt: string; status: string; externalId: string | null; counts: Record<string, number> }[];
+  events: { id: string; title: string; startsAt: string; status: string; externalId: string | null; counts: Record<string, number>; kinds?: { type: string | null; zone: string | null; count: number }[] }[];
   runs: { id: string; kind: string; eventExtId: string | null; status: string; mode: string; fetched: number; upserted: number; error: string | null; startedAt: string; finishedAt: string | null; startedBy: string | null }[];
 }
 
@@ -98,6 +98,16 @@ export function FullhousePanel({ canManage }: { canManage: boolean }) {
                     <p className="text-xs text-muted-foreground">
                       {formatDayTime(e.startsAt)} · {valid} geldige externe tickets, {other} overig
                     </p>
+                    {e.kinds && e.kinds.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                        {e.kinds.map((k, i) => (
+                          <li key={i}>
+                            {k.count}× {k.type ?? "onbekend kaarttype"}
+                            {k.zone ? ` · zone/categorie: ${k.zone}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                   {canManage && (
                     <div className="flex gap-2">

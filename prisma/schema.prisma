@@ -2136,6 +2136,9 @@ model TicketExternalTicket {
   codeHash    String
   status      String
   ticketName  String?
+  // Kaarttype- en categorie-verwijzing uit Fullhouse (zone/vak), zodat je ze per wedstrijd kunt zien.
+  ticketTypeId String?
+  categoryRef  String?
   area        String?
   // Initialen i.p.v. naam (dataminimalisatie).
   holderLabel String?
