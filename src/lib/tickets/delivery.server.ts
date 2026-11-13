@@ -6,6 +6,7 @@ import { sendTicketEmail } from "@/lib/mail";
 import { formatDay, formatDayTime } from "@/lib/date-format";
 import { ticketAudit } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
+import { asLocale, templateKeyFor, textsFor } from "./i18n";
 import { DEFAULT_TEMPLATES, fillTemplate, pdfSafe, templateIssues } from "./delivery";
 import { displayStatus, TICKET_STATUS_LABELS, type TicketStatus } from "./rules";
 import { HHC_LOGO_PNG_BASE64 } from "./pdf-logo";
@@ -61,11 +62,12 @@ async function ticketForDelivery(id: string) {
   return t;
 }
 
-const describeValidity = (t: { validityMode: string; season: { name: string } | null; validUntil: Date | null; links: { event: { title: string; startsAt: Date } }[] }) => {
+const describeValidity = (t: { validityMode: string; season: { name: string } | null; validUntil: Date | null; links: { event: { title: string; startsAt: Date } }[] }, locale: unknown = "nl") => {
+  const tx = textsFor(locale);
   if (t.links.length === 1) return `${t.links[0].event.title} (${formatDay(t.links[0].event.startsAt)})`;
-  if (t.links.length > 1) return `${t.links.length} wedstrijden`;
+  if (t.links.length > 1) return tx.matches(t.links.length);
   if (t.season) return t.season.name;
-  return t.validUntil ? `t/m ${formatDay(t.validUntil)}` : "HHC Hardenberg";
+  return t.validUntil ? `${tx.validUntil} ${formatDay(t.validUntil)}` : "HHC Hardenberg";
 };
 
 /** Eén ticket mailen. Alleen actieve tickets met een e-mailadres; elke poging komt in het verzendlog. */
@@ -80,11 +82,12 @@ export async function deliverTicketMail(id: string, by: { id: string | null; nam
   if (t.anonymizedAt) throw new ApiError(400, "Dit ticket is geanonimiseerd.");
   if (t.status !== "ACTIVE") throw new ApiError(400, "Alleen actieve tickets worden verstuurd.");
   if (!t.email) throw new ApiError(400, "Dit ticket heeft geen e-mailadres.");
-  const tpl = await loadTemplate("ticket");
+  const locale = asLocale(t.locale);
+  const tpl = await loadTemplate(templateKeyFor("ticket", locale));
   const link = ticketLink(t.publicId, t.linkVersion);
-  const vars = { voornaam: t.firstName, achternaam: t.lastName, type: t.type.name, wedstrijd: describeValidity(t), link, datum: "", oudedatum: "", bericht: "" };
+  const vars = { voornaam: t.firstName, achternaam: t.lastName, type: t.type.name, wedstrijd: describeValidity(t, locale), link, datum: "", oudedatum: "", bericht: "" };
   try {
-    await sendTicketEmail({ to: t.email, subject: fillTemplate(tpl.subject, vars), bodyText: fillTemplate(tpl.body, vars), linkUrl: link });
+    await sendTicketEmail({ to: t.email, subject: fillTemplate(tpl.subject, vars), bodyText: fillTemplate(tpl.body, vars), linkUrl: link, buttonLabel: textsFor(locale).viewTicket });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
     await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "FAILED", error: message.slice(0, 300), byId: by.id, byName: by.name } });
@@ -161,6 +164,7 @@ export interface PublicTicket {
   events: { title: string; startsAt: Date; location: string | null }[];
   qr: string;
   zone: string | null;
+  locale: string;
 }
 
 /** null = onbekende, vervalste of ingetrokken link. Bevat nooit e-mail of telefoon. */
@@ -177,14 +181,15 @@ export async function publicTicketByToken(token: string): Promise<PublicTicket |
   return {
     name: `${t.firstName} ${t.lastName}`.trim(),
     typeName: t.type.name,
-    validity: describeValidity(t),
+    validity: describeValidity(t, t.locale),
     status,
-    statusLabel: TICKET_STATUS_LABELS[status],
+    statusLabel: textsFor(t.locale).status[status],
     usable: status === "ACTIVE",
     validUntil: t.validUntil,
     events,
     qr: qrCodeFor(t.publicId, t.qrVersion),
     zone: t.zone?.name ?? null,
+    locale: t.locale,
   };
 }
 
@@ -192,6 +197,7 @@ export const qrSvg = (data: string) => QRCode.toString(data, { type: "svg", marg
 
 /** Eén A4-pagina als toegangsbewijs: HHC-huisstijl, wedstrijdgegevens en een grote QR-code. Alleen voor actieve tickets. */
 export async function ticketPdf(pt: PublicTicket): Promise<Uint8Array> {
+  const tx = textsFor(pt.locale);
   const W = 595.28;
   const H = 841.89;
   const pdf = await PDFDocument.create();
@@ -213,11 +219,11 @@ export async function ticketPdf(pt: PublicTicket): Promise<Uint8Array> {
   page.drawRectangle({ x: 36, y: H - 112, width: 70, height: 94, color: rgb(1, 1, 1) });
   page.drawImage(logo, { x: 41, y: H - 107, width: 60, height: 84 });
   text("HHC Hardenberg", 126, H - 66, 30, bold, rgb(1, 1, 1));
-  text("Toegangsbewijs", 126, H - 92, 16, font, rgb(1, 1, 1));
+  text(tx.pdf.title, 126, H - 92, 16, font, rgb(1, 1, 1));
 
   // Wedstrijd: titel, datum en plaats (dd/mm/yyyy).
   const first = pt.events[0];
-  const title = pt.events.length === 1 ? first.title : pt.events.length > 1 ? `${pt.events.length} wedstrijden` : pt.validity;
+  const title = pt.events.length === 1 ? first.title : pt.events.length > 1 ? tx.matches(pt.events.length) : pt.validity;
   let y = H - 190;
   text(title, 40, y, 24, bold, dark, W - 80);
   y -= 26;
@@ -235,18 +241,18 @@ export async function ticketPdf(pt: PublicTicket): Promise<Uint8Array> {
   const png = await QRCode.toBuffer(pt.qr, { type: "png", margin: 2, width: 900, errorCorrectionLevel: "M" });
   page.drawRectangle({ x: qx - 16, y: qy - 16, width: size + 32, height: size + 32, color: rgb(1, 1, 1), borderColor: orange, borderWidth: 3 });
   page.drawImage(await pdf.embedPng(png), { x: qx, y: qy, width: size, height: size });
-  centered("Laat deze code scannen bij de ingang", qy - 38, 13, font, grey);
+  centered(tx.pdf.scanHere, qy - 38, 13, font, grey);
 
   // Houder en soort ticket.
   page.drawLine({ start: { x: 40, y: 190 }, end: { x: W - 40, y: 190 }, thickness: 1, color: rgb(0.85, 0.85, 0.85), dashArray: [4, 4] });
   text(pt.name, 40, 155, 22, bold, dark, W - 80);
   text(pt.typeName + (pt.zone ? ` - ${pt.zone}` : ""), 40, 131, 14, font, dark, W - 80);
   if (pt.events.length !== 1) text(pt.validity, 40, 112, 12, font, grey, W - 80);
-  if (pt.validUntil) text(`Geldig t/m ${formatDayTime(pt.validUntil)}`, 40, pt.events.length !== 1 ? 94 : 112, 12, font, grey);
+  if (pt.validUntil) text(`${tx.pdf.validUntil} ${formatDayTime(pt.validUntil)}`, 40, pt.events.length !== 1 ? 94 : 112, 12, font, grey);
 
   // Voet.
   page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: orange });
-  centered("Persoonlijk en niet overdraagbaar. Deel de QR-code niet met anderen: wie hem als eerste scant, komt binnen.", 48, 9, font, grey);
-  centered("Tip: zet de helderheid van je scherm hoog als je het ticket op je telefoon laat zien.", 34, 9, font, grey);
+  centered(tx.pdf.personal, 48, 9, font, grey);
+  centered(tx.pdf.tip, 34, 9, font, grey);
   return pdf.save();
 }

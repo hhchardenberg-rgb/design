@@ -6,6 +6,7 @@ import { formatDayTime } from "@/lib/date-format";
 import { ticketAudit } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
 import { fillTemplate } from "./delivery";
+import { asLocale, templateKeyFor, textsFor } from "./i18n";
 import { loadTemplate, ticketLink } from "./delivery.server";
 import { computeValidUntil, type ValidityMode } from "./rules";
 import { coveringTickets } from "./scan.server";
@@ -52,7 +53,7 @@ export async function changeEvent(actor: TicketsActor, eventId: string, raw: unk
   const covering = await coveringTickets(event);
   const linked = await prisma.ticket.findMany({ where: { status: "ACTIVE", anonymizedAt: null, links: { some: { eventId } } }, select: { id: true } });
   const ids = [...new Set([...covering.map((t) => t.id), ...linked.map((t) => t.id)])];
-  const withMail = ids.length ? await prisma.ticket.findMany({ where: { id: { in: ids }, email: { not: null }, anonymizedAt: null }, select: { id: true, publicId: true, linkVersion: true, firstName: true, email: true, type: { select: { name: true } } } }) : [];
+  const withMail = ids.length ? await prisma.ticket.findMany({ where: { id: { in: ids }, email: { not: null }, anonymizedAt: null }, select: { id: true, publicId: true, linkVersion: true, firstName: true, email: true, locale: true, type: { select: { name: true } } } }) : [];
   const kind = input.action === "MOVE" ? `EVENT_MOVED:${newStart.toISOString()}` : "EVENT_CANCELLED";
   const done = new Set((await prisma.ticketDelivery.findMany({ where: { eventId, kind, status: "SENT" }, select: { ticketId: true } })).map((d) => d.ticketId));
   const recipients = dedupeRecipients(withMail).filter((t) => !done.has(t.id));
@@ -78,13 +79,18 @@ export async function changeEvent(actor: TicketsActor, eventId: string, raw: unk
   let sent = 0;
   let failed = 0;
   if (input.sendMail && recipients.length) {
-    const tpl = await loadTemplate(input.action === "MOVE" ? "event_moved" : "event_cancelled");
+    const base = input.action === "MOVE" ? "event_moved" : "event_cancelled";
+    const tpls = new Map<string, Awaited<ReturnType<typeof loadTemplate>>>();
     for (const t of recipients) {
+      const locale = asLocale(t.locale);
+      const key = templateKeyFor(base, locale);
+      if (!tpls.has(key)) tpls.set(key, await loadTemplate(key));
+      const tpl = tpls.get(key)!;
       const link = ticketLink(t.publicId, t.linkVersion);
       const vars = { voornaam: t.firstName, achternaam: "", type: t.type.name, wedstrijd: event.title, datum: formatDayTime(newStart), oudedatum: formatDayTime(oldStart), bericht: input.message ?? "", link };
       const clean = (s: string) => s.replace(/\n{3,}/g, "\n\n").trim();
       try {
-        await sendTicketEmail({ to: t.email!, subject: fillTemplate(tpl.subject, vars), bodyText: clean(fillTemplate(tpl.body, vars)), linkUrl: link, buttonLabel: "Bekijk je ticket" });
+        await sendTicketEmail({ to: t.email!, subject: fillTemplate(tpl.subject, vars), bodyText: clean(fillTemplate(tpl.body, vars)), linkUrl: link, buttonLabel: textsFor(locale).viewTicket });
         await prisma.ticketDelivery.create({ data: { ticketId: t.id, channel: "EMAIL", status: "SENT", kind, eventId, byId: actor.id, byName: actor.name } });
         sent++;
       } catch (e) {

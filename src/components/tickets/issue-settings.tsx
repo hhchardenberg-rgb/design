@@ -6,6 +6,7 @@ import { Checkbox, Input, Label, Select } from "@/components/ui/input";
 import { formatDayTime } from "@/lib/date-format";
 import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 import { TICKET_CATEGORIES, VALIDITY_MODES, type TicketCategory, type ValidityMode } from "@/lib/tickets/rules";
+import { LOCALES, type Locale } from "@/lib/tickets/i18n";
 import { api, errorText } from "./parts";
 
 export interface CatalogType {
@@ -33,9 +34,10 @@ export interface IssueSettingsValue {
   seasonId: string;
   validFrom: string;
   validUntil: string;
+  locale: Locale;
 }
 
-export const EMPTY_SETTINGS: IssueSettingsValue = { typeId: "", zoneId: "", eventIds: [], seasonId: "", validFrom: "", validUntil: "" };
+export const EMPTY_SETTINGS: IssueSettingsValue = { typeId: "", zoneId: "", eventIds: [], seasonId: "", validFrom: "", validUntil: "", locale: "nl" };
 
 /** Het ticketdeel van een uitgifte: tickettype, vak en geldigheid (wedstrijden, seizoen of periode). */
 export function IssueSettings({ value, onChange, initialTypeId }: { value: IssueSettingsValue; onChange: (v: IssueSettingsValue) => void; initialTypeId?: string }) {
@@ -56,7 +58,7 @@ export function IssueSettings({ value, onChange, initialTypeId }: { value: Issue
 
   function pickType(id: string) {
     const t = catalog?.types.find((x) => x.id === id);
-    onChange({ ...EMPTY_SETTINGS, typeId: id, zoneId: t?.zoneId ?? "", seasonId: t?.seasonId ?? "" });
+    onChange({ ...EMPTY_SETTINGS, locale: value.locale, typeId: id, zoneId: t?.zoneId ?? "", seasonId: t?.seasonId ?? "" });
   }
 
   function toggleEvent(id: string) {
@@ -147,6 +149,15 @@ export function IssueSettings({ value, onChange, initialTypeId }: { value: Issue
           </div>
         )}
 
+        <div>
+          <Label htmlFor="is-locale">Taal van mail, ticketpagina en pdf</Label>
+          <Select id="is-locale" value={value.locale} onChange={(e) => onChange({ ...value, locale: e.target.value as Locale })}>
+            {(Object.keys(LOCALES) as Locale[]).map((l) => (
+              <option key={l} value={l}>{LOCALES[l]}</option>
+            ))}
+          </Select>
+        </div>
+
         {type?.validityMode === "RANGE" && (
           <>
             <div>
@@ -176,5 +187,6 @@ export function issueBody(v: IssueSettingsValue, holders: unknown[], batchName?:
     validUntil: v.validUntil || null,
     holders,
     batchName: batchName || null,
+    locale: v.locale,
   };
 }

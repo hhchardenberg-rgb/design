@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LOCALES, type Locale } from "./i18n";
 import { TICKET_CATEGORY_KEYS, VALIDITY_MODES } from "./rules";
 
 // Invoercontrole voor alle HHC Tickets-API's (server-side; de client mag niets afdwingen).
@@ -94,6 +95,8 @@ export const issueSchema = z.object({
   validUntil: optDay,
   holders: z.array(holderSchema).min(1, "Voeg minstens één tickethouder toe.").max(2000, "Maximaal 2000 tickets per keer."),
   batchName: optText(120),
+  /** Taal van de ticketmail, de ticketpagina en de pdf. */
+  locale: z.enum(Object.keys(LOCALES) as [Locale, ...Locale[]]).default("nl"),
 });
 export type IssueInput = z.infer<typeof issueSchema>;
 

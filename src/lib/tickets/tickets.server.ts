@@ -9,6 +9,7 @@ import { canTransition, displayStatus, type TicketStatus } from "./rules";
 import { issueSchema, reissueSchema, statusChangeSchema, type HolderInput, type IssueInput } from "./schemas";
 import { getTicketSettings } from "./settings.server";
 import { newPublicId } from "./token";
+import type { Locale } from "./i18n";
 
 // Interne HHC-tickets: uitgeven, overzicht, status en opnieuw uitgeven.
 
@@ -20,6 +21,7 @@ export interface PreparedIssue {
   category: string;
   validity: ResolvedValidity;
   holders: HolderInput[];
+  locale: Locale;
 }
 
 /** Controleert een uitgifte volledig (type, wedstrijden, seizoen) zonder iets op te slaan. */
@@ -40,7 +42,7 @@ export async function prepareIssue(input: IssueInput): Promise<PreparedIssue> {
     new Date(),
   );
   if (!r.ok) throw new ApiError(400, r.message);
-  return { typeId: type.id, category: type.category, validity: r.value, holders: input.holders };
+  return { typeId: type.id, category: type.category, validity: r.value, holders: input.holders, locale: input.locale ?? "nl" };
 }
 
 /** Maakt de tickets aan, in één transactie, met een auditregel per ticket. */
@@ -62,6 +64,7 @@ export async function createTickets(
     relation: h.relation,
     note: h.note,
     category: p.category,
+    locale: p.locale,
     typeId: p.typeId,
     zoneId: v.zoneId,
     validityMode: v.validityMode,
@@ -243,6 +246,7 @@ export async function getTicket(actor: TicketsActor, id: string) {
     relation: hide ? null : t.relation,
     note: hide ? null : t.note,
     category: t.category,
+    locale: t.locale,
     type: t.type.name,
     zone: t.zone?.name ?? null,
     season: t.season?.name ?? null,

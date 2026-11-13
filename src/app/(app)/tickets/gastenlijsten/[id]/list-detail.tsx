@@ -58,8 +58,8 @@ export function ListDetail({ id, canIssue, canResend }: { id: string; canIssue: 
     if (!window.confirm(`Tickets uitgeven aan ${d?.members.length ?? 0} relaties van deze lijst?`)) return;
     setBusy(true);
     try {
-      const { eventIds, typeId, zoneId, seasonId, validFrom, validUntil } = issueBody(settings, []);
-      const r = await api<{ pendingApproval: boolean; count: number; skipped: number; mailed: number }>(`/api/tickets/guestlists/${id}/issue`, { body: { issue: { typeId, zoneId, eventIds, seasonId, validFrom, validUntil }, sendMail: mail } });
+      const { eventIds, typeId, zoneId, seasonId, validFrom, validUntil, locale } = issueBody(settings, []);
+      const r = await api<{ pendingApproval: boolean; count: number; skipped: number; mailed: number }>(`/api/tickets/guestlists/${id}/issue`, { body: { issue: { typeId, zoneId, eventIds, seasonId, validFrom, validUntil, locale }, sendMail: mail } });
       toast.success(r.pendingApproval ? `${r.count} tickets wachten op goedkeuring.` : `${r.count} tickets uitgegeven${r.mailed ? `, ${r.mailed} gemaild` : ""}${r.skipped ? `, ${r.skipped} overgeslagen (hadden al een ticket)` : ""}.`);
     } catch (e) {
       toast.error(errorText(e));

@@ -2005,6 +2005,8 @@ model Ticket {
   relation            String?
   note                String?
   photoKey            String?
+  // Taal van mails, ticketpagina en pdf: nl | de | en
+  locale              String        @default("nl")
   // ACTIVE | BLOCKED | CANCELLED ("verlopen" en "gebruikt" worden afgeleid)
   status              String        @default("ACTIVE")
   statusReason        String?

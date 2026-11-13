@@ -46,7 +46,7 @@ export async function savePromo(actor: TicketsActor, raw: unknown) {
   need(actor, "tickets:bulk");
   const input = promoSchema.parse(raw);
   // Controleer type, wedstrijden en geldigheid nu al, zodat de code later niet alsnog faalt.
-  await prepareIssue({ typeId: input.typeId, zoneId: input.zoneId, eventIds: input.eventIds, seasonId: input.seasonId, validFrom: null, validUntil: null, holders: [{ firstName: "Test", lastName: "Test", email: null, phone: null, company: null, relation: null, note: null }], batchName: null });
+  await prepareIssue({ typeId: input.typeId, zoneId: input.zoneId, eventIds: input.eventIds, seasonId: input.seasonId, validFrom: null, validUntil: null, holders: [{ firstName: "Test", lastName: "Test", email: null, phone: null, company: null, relation: null, note: null }], batchName: null, locale: "nl" });
   const code = input.code ?? newPromoCode();
   if (!/^[A-Z0-9-]{4,30}$/.test(code)) throw new ApiError(400, "Een code bestaat uit 4 tot 30 letters, cijfers of streepjes.");
   if (await prisma.ticketPromo.findUnique({ where: { code }, select: { id: true } })) throw new ApiError(409, "Deze code bestaat al.");
@@ -82,7 +82,7 @@ export async function publicPromoInfo(rawCode: string) {
   return { name: p.name, note: p.note, ticketsPerClaim: p.ticketsPerClaim, events: events.map((e) => ({ title: e.title, startsAt: e.startsAt })), available: av.ok, message: av.ok ? null : av.message };
 }
 
-const claimSchema = z.object({ code: z.string().min(1).max(40), firstName: holderSchema.shape.firstName, lastName: holderSchema.shape.lastName, email: z.string().trim().toLowerCase().email("Vul een geldig e-mailadres in.").max(200) });
+const claimSchema = z.object({ code: z.string().min(1).max(40), firstName: holderSchema.shape.firstName, lastName: holderSchema.shape.lastName, email: z.string().trim().toLowerCase().email("Vul een geldig e-mailadres in.").max(200), locale: z.enum(["nl", "de", "en"]).default("nl") });
 
 /** Openbaar: een code inwisselen. Beperkt per IP en per e-mailadres; nooit meer dan het maximum, ook niet bij gelijktijdige aanvragen. */
 export async function claimPromo(raw: unknown, ip: string) {
@@ -102,7 +102,7 @@ export async function claimPromo(raw: unknown, ip: string) {
       if (mine >= promo.maxPerEmail) throw new ApiError(409, "Met dit e-mailadres is deze actie al ingewisseld.");
       const holders = [holderSchema.parse({ firstName: input.firstName, lastName: input.lastName, email: input.email, phone: "", company: "", relation: `Actie: ${promo.name}`, note: "" })];
       for (let i = 2; i <= promo.ticketsPerClaim; i++) holders.push(holderSchema.parse({ firstName: "Gast van", lastName: `${input.firstName} ${input.lastName}`, email: input.email, phone: "", company: "", relation: `Actie: ${promo.name}`, note: "" }));
-      const prepared = await prepareIssue({ typeId: promo.typeId, zoneId: promo.zoneId, eventIds: promo.eventIds, seasonId: promo.seasonId, validFrom: null, validUntil: null, holders, batchName: null });
+      const prepared = await prepareIssue({ typeId: promo.typeId, zoneId: promo.zoneId, eventIds: promo.eventIds, seasonId: promo.seasonId, validFrom: null, validUntil: null, holders, batchName: null, locale: input.locale });
       const created = await createTickets(tx, { id: null, name: `Actiecode ${promo.name}` }, prepared, { originSystem: "PROMO" });
       await tx.ticketPromoClaim.create({ data: { promoId: promo.id, emailHash, ticketIds: created } });
       return created;
