@@ -370,13 +370,18 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
       );
       layers.push(textLayer);
       warnings.push(...textWarnings.map((message) => ({ message })));
+      const sample = layer.text?.text?.replace(/\r\n?/g, "\n").trim() ?? "";
+      // Lange tekst (meerdere regels, zoals een statement of citaat) wordt
+      // een tekstvak met regeleinden en ruimte voor de hele voorbeeldtekst.
+      const long = sample.includes("\n") || sample.length > 60 || textLayer.maxLines > 1;
+      const type = guessFieldTypeForText(key);
       fields.push(makeField({
         key,
         label,
-        type: guessFieldTypeForText(key),
+        type: long && type === "SHORT_TEXT" ? "LONG_TEXT" : type,
         required: true,
-        defaultValue: layer.text?.text?.trim() || undefined,
-        maxLength: 60,
+        defaultValue: sample || undefined,
+        maxLength: long ? Math.min(2000, Math.max(300, Math.ceil(sample.length * 1.5))) : 60,
         sortOrder: sortOrder++,
       }));
     } else if (item.kind === "IMAGE") {
