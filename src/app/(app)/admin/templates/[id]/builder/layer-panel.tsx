@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Eye, Image as ImageIcon, Lock, Square, Trash2, Type
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import type { Layer, LayerPermission, TextLayer } from "@/lib/validations/template";
+import { MAX_TEXT_LINES } from "@/lib/validations/template";
 import { cn } from "@/lib/utils";
 
 const TYPE_LABELS: Record<Layer["type"], string> = {
@@ -287,7 +288,7 @@ function TextProperties({ layer, locked, change }: { layer: TextLayer; locked: b
       <div className="grid grid-cols-4 gap-2">
         <NumberField label="Grootte" value={layer.fontSize} min={1} disabled={locked} onCommit={(fontSize) => change({ fontSize, minFontSize: Math.min(layer.minFontSize, fontSize) })} />
         <NumberField label="Minimaal" value={layer.minFontSize} min={1} max={layer.fontSize} disabled={locked} onCommit={(minFontSize) => change({ minFontSize })} />
-        <NumberField label="Regels" value={layer.maxLines} min={1} max={4} disabled={locked} onCommit={(maxLines) => change({ maxLines: Math.round(maxLines) })} />
+        <NumberField label="Regels" value={layer.maxLines} min={1} max={MAX_TEXT_LINES} disabled={locked} onCommit={(maxLines) => change({ maxLines: Math.round(maxLines) })} />
         <NumberField label="Regelafstand" value={layer.lineHeight} step={0.05} min={0.5} max={3} disabled={locked} onCommit={(lineHeight) => change({ lineHeight })} />
         <NumberField label="Letterafstand" value={layer.letterSpacing} step={0.5} disabled={locked} onCommit={(letterSpacing) => change({ letterSpacing })} />
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
