@@ -2,6 +2,7 @@ import { readPsd, initializeCanvas, type Layer, type Psd } from "ag-psd";
 import { createCanvas } from "@napi-rs/canvas";
 import sharp from "sharp";
 import { parseLayerName, slugify } from "./naming";
+import { adjustmentFunction } from "./adjustments";
 import { textLayerFromPsd } from "./text";
 import {
   alphaBounds,
@@ -231,6 +232,16 @@ export async function importPsd(buffer: Buffer): Promise<PsdImportResult> {
   const composeIssues: ComposeIssue[] = [];
   const globalAngle = psd.imageResources?.globalAngle ?? 30;
   const segmentIds = [...new Set([...staticSegment.values()])].sort((a, b) => a - b);
+  // In de template is elk vast stuk een eigen laag; een aanpassingslaag
+  // boven een invulbare laag werkt dan niet door op wat eronder ligt.
+  for (const [layer, seg] of staticSegment) {
+    if (layer.adjustment && seg !== segmentIds[0] && adjustmentFunction(layer.adjustment)) {
+      report.issues.push({
+        severity: "warning",
+        message: `Aanpassingslaag "${layer.name ?? "naamloos"}" ligt boven een invulbare laag en werkt in de template alleen op de vaste lagen in hetzelfde stuk. Zet aanpassingslagen bij voorkeur onder de TEXT:/IMAGE:/COLOR:-lagen.`,
+      });
+    }
+  }
   const segmentBuffers = new Map<number, Canvas>();
   for (const id of segmentIds) {
     const buf = createBuffer(width, height);
@@ -486,14 +497,14 @@ function markStatic(layers: Layer[], segment: number, map: Map<Layer, number>) {
     if (l.children) markStatic(l.children, segment, map);
     else {
       const k = parseLayerName(l.name).kind;
-      if (k !== "TEXT" && k !== "IMAGE" && k !== "COLOR" && l.imageData) map.set(l, segment);
+      if (k !== "TEXT" && k !== "IMAGE" && k !== "COLOR" && (l.imageData || l.adjustment)) map.set(l, segment);
     }
   }
 }
 
 function staticNotes(layer: Layer): string[] {
   const notes: string[] = [];
-  if (layer.adjustment) notes.push("aanpassingslaag (niet toegepast)");
+  if (layer.adjustment) notes.push(adjustmentFunction(layer.adjustment) ? `aanpassingslaag (${layer.adjustment.type})` : "aanpassingslaag (niet toegepast)");
   if (hasUnsupportedEffects(layer)) notes.push("laageffecten");
   else if (hasEffects(layer)) notes.push("slagschaduw");
   if (layer.clipping) notes.push("uitknipmasker");
