@@ -1,4 +1,5 @@
 import type { BlendMode, Layer, LayerMaskData, PixelData } from "ag-psd";
+import { adjustmentFunction, type AdjustFn } from "./adjustments";
 
 /**
  * Eigen compositor voor PSD-lagen, zodat vaste lagen in Photoshop-volgorde
@@ -14,7 +15,11 @@ import type { BlendMode, Layer, LayerMaskData, PixelData } from "ag-psd";
  *  - slagschaduw van een laag (kleur, hoek, afstand, grootte, spreiding,
  *    overvloeimodus en dekking), onder de laag zelf.
  *
- * Wat niet kan (overige laageffecten, aanpassingslagen, exotische modi)
+ *  - aanpassingslagen: helderheid/contrast, niveaus, curven, verloopkaart,
+ *    omkeren, drempel en posteriseren (zie adjustments.ts), met dekking,
+ *    masker, uitknipmasker en overvloeimodus.
+ *
+ * Wat niet kan (overige laageffecten en aanpassingslagen, exotische modi)
  * komt als melding terug, zodat het importrapport het kan tonen.
  *
  * Buffers zijn Float32 RGBA, niet-voorvermenigvuldigd, 0..1.
@@ -270,7 +275,15 @@ export function composeLayers(dst: Canvas, layers: Layer[], options: ComposeOpti
     }
     if (!included) continue;
     if (layer.adjustment) {
-      issues.push({ layer: name, message: "aanpassingslaag wordt niet toegepast" });
+      const fn = adjustmentFunction(layer.adjustment);
+      if (!fn) {
+        issues.push({ layer: name, message: `aanpassingslaag "${layer.adjustment.type}" wordt niet toegepast` });
+        continue;
+      }
+      const mode = layer.blendMode ?? "normal";
+      if (!isSupportedBlendMode(mode)) issues.push({ layer: name, message: `overvloeimodus "${mode}" wordt als normaal getoond` });
+      const alphaAt = product([maskSampler(layer.mask), clipped ? layerAlpha(base!) : null, inherited?.mask ?? null].filter(Boolean) as ((x: number, y: number) => number)[]);
+      applyAdjustment(dst, fn, isSupportedBlendMode(mode) ? mode : "normal", opacityOf(layer) * (inherited?.opacity ?? 1), alphaAt);
       continue;
     }
     if (!layer.imageData) continue;
@@ -401,6 +414,37 @@ export function hasUnsupportedEffects(layer: Layer): boolean {
     any(e.gradientOverlay) ||
     on(e.patternOverlay)
   );
+}
+/**
+ * Een aanpassingslaag werkt op alles wat eronder al samengesteld is: de
+ * aangepaste kleur wordt als "laag" over het origineel gelegd (met de
+ * overvloeimodus, dekking en maskers van de aanpassingslaag). De
+ * transparantie verandert niet.
+ */
+function applyAdjustment(dst: Canvas, fn: AdjustFn, mode: BlendMode, opacity: number, alphaAt: ((x: number, y: number) => number) | null) {
+  if (opacity <= 0) return;
+  const sep = SEPARABLE[mode] ?? (NON_SEPARABLE.has(mode) ? null : SEPARABLE.normal!);
+  const d = dst.data;
+  for (let y = 0; y < dst.height; y++) {
+    for (let x = 0; x < dst.width; x++) {
+      const o = (y * dst.width + x) * 4;
+      if (d[o + 3] <= 0) continue;
+      let a = opacity;
+      if (alphaAt) {
+        a *= alphaAt(x, y);
+        if (a <= 0) continue;
+      }
+      const br = d[o], bg = d[o + 1], bb = d[o + 2];
+      const [sr, sg, sb] = fn(br, bg, bb);
+      let mr = sr, mg = sg, mb = sb;
+      if (mode !== "normal" && mode !== "dissolve" && mode !== "pass through") {
+        [mr, mg, mb] = sep ? [sep(br, sr), sep(bg, sg), sep(bb, sb)] : nonSeparable(mode, [br, bg, bb], [sr, sg, sb]);
+      }
+      d[o] = br + (mr - br) * a;
+      d[o + 1] = bg + (mg - bg) * a;
+      d[o + 2] = bb + (mb - bb) * a;
+    }
+  }
 }
 
 interface InheritedGroup {
