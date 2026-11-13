@@ -26,6 +26,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
       { href: "/tickets/acties", label: "Actiecodes", requires: "tickets:bulk" },
       { href: "/tickets/overzicht", label: "Ticketoverzicht", requires: "tickets:read" },
       { href: "/tickets/rapportages", label: "Rapportages en export", requires: "reports:read" },
+      { href: "/tickets/trends", label: "Trends per seizoen", requires: "reports:read" },
       { href: "/tickets/seizoenskaarten", label: "Seizoenskaarten", requires: "types:read" },
       { href: "/tickets/seizoenspassen", label: "Seizoenspassen (houders)", requires: "tickets:read" },
     ],

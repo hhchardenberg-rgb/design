@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { formatDay, formatDayTime } from "@/lib/date-format";
 import { publicTicketByToken, qrSvg } from "@/lib/tickets/delivery.server";
 import { asLocale, LOCALES, textsFor } from "@/lib/tickets/i18n";
+import { OfflineSupport } from "./offline-support";
 import { isTicketsEnabled } from "@/lib/tickets/flag";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,7 @@ export default async function PublicTicketPage({ params, searchParams }: { param
           )}
         </div>
       </div>
+      <OfflineSupport message={tx.offlineNote} />
       <p className="mt-4 text-center text-xs text-neutral-500">{tx.personalNote}</p>
     </main>
   );

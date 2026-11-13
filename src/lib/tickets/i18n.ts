@@ -18,6 +18,7 @@ export interface Texts {
   validUntil: string;
   downloadPdf: string;
   personalNote: string;
+  offlineNote: string;
   matches: (n: number) => string;
   clubName: string;
   status: Record<"ACTIVE" | "BLOCKED" | "CANCELLED" | "EXPIRED", string>;
@@ -36,6 +37,7 @@ export const TEXTS: Record<Locale, Texts> = {
     validUntil: "Geldig t/m",
     downloadPdf: "Download als PDF",
     personalNote: "Persoonlijk ticket. Laat de QR-code niet door anderen scannen of kopiëren.",
+    offlineNote: "Je hebt geen verbinding. Dit is de laatst opgeslagen versie van je ticket; de QR-code werkt gewoon.",
     matches: (n) => `${n} wedstrijden`,
     clubName: "HHC Hardenberg",
     status: { ACTIVE: "geldig", BLOCKED: "geblokkeerd", CANCELLED: "geannuleerd", EXPIRED: "verlopen" },
@@ -52,6 +54,7 @@ export const TEXTS: Record<Locale, Texts> = {
     validUntil: "Valid until",
     downloadPdf: "Download as PDF",
     personalNote: "Personal ticket. Do not let others scan or copy the QR code.",
+    offlineNote: "You are offline. This is the last saved version of your ticket; the QR code works as usual.",
     matches: (n) => `${n} matches`,
     clubName: "HHC Hardenberg",
     status: { ACTIVE: "valid", BLOCKED: "blocked", CANCELLED: "cancelled", EXPIRED: "expired" },
@@ -68,6 +71,7 @@ export const TEXTS: Record<Locale, Texts> = {
     validUntil: "Gültig bis",
     downloadPdf: "Als PDF herunterladen",
     personalNote: "Persönliches Ticket. Lass den QR-Code nicht von anderen scannen oder kopieren.",
+    offlineNote: "Du bist offline. Dies ist die zuletzt gespeicherte Version deines Tickets; der QR-Code funktioniert ganz normal.",
     matches: (n) => `${n} Spiele`,
     clubName: "HHC Hardenberg",
     status: { ACTIVE: "gültig", BLOCKED: "gesperrt", CANCELLED: "storniert", EXPIRED: "abgelaufen" },

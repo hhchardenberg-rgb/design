@@ -78,3 +78,18 @@ test("banner: lopend binnen de periode en alleen als actief", async () => {
   assert.equal(bannerLive({ active: true, startsOn: null, endsOn: new Date("2026-11-13T00:00:00Z") }, now), true, "einddatum geldt tot en met die dag");
   assert.equal(bannerLive({ active: true, startsOn: null, endsOn: new Date("2026-11-12T00:00:00Z") }, now), false);
 });
+
+test("trends: samenvatting, beste en minste duel en verschil met het gemiddelde", async () => {
+  const { summarize, pctOf } = await import("../trends.server");
+  const g = (id: string, sold: number, admitted: number, past = true) => ({ id, title: id, startsAt: "2026-09-01T12:00:00Z", isHome: true, competition: null, past, hhcSold: sold, fullhouseSold: 0, sold, admitted, pct: pctOf(admitted, sold) });
+  const r = summarize([g("a", 100, 80), g("b", 100, 40), g("c", 0, 0), g("d", 100, 0, false)]);
+  assert.equal(r.summary.pastGames, 2);
+  assert.equal(r.summary.averageAdmitted, 60);
+  assert.equal(r.summary.averagePct, 60);
+  assert.equal(r.summary.bestId, "a");
+  assert.equal(r.summary.worstId, "b");
+  assert.equal(r.games.find((x) => x.id === "a")!.deltaToAverage, 20);
+  assert.equal(r.games.find((x) => x.id === "d")!.deltaToAverage, null);
+  assert.equal(pctOf(5, 0), null);
+  assert.equal(pctOf(12, 10), 100);
+});

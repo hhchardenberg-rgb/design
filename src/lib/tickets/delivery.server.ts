@@ -9,7 +9,7 @@ import { ticketAudit } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
 import { asLocale, templateKeyFor, textsFor } from "./i18n";
 import { DEFAULT_TEMPLATES, fillTemplate, pdfSafe, templateIssues } from "./delivery";
-import { displayStatus, TICKET_STATUS_LABELS, type TicketStatus } from "./rules";
+import { displayStatus, type TicketStatus } from "./rules";
 import { HHC_LOGO_PNG_BASE64 } from "./pdf-logo";
 import { linkTokenFor, parseLinkToken, qrCodeFor } from "./token";
 

@@ -154,3 +154,13 @@ test("sponsorbanner: om de beurt gekozen, klik geteld per ticket en alleen naar 
   assert.equal(await db.ticketBannerClick.count({ where: { bannerId: a.id, ticketId: t.id } }), 2);
   await db.ticketBanner.delete({ where: { id: c.id } });
 });
+
+test("trends per seizoen: verkocht en binnen per duel", { skip }, async () => {
+  const trends = await import("../trends.server");
+  const r = await trends.seasonTrends(actor, seasonId);
+  assert.equal(r.season?.id, seasonId);
+  const g = r.games.find((x) => x.id === eventId)!;
+  assert.ok(g.hhcSold >= 1);
+  assert.ok(g.admitted >= 1);
+  await assert.rejects(trends.seasonTrends(limited, seasonId), /bevoegdheid/);
+});
