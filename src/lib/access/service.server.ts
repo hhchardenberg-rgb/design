@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { effectiveRoles } from "@/lib/roles";
 import { findInconsistencies, isPermission, type Permission } from "@/lib/commercial/permissions";
 import { ROLE_TEMPLATES } from "@/lib/commercial/role-templates";
+import { ticketPermissionIssues, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
 import {
   checkAssignment,
   checkRoleEdit,
@@ -34,12 +35,20 @@ const TX_OPTS = { timeout: 30_000, maxWait: 15_000 };
 const ROLE_INCLUDE = { commercialRole: true } as const;
 type RoleRow = Prisma.AccessRoleGetPayload<{ include: typeof ROLE_INCLUDE }>;
 
-export function grantOf(r: { isAdmin: boolean; hubLevel: string; ticketingLevel: string; commercialRole: Pick<CommercialRole, "permissions"> | null }): RoleGrant {
+export function grantOf(r: {
+  isAdmin: boolean;
+  hubLevel: string;
+  ticketingLevel: string;
+  commercialRole: Pick<CommercialRole, "permissions"> | null;
+  ticketsAccess?: boolean;
+  ticketsPermissions?: string[];
+}): RoleGrant {
   return {
     isAdmin: r.isAdmin,
     hubLevel: isSectionLevel(r.hubLevel) ? r.hubLevel : "NONE",
     ticketingLevel: isSectionLevel(r.ticketingLevel) ? r.ticketingLevel : "NONE",
     commercial: r.commercialRole ? r.commercialRole.permissions : null,
+    tickets: r.ticketsAccess ? (r.ticketsPermissions ?? []) : null,
   };
 }
 
@@ -111,7 +120,7 @@ async function systemAdminRole(tx: Tx) {
 
 /** Een rol die precies dit ene niveau geeft (en verder niets); maakt hem aan als hij niet bestaat. */
 async function exactSectionRole(tx: Tx, section: "hub" | "ticketing", level: Exclude<SectionLevel, "NONE">) {
-  const where = { isAdmin: false, commercialRoleId: null, hubLevel: section === "hub" ? level : "NONE", ticketingLevel: section === "ticketing" ? level : "NONE" };
+  const where = { isAdmin: false, commercialRoleId: null, ticketsAccess: false, hubLevel: section === "hub" ? level : "NONE", ticketingLevel: section === "ticketing" ? level : "NONE" };
   const found = await tx.accessRole.findFirst({ where, orderBy: { createdAt: "asc" } });
   if (found) return found;
   const preset = PRESETS.find((p) => (section === "hub" ? p.hubLevel : p.ticketingLevel) === level && !p.isAdmin)!;
@@ -282,6 +291,7 @@ export interface RoleView {
   hubLevel: SectionLevel;
   ticketingLevel: SectionLevel;
   commercial: string[] | null;
+  tickets: string[] | null;
   userCount: number;
   /** Mag de ingelogde beheerder deze rol toewijzen en aanpassen? */
   manageable: boolean;
@@ -306,6 +316,7 @@ export async function listRoles(scope: ManagerScope): Promise<RoleView[]> {
       hubLevel: g.hubLevel,
       ticketingLevel: g.ticketingLevel,
       commercial: g.commercial,
+      tickets: g.tickets ?? null,
       userCount: r._count.users,
       manageable: d.ok,
       manageReason: d.ok ? null : d.message,
@@ -386,6 +397,15 @@ export interface RoleInput {
   ticketingLevel: SectionLevel;
   /** null = geen toegang tot Commerciële Zaken. */
   commercial: string[] | null;
+  /** null/ontbreekt = geen toegang tot HHC Tickets. */
+  tickets?: string[] | null;
+}
+
+function cleanTickets(perms: string[] | null | undefined): TicketPermission[] | null {
+  if (perms == null) return null;
+  const issues = ticketPermissionIssues(perms);
+  if (issues.length) throw new ApiError(400, issues.join(" "));
+  return withRequired(perms);
 }
 
 function cleanCommercial(perms: string[] | null): Permission[] | null {
@@ -411,7 +431,8 @@ const holds = async (tx: Tx, userId: string, roleId: string) => !!(await tx.user
 export async function createAccessRole(actor: AccessActor, input: RoleInput) {
   await ensureAccessReady();
   const commercial = cleanCommercial(input.commercial);
-  const next: RoleGrant = { isAdmin: false, hubLevel: input.hubLevel, ticketingLevel: input.ticketingLevel, commercial };
+  const tickets = cleanTickets(input.tickets);
+  const next: RoleGrant = { isAdmin: false, hubLevel: input.hubLevel, ticketingLevel: input.ticketingLevel, commercial, tickets };
   enforce(checkRoleEdit(actor.scope, null, next));
   try {
     return await prisma.$transaction(async (tx) => {
@@ -419,7 +440,15 @@ export async function createAccessRole(actor: AccessActor, input: RoleInput) {
       const name = input.name.trim();
       const cr = commercial ? await tx.commercialRole.create({ data: { key: await freeKey(tx, `rol-${slug(name)}`), name, description: input.description ?? null, permissions: commercial } }) : null;
       const role = await tx.accessRole.create({
-        data: { name, description: input.description?.trim() || null, hubLevel: input.hubLevel, ticketingLevel: input.ticketingLevel, commercialRoleId: cr?.id ?? null },
+        data: {
+          name,
+          description: input.description?.trim() || null,
+          hubLevel: input.hubLevel,
+          ticketingLevel: input.ticketingLevel,
+          commercialRoleId: cr?.id ?? null,
+          ticketsAccess: tickets !== null,
+          ticketsPermissions: tickets ?? [],
+        },
       });
       await audit(tx, actor, { action: "access.role.create", entity: "role", entityId: role.id, after: { name, ...next } });
       return role;
@@ -433,13 +462,22 @@ export async function createAccessRole(actor: AccessActor, input: RoleInput) {
 export async function updateAccessRole(actor: AccessActor, roleId: string, input: RoleInput) {
   await ensureAccessReady();
   const commercial = cleanCommercial(input.commercial);
+  const tickets = cleanTickets(input.tickets);
   try {
     return await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(LOCK);
       const role = await tx.accessRole.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
       if (!role) throw new ApiError(404, "Rol niet gevonden.");
       const before = grantOf(role);
-      const after: RoleGrant = { isAdmin: role.isAdmin, hubLevel: role.isAdmin ? "NONE" : input.hubLevel, ticketingLevel: role.isAdmin ? "NONE" : input.ticketingLevel, commercial: role.isAdmin ? null : commercial };
+      // Oudere clients sturen `tickets` niet mee: dan blijft de HHC Tickets-toegang ongewijzigd.
+      const nextTickets = input.tickets === undefined ? (before.tickets ?? null) : tickets;
+      const after: RoleGrant = {
+        isAdmin: role.isAdmin,
+        hubLevel: role.isAdmin ? "NONE" : input.hubLevel,
+        ticketingLevel: role.isAdmin ? "NONE" : input.ticketingLevel,
+        commercial: role.isAdmin ? null : commercial,
+        tickets: role.isAdmin ? null : nextTickets,
+      };
       enforce(checkRoleEdit(actor.scope, before, after, { holdsRole: await holds(tx, actor.scope.userId, roleId), isSystem: role.isSystem }));
 
       const name = input.name.trim();
@@ -453,7 +491,15 @@ export async function updateAccessRole(actor: AccessActor, roleId: string, input
       }
       const updated = await tx.accessRole.update({
         where: { id: roleId },
-        data: { name, description: input.description?.trim() || null, hubLevel: after.hubLevel, ticketingLevel: after.ticketingLevel, commercialRoleId },
+        data: {
+          name,
+          description: input.description?.trim() || null,
+          hubLevel: after.hubLevel,
+          ticketingLevel: after.ticketingLevel,
+          commercialRoleId,
+          ticketsAccess: !!after.tickets,
+          ticketsPermissions: after.tickets ?? [],
+        },
       });
       const holders = await tx.userAccessRole.findMany({ where: { roleId }, select: { userId: true } });
       for (const h of holders) await syncUserAccess(tx, h.userId);

@@ -17,6 +17,8 @@ export interface RoleView {
   hubLevel: SectionLevel;
   ticketingLevel: SectionLevel;
   commercial: string[] | null;
+  /** null/ontbreekt = geen toegang tot HHC Tickets. */
+  tickets?: string[] | null;
   userCount: number;
   manageable: boolean;
   manageReason: string | null;
@@ -24,12 +26,17 @@ export interface RoleView {
 
 export const summaryOf = (r: RoleView) => describeRole(r);
 
-const GROUP_ORDER = ["Algemeen", "Communicatie", "Ticketing", "Commerciële Zaken", "Gecombineerd", "Overig"] as const;
+const GROUP_ORDER = ["Algemeen", "Communicatie", "Ticketing", "Commerciële Zaken", "HHC Tickets", "Gecombineerd", "Overig"] as const;
 
 /** Onder welk kopje een rol hoort: het onderdeel waar hij toegang toe geeft. */
 export function roleGroup(r: RoleView): (typeof GROUP_ORDER)[number] {
   if (r.isAdmin) return "Algemeen";
-  const parts = [r.hubLevel !== "NONE" && "Communicatie", r.ticketingLevel !== "NONE" && "Ticketing", r.commercial !== null && "Commerciële Zaken"].filter(Boolean) as ("Communicatie" | "Ticketing" | "Commerciële Zaken")[];
+  const parts = [r.hubLevel !== "NONE" && "Communicatie", r.ticketingLevel !== "NONE" && "Ticketing", r.commercial !== null && "Commerciële Zaken", r.tickets != null && "HHC Tickets"].filter(Boolean) as (
+    | "Communicatie"
+    | "Ticketing"
+    | "Commerciële Zaken"
+    | "HHC Tickets"
+  )[];
   if (parts.length === 0) return "Overig";
   return parts.length === 1 ? parts[0] : "Gecombineerd";
 }

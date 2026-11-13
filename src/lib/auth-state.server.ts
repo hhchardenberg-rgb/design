@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { effectiveRoles, type AppRole } from "@/lib/roles";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { mfaRequired } from "@/lib/auth-policy";
+import { isTicketsEnabled } from "@/lib/tickets/flag";
+import { ticketsNeedsMfa } from "@/lib/tickets/permissions";
 
 export interface AuthState {
   roles: AppRole[];
@@ -21,12 +23,15 @@ export async function loadAuthState(userId: string): Promise<AuthState | null> {
       totpCredential: { select: { verifiedAt: true } },
       _count: { select: { webauthnCredentials: true } },
       commercialMembership: { select: { userId: true } },
+      accessRoles: { select: { role: { select: { ticketsAccess: true, ticketsPermissions: true } } } },
     },
   });
   if (!user) return null;
   const roles = effectiveRoles(user);
   const mfaEnabled = !!user.totpCredential?.verifiedAt || user._count.webauthnCredentials > 0;
-  const required = mfaRequired(roles, isCommercialEnabled() && !!user.commercialMembership);
+  // HHC Tickets: wie meer mag dan scannen (persoonsgegevens, uitgeven, beheer) heeft ook 2FA nodig.
+  const ticketPerms = user.accessRoles.filter((a) => a.role.ticketsAccess).flatMap((a) => a.role.ticketsPermissions);
+  const required = mfaRequired(roles, (isCommercialEnabled() && !!user.commercialMembership) || (isTicketsEnabled() && ticketsNeedsMfa(ticketPerms)));
   return { roles, sessionVersion: user.sessionVersion, mfaEnabled, mfaSetupRequired: required && !mfaEnabled };
 }
 

@@ -10,6 +10,7 @@ export const ENCRYPTED_FIELDS = {
   user: ["phone"],
   commercialContact: ["phone", "notes"],
   commercialCompany: ["internalNotes"],
+  ticket: ["phone"],
 } as const;
 
 type Model = keyof typeof ENCRYPTED_FIELDS;
@@ -49,6 +50,7 @@ function createClient() {
       commercialCompany: {
         $allOperations: ({ operation, args, query }) => query(encryptArgs("commercialCompany", operation, args as Record<string, unknown>) as never),
       },
+      ticket: { $allOperations: ({ operation, args, query }) => query(encryptArgs("ticket", operation, args as Record<string, unknown>) as never) },
     },
     result: {
       user: { phone: { needs: { phone: true }, compute: (u) => decryptField(u.phone) } },
@@ -57,6 +59,7 @@ function createClient() {
         notes: { needs: { notes: true }, compute: (c) => decryptField(c.notes) },
       },
       commercialCompany: { internalNotes: { needs: { internalNotes: true }, compute: (c) => decryptField(c.internalNotes) } },
+      ticket: { phone: { needs: { phone: true }, compute: (t) => decryptField(t.phone) } },
     },
   });
   // Zelfde type als een gewone PrismaClient: de extensie verandert geen veldtypes, alleen de inhoud.

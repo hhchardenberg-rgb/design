@@ -23,6 +23,8 @@ export interface RoleGrant {
   ticketingLevel: SectionLevel;
   /** null = geen toegang tot Commerciële Zaken. */
   commercial: string[] | null;
+  /** null/ontbreekt = geen toegang tot HHC Tickets; anders de bevoegdheden (src/lib/tickets/permissions.ts). */
+  tickets?: string[] | null;
 }
 
 const RANK: Record<SectionLevel, number> = { NONE: 0, USER: 1, ADMIN: 2 };
@@ -84,6 +86,10 @@ export function describeRole(r: RoleGrant): string[] {
     const n = r.commercial.filter(isPermission).length;
     parts.push(`Commerciële Zaken: ${n === 0 ? "toegang, nog geen bevoegdheden" : n === 1 ? "1 bevoegdheid" : `${n} bevoegdheden`}`);
   }
+  if (r.tickets) {
+    const n = r.tickets.length;
+    parts.push(`HHC Tickets: ${n === 0 ? "toegang, nog geen bevoegdheden" : n === 1 ? "1 bevoegdheid" : `${n} bevoegdheden`}`);
+  }
   return parts.length > 0 ? parts : ["Geeft (nog) nergens toegang toe"];
 }
 
@@ -118,6 +124,8 @@ export function roleWithinScope(m: ManagerScope, r: RoleGrant): Decision {
   if (r.hubLevel === "ADMIN" || r.ticketingLevel === "ADMIN") return no("Beheerders van een onderdeel wijst de hoofdadmin aan.");
   if (r.hubLevel === "USER" && !m.hubAdmin) return no("Deze rol geeft toegang tot Communicatie; dat beheer je niet.");
   if (r.ticketingLevel === "USER" && !m.ticketingAdmin) return no("Deze rol geeft toegang tot Ticketing; dat beheer je niet.");
+  // HHC Tickets-rechten deelt (voorlopig) alleen de hoofdadmin uit.
+  if (r.tickets) return no("Toegang tot HHC Tickets geeft de hoofdadmin.");
   if (r.commercial) {
     if (!m.commercialManage) return no("Deze rol geeft toegang tot Commerciële Zaken; dat beheer je niet.");
     const beyond = r.commercial.filter((p) => !m.commercialGrantable.has(p));

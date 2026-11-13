@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NoAccess } from "@/components/commercial/no-access";
 import { pageAccess } from "@/lib/commercial/page.server";
+import { isTicketsEnabled } from "@/lib/tickets/flag";
 import { CompanyDetail } from "./company-detail";
 
 export const metadata: Metadata = { title: "Sponsordossier – Commerciële Zaken" };
@@ -10,5 +11,5 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const a = await pageAccess("companies:read");
   if (!a.allowed) return <NoAccess what="de sponsoren" />;
-  return <CompanyDetail id={id} permissions={a.permissions} />;
+  return <CompanyDetail id={id} permissions={a.permissions} ticketsOn={isTicketsEnabled()} />;
 }
