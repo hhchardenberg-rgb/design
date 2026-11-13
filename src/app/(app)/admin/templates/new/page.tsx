@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { upload } from "@vercel/blob/client";
+import { uploadPresigned } from "@vercel/blob/client";
 import { Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -233,7 +233,10 @@ interface UploadResult {
  * zodat die zichtbaar blijft als de fallback ook faalt.
  */
 async function tryUploadToBlob(file: File, onProgress: (percentage: number) => void): Promise<string> {
-  const blob = await upload(file.name, file, {
+  // Zelf een unieke naam kiezen: bij een vooraf ondertekende upload bepaalt
+  // de server niet meer zelf een willekeurig achtervoegsel.
+  const pathname = `templates/bron/${randomId()}.psd`;
+  const blob = await uploadPresigned(pathname, file, {
     access: "public",
     handleUploadUrl: "/api/admin/templates/upload/blob-auth",
     contentType: "application/octet-stream",
@@ -296,4 +299,9 @@ async function uploadDirectly(file: File, meta: UploadMeta): Promise<UploadResul
 
 function formatMb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
+
+function randomId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
