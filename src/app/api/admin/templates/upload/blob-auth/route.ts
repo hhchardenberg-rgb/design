@@ -1,4 +1,5 @@
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { handleUpload, handleUploadPresigned, type HandleUploadBody, type HandleUploadPresignedBody } from "@vercel/blob/client";
+import { issueSignedToken } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { ApiError, requireHubAdmin } from "@/lib/api-guards";
 import { MAX_PSD_UPLOAD_BYTES } from "@/lib/psd/upload-limits";
@@ -16,11 +17,38 @@ export const runtime = "nodejs";
  * (werkt alleen betrouwbaar voor kleinere bestanden / lokale development).
  */
 export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+  const body = (await request.json()) as HandleUploadBody | HandleUploadPresignedBody;
 
   try {
+    // Nieuwe route (uploadPresigned in de browser): werkt met de koppeling
+    // die Vercel zelf beheert (BLOB_STORE_ID + OIDC) en heeft dus geen los
+    // BLOB_READ_WRITE_TOKEN nodig. Dat losse token hoorde in productie bij
+    // een oude, inmiddels verwijderde store, waardoor uploads mislukten met
+    // "This store does not exist."
+    if (body.type === "blob.generate-presigned-url" || (body.type === "blob.upload-completed" && process.env.BLOB_STORE_ID)) {
+      const presigned = await handleUploadPresigned({
+        body: body as HandleUploadPresignedBody,
+        request,
+        getSignedToken: async (pathname) => {
+          await requireHubAdmin();
+          if (!/^templates\/bron\/[A-Za-z0-9_-]+\.psd$/.test(pathname)) {
+            throw new ApiError(400, "Ongeldige bestandsnaam voor de upload.");
+          }
+          const token = await issueSignedToken({
+            pathname,
+            operations: ["put"],
+            maximumSizeInBytes: MAX_PSD_UPLOAD_BYTES,
+            validUntil: Date.now() + 60 * 60 * 1000,
+            ...(process.env.BLOB_STORE_ID ? { storeId: process.env.BLOB_STORE_ID } : {}),
+          });
+          return { token, urlOptions: { maximumSizeInBytes: MAX_PSD_UPLOAD_BYTES } };
+        },
+      });
+      return NextResponse.json(presigned);
+    }
+
     const jsonResponse = await handleUpload({
-      body,
+      body: body as HandleUploadBody,
       request,
       onBeforeGenerateToken: async () => {
         await requireHubAdmin();
