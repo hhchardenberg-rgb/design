@@ -33,6 +33,7 @@ async function wipe() {
   await db.ticketEvent.deleteMany();
   await db.ticketSeason.deleteMany();
   await db.ticketAuditEvent.deleteMany();
+  await db.ticketPublicHit.deleteMany();
   await db.ticketSettings.deleteMany();
 }
 
@@ -113,4 +114,21 @@ test("exports: rechten, geen persoonsgegevens zonder recht, auditlog", { skip },
   assert.equal(Buffer.from(pdf.body as Uint8Array).subarray(0, 4).toString(), "%PDF");
   await assert.rejects(reports.buildExport(limited, "tickets", "csv", eventId), /bevoegdheid/);
   assert.ok((await db.ticketAuditEvent.count({ where: { action: "export.created" } })) >= 3);
+});
+
+test("ticket opnieuw opvragen: altijd hetzelfde antwoord, alleen naar het bekende adres, met limiet", { skip }, async () => {
+  const resend = await import("../resend.server");
+  const before = await db.ticketDelivery.count();
+  const unknown = await resend.requestTicketResend({ email: "onbekend@nergens.nl" }, "10.9.9.1");
+  assert.equal(await db.ticketDelivery.count(), before, "geen pogingen voor een onbekend adres");
+  const known = await resend.requestTicketResend({ email: "S2@bedrijf.nl" }, "10.9.9.2");
+  assert.deepEqual(known, unknown);
+  const rows = await db.ticketDelivery.findMany({ where: { byName: "Ticket opnieuw opgevraagd" } });
+  assert.equal(rows.length, 1);
+  const t = await db.ticket.findUniqueOrThrow({ where: { id: rows[0].ticketId } });
+  assert.equal(t.email, "s2@bedrijf.nl");
+  await resend.requestTicketResend({ email: "s2@bedrijf.nl" }, "10.9.9.3");
+  await resend.requestTicketResend({ email: "s2@bedrijf.nl" }, "10.9.9.4");
+  await assert.rejects(resend.requestTicketResend({ email: "s2@bedrijf.nl" }, "10.9.9.5"), /al een aanvraag/);
+  await assert.rejects(resend.requestTicketResend({ email: "geen-adres" }, "10.9.9.6"));
 });
