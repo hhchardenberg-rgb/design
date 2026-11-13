@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Maximaal aantal regels van een tekstveld (bijv. een statement of citaat). */
-export const MAX_TEXT_LINES = 12;
+export const MAX_TEXT_LINES = 40;
 
 /**
  * Genormaliseerde template-definitie.
