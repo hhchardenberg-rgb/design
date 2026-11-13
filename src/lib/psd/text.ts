@@ -1,5 +1,6 @@
 import type { Layer, LayerTextData, TextStyle, UnitsValue } from "ag-psd";
 import type { TextLayer } from "@/lib/validations/template";
+import { MAX_TEXT_LINES } from "@/lib/validations/template";
 
 /**
  * Zet een Photoshop-tekstlaag om naar een tekstlaag van het templatemodel.
@@ -111,10 +112,10 @@ export function textLayerFromPsd(
     const lines = Math.max(textLines, inkBands(psdLayer, fontSize).length || textLines);
     const first = pointText && data?.transform?.length === 6 ? ty : inkBaseline(psdLayer, fontSize, lineHeight);
     if (first !== null && first !== undefined) {
-      psdBaseline = { y: round(first - round(y, 1), 1), lines: Math.min(lines, 4), fontSize };
+      psdBaseline = { y: round(first - round(y, 1), 1), lines: Math.min(lines, MAX_TEXT_LINES), fontSize };
     }
   }
-  const maxLines = Math.min(4, Math.max(textLines, fitLines));
+  const maxLines = Math.min(MAX_TEXT_LINES, Math.max(textLines, fitLines));
 
   const postscriptName = style.font?.name?.trim() || undefined;
   const fromName = postscriptName ? weightFromName(postscriptName) : { weight: 400, italic: false };

@@ -119,3 +119,20 @@ test("eerste basislijn: puntentekst uit de oorsprong, alineatekst uit de pixels"
   assert.equal(para.y + para.psdBaseline!.y, 420);
   assert.equal(para.psdBaseline!.lines, 2);
 });
+
+test("een statement van zes regels houdt zes regels (niet terug naar vier, waardoor de tekst krimpt)", () => {
+  const { layer } = textLayerFromPsd(
+    { key: "statement", name: "Statement", left: 100, top: 100, width: 800, height: 400 },
+    {
+      name: "TEXT:statement",
+      text: {
+        text: "Een\nstatement\nover\nzes\nregels\nlang",
+        transform: [1, 0, 0, 1, 100, 100],
+        shapeType: "box",
+        boxBounds: [0, 0, 800, 400],
+        style: { fontSize: 50, autoLeading: false, leading: 60 },
+      },
+    }
+  );
+  assert.equal(layer.maxLines, 6);
+});
