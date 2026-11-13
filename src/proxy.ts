@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
 import { hasRole, isSectionAdmin, resolveHomePath, type AppRole } from "@/lib/roles";
 import { allowedDuringMfaSetup, MFA_SETUP_PATH } from "@/lib/auth-policy";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
 
 // Apparaatcookie voor de melding "nieuwe inlog" (src/lib/login-alerts.server.ts): een willekeurige
 // waarde, verder niets. Wordt gezet op de loginpagina en op elke beveiligde pagina.
@@ -73,6 +74,10 @@ function adminCountryBlocked(req: Parameters<Parameters<typeof auth>[0]>[0]): bo
 
 function guard(req: Parameters<Parameters<typeof auth>[0]>[0]): NextResponse {
   const { pathname } = req.nextUrl;
+  // Commerciële Zaken uit: pagina's en API bestaan niet (de pagina's en API controleren dit zelf ook).
+  if (!isCommercialEnabled() && (pathname.startsWith("/commercieel") || pathname.startsWith("/api/commercial"))) {
+    return new NextResponse("Niet gevonden.", { status: 404 });
+  }
   if (adminCountryBlocked(req)) {
     return new NextResponse("Het beheer van de Hub is alleen bereikbaar vanuit Nederland, België en Duitsland.", { status: 403 });
   }
@@ -151,5 +156,7 @@ export const config = {
     "/login",
     // Alleen voor de landbeperking van het beheer; de API controleert zelf de rechten.
     "/api/admin/:path*",
+    // Alleen om Commerciële Zaken af te sluiten zolang die sectie uit staat.
+    "/api/commercial/:path*",
   ],
 };

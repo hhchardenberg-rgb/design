@@ -38,6 +38,7 @@ export async function GET() {
       listRoles(manager.scope),
       assignmentsByUser(),
     ]);
+    const visibleRoleIds = new Set(roles.map((r) => r.id));
     return NextResponse.json({
       manager: { full: manager.full, sections: manager.sections, commercial: manager.commercial, userId: manager.user.id },
       commercialEnabled: isCommercialEnabled(),
@@ -47,7 +48,8 @@ export async function GET() {
         name: u.name,
         email: u.email,
         isAdmin: u.roles.includes("ADMIN"),
-        roleIds: assigned.get(u.id) ?? [],
+        // Alleen rollen die in de lijst staan (rollen van Commerciële Zaken zijn verborgen zolang CZ uit staat).
+        roleIds: (assigned.get(u.id) ?? []).filter((id) => visibleRoleIds.has(id)),
         createdAt: u.createdAt.toISOString(),
       })),
     });

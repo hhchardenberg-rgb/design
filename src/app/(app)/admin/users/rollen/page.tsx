@@ -100,6 +100,8 @@ export default function RolesPage() {
   const [manager, setManager] = useState<Manager | null>(null);
   const [grantable, setGrantable] = useState<Set<Permission> | undefined>(undefined);
   const [audit, setAudit] = useState<AuditRow[]>([]);
+  // Staat Commerciële Zaken uit, dan toont dit scherm er niets van.
+  const [czOn, setCzOn] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -111,6 +113,7 @@ export default function RolesPage() {
     setManager(data.manager);
     setGrantable(data.grantable ? new Set((data.grantable as string[]).filter(isPermission)) : undefined);
     setAudit(data.audit ?? []);
+    setCzOn(data.commercialEnabled === true);
   }, []);
 
   useEffect(() => {
@@ -222,6 +225,7 @@ export default function RolesPage() {
                   <LevelChoice label="Ticketing" section="ticketing" value={draft.ticketingLevel} onChange={(v) => setDraft({ ...draft, ticketingLevel: v })} allowed={canLevel("ticketing")} />
                 </div>
 
+                {czOn && (
                 <fieldset className="rounded-md border border-border p-3">
                   <legend className="px-1 text-sm font-semibold">Commerciële Zaken</legend>
                   <div className="flex flex-wrap gap-2" role="radiogroup">
@@ -271,6 +275,7 @@ export default function RolesPage() {
                     </div>
                   )}
                 </fieldset>
+                )}
 
                 <TicketsRights
                   on={draft.ticketsOn}

@@ -8,6 +8,8 @@ const url = process.env.TEST_DATABASE_URL;
 const skip = !url;
 if (url) process.env.DATABASE_URL = url;
 process.env.COMMERCIAL_ENABLED = "true";
+// De hoofdschakelaar in flag.ts staat uit; in tests telt alleen COMMERCIAL_ENABLED.
+(process.env as Record<string, string>).NODE_ENV = "test";
 
 type Access = typeof import("../service.server");
 type Authz = typeof import("@/lib/commercial/authz.server");

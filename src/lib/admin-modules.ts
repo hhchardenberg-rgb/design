@@ -48,7 +48,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
     modules: [
       { title: "Templates", description: "PSD-templates importeren en beheren.", href: "/admin/templates", icon: LayoutTemplate, section: "hub" },
       { title: "Agenda", description: "Agendapunten toevoegen en uitlichten.", href: "/admin/agenda", icon: CalendarDays, section: "hub" },
-      { title: "Nieuws", description: "Nieuws plaatsen voor Communicatie, Ticketing en Commerciële Zaken, en per onderdeel aan of uit zetten.", href: "/admin/nieuws", icon: Newspaper, section: "systeem" },
+      { title: "Nieuws", description: "Nieuws plaatsen voor de onderdelen van de Hub, en per onderdeel aan of uit zetten.", href: "/admin/nieuws", icon: Newspaper, section: "systeem" },
       { title: "Fotobank", description: "Standaardfoto's uploaden en beheren.", href: "/admin/fotobank", icon: Images, section: "hub" },
       { title: "Kennisbank", description: "Handleidingen en werkwijzen beheren.", href: "/admin/kennisbank", icon: BookOpen, section: "hub" },
       { title: "Crisiscommunicatie", description: "Protocollen per incidenttype beheren.", href: "/admin/crisis", icon: AlertTriangle, section: "hub" },
@@ -83,7 +83,7 @@ export const adminModuleGroups: AdminModuleGroup[] = [
     id: "systeem",
     label: "Systeem",
     modules: [
-      { title: "Gebruikers en rechten", description: "Accounts en rollen: wie mag wat in Communicatie, Ticketing en Commerciële Zaken.", href: "/admin/users", icon: UserCog, section: "systeem" },
+      { title: "Gebruikers en rechten", description: "Accounts en rollen: wie mag wat in welk onderdeel van de Hub.", href: "/admin/users", icon: UserCog, section: "systeem" },
       { title: "Audit-log", description: "Wie deed wat: inloggen, beveiliging, accounts en rollen, back-ups en downloads.", href: "/admin/audit", icon: ScrollText, section: "hoofdadmin" },
       { title: "Back-ups", description: "Automatische, versleutelde back-ups van alle gegevens; handmatig een back-up maken of downloaden.", href: "/admin/backups", icon: DatabaseBackup, section: "hoofdadmin" },
       { title: "Documentatie", description: "PSD-conventies en handleidingen.", href: "/docs", icon: FileText, section: "hub" },

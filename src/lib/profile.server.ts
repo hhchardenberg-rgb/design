@@ -7,6 +7,7 @@ import { roleNamesOf } from "@/lib/access/service.server";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
 import { effectiveDigestFrequency, isDigestFrequency } from "@/lib/commercial/digest-frequency";
 import { loadDefaultDigestFrequency } from "@/lib/commercial/reminder-settings.server";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
 
 export interface ProfileInput {
   name?: string;
@@ -32,7 +33,8 @@ export async function getProfile(userId: string) {
   });
   if (!user) throw new ApiError(404, "Account niet gevonden.");
   const roles = effectiveRoles(user);
-  const access = await loadCommercialAccess(userId).catch(() => null);
+  const czOn = isCommercialEnabled();
+  const access = czOn ? await loadCommercialAccess(userId).catch(() => null) : null;
   const defaultFrequency = await loadDefaultDigestFrequency();
   const roleNames = await roleNamesOf(userId);
   const czRoleNames = access?.isMember
@@ -52,6 +54,7 @@ export async function getProfile(userId: string) {
     memberSince: user.createdAt.toISOString(),
     roles: roleNames,
     commercial: access?.isMember ? { member: true, roleName: roles.includes("ADMIN") ? "Volledige toegang (hoofdadmin)" : czRoleNames.join(", ") || null } : { member: false, roleName: null },
+    commercialEnabled: czOn,
     security: { totp: !!user.totpCredential, passkeys: user.webauthnCredentials.length },
   };
 }

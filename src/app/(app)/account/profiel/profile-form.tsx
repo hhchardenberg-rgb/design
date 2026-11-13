@@ -23,6 +23,8 @@ interface Profile {
   memberSince: string;
   roles: string[];
   commercial: { member: boolean; roleName: string | null };
+  /** Staat Commerciële Zaken aan? Zo niet, dan ontbreken de voorkeuren daarvan. */
+  commercialEnabled?: boolean;
   security: { totp: boolean; passkeys: number };
 }
 
@@ -97,11 +99,12 @@ export function ProfileForm() {
               <Input id="pf-email" value={profile.email} readOnly disabled />
               <p className="mt-1 text-xs text-muted-foreground">Je e-mailadres is je inlognaam. Vraag een beheerder om het te wijzigen.</p>
             </div>
-            <div><Label htmlFor="pf-job">Functie</Label><Input id="pf-job" maxLength={80} placeholder="Bijvoorbeeld: lid sponsorcommissie" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} /></div>
+            <div><Label htmlFor="pf-job">Functie</Label><Input id="pf-job" maxLength={80} placeholder="Bijvoorbeeld: vrijwilliger communicatie" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} /></div>
             <div><Label htmlFor="pf-phone">Telefoonnummer</Label><Input id="pf-phone" type="tel" maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
           </CardContent>
         </Card>
 
+        {profile.commercialEnabled && (
         <Card>
           <CardHeader><CardTitle>Voorkeuren</CardTitle></CardHeader>
           <CardContent>
@@ -118,6 +121,7 @@ export function ProfileForm() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <div><Button type="submit" disabled={saving || !name.trim()}>{saving ? "Opslaan…" : "Opslaan"}</Button></div>
       </form>

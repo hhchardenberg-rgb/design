@@ -39,7 +39,7 @@ async function fetchPage(group: string, q: string, cursor: string | null) {
   return body as { events: AuditRow[]; next: string | null };
 }
 
-export function AuditLogPanel() {
+export function AuditLogPanel({ commercialEnabled = false }: { commercialEnabled?: boolean }) {
   const [group, setGroup] = useState("");
   const [query, setQuery] = useState("");
   const [applied, setApplied] = useState("");
@@ -69,7 +69,7 @@ export function AuditLogPanel() {
         <h1 className="text-2xl font-bold">Audit-log</h1>
         <p className="mt-1 max-w-2xl text-muted-foreground">
           Wie deed wat, en wanneer: inloggen, beveiligingsinstellingen, accounts en rollen, back-ups en downloads. Regels worden ruim een jaar bewaard.
-          Wijzigingen binnen Commerciële Zaken staan daarnaast in het eigen logboek van dat onderdeel.
+          {commercialEnabled && " Wijzigingen binnen Commerciële Zaken staan daarnaast in het eigen logboek van dat onderdeel."}
         </p>
       </div>
 
