@@ -131,6 +131,8 @@ De authenticator-app (2FA-codes) zelf is niet aan het domein gebonden.
      (wanneer een Blob store gekoppeld is) rechtstreeks vanuit de browser
      naar Blob-opslag; zonder Blob store valt dit automatisch terug op de
      gewone upload, die dan wel aan de 4,5MB-limiet gebonden blijft.
+     Via Blob mag een PSD maximaal 250 MB zijn (`src/lib/psd/upload-limits.ts`);
+     die grens komt van het verwerken in een functie met 2 GB geheugen.
 
    > **Let op — "This store does not exist" / "No read-write token found":**
    > gebruik altijd de knop **Storage → Create Database → Blob** (of, als er
