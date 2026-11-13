@@ -2,11 +2,12 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { upload } from "@vercel/blob/client";
+import { uploadPresigned } from "@vercel/blob/client";
 import { Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { MAX_PSD_UPLOAD_BYTES, MAX_PSD_UPLOAD_MB } from "@/lib/psd/upload-limits";
 
 // Veilige marge onder Vercel's harde limiet van 4,5MB per functie-request-body.
 const VERCEL_FUNCTION_BODY_LIMIT = 4 * 1024 * 1024;
@@ -42,13 +43,22 @@ function NewTemplateForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  // null = nog niet bezig; 0-100 = uploaden; "verwerken" = de server is aan de slag.
+  const [progress, setProgress] = useState<number | "verwerken" | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const chosen = file;
     if (!chosen) return setError("Kies een PSD-bestand.");
     if (!templateId && !name) return setError("Geef een naam voor de template op.");
+    if (chosen.size > MAX_PSD_UPLOAD_BYTES) {
+      return setError(
+        `Dit bestand is ${formatMb(chosen.size)}; het maximum is ${MAX_PSD_UPLOAD_MB} MB. ` +
+          "Maak het kleiner in Photoshop, bijvoorbeeld door ongebruikte of verborgen lagen te verwijderen, slimme objecten te rasteren of \"Maximale compatibiliteit\" uit te zetten bij opslaan."
+      );
+    }
     setLoading(true);
+    setProgress(0);
     setError(null);
     try {
       const meta = { name, category, templateId };
@@ -69,12 +79,13 @@ function NewTemplateForm() {
       let blobUrl: string | null = null;
       let blobFailure: string | null = null;
       try {
-        blobUrl = await tryUploadToBlob(file);
+        blobUrl = await tryUploadToBlob(file, (pct) => setProgress(pct));
       } catch (err) {
         blobFailure = err instanceof Error ? err.message : String(err);
         console.error("Directe upload naar Vercel Blob mislukt, val terug op de gewone upload:", err);
       }
 
+      setProgress("verwerken");
       let data: UploadResult;
       if (blobUrl) {
         data = await finishImport({ psdUrl: blobUrl }, meta);
@@ -94,10 +105,10 @@ function NewTemplateForm() {
           );
         });
       } else {
-        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+        const sizeMb = formatMb(file.size);
         throw new Error(
           `Upload rechtstreeks naar Vercel Blob is mislukt (${blobFailure ?? "onbekende fout"}). ` +
-            `Het bestand is ${sizeMb}MB, ruim boven de 4,5MB die een gewone upload op Vercel aankan, ` +
+            `Het bestand is ${sizeMb}, ruim boven de 4,5MB die een gewone upload op Vercel aankan, ` +
             `dus een gewone upload is hier niet mogelijk als terugvaloptie. Controleer of de Blob store ` +
             `correct aan dit project gekoppeld is (Storage-tab in het Vercel-dashboard, zie README) en probeer opnieuw.`
         );
@@ -109,6 +120,7 @@ function NewTemplateForm() {
       setError(err instanceof Error ? err.message : "Er ging iets mis.");
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }
 
@@ -151,7 +163,8 @@ function NewTemplateForm() {
               <div className="flex items-center justify-center rounded-md border-2 border-dashed border-border bg-surface-muted p-6 text-sm text-muted-foreground">
                 <label className="flex cursor-pointer flex-col items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  {file ? file.name : "Kies een .psd-bestand"}
+                  {file ? `${file.name} (${formatMb(file.size)})` : "Kies een .psd-bestand"}
+                  <span className="text-xs">Maximaal {MAX_PSD_UPLOAD_MB} MB</span>
                   <input
                     id="psd"
                     type="file"
@@ -165,8 +178,24 @@ function NewTemplateForm() {
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" size="lg" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loading ? "Bezig met importeren..." : "Importeren"}
+              {!loading
+                ? "Importeren"
+                : progress === "verwerken"
+                  ? "Bezig met verwerken..."
+                  : typeof progress === "number"
+                    ? `Uploaden... ${progress}%`
+                    : "Bezig met importeren..."}
             </Button>
+            {loading && typeof progress === "number" && (
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted" aria-hidden>
+                <div className="h-full bg-hhc-orange transition-[width]" style={{ width: `${progress}%` }} />
+              </div>
+            )}
+            {loading && progress === "verwerken" && (
+              <p className="text-center text-sm text-muted-foreground">
+                Grote bestanden kunnen een paar minuten duren. Laat deze pagina open.
+              </p>
+            )}
           </form>
         </CardContent>
       </Card>
@@ -203,14 +232,18 @@ interface UploadResult {
  * terug op uploadDirectly(), met de oorspronkelijke foutmelding bewaard
  * zodat die zichtbaar blijft als de fallback ook faalt.
  */
-async function tryUploadToBlob(file: File): Promise<string> {
-  const blob = await upload(file.name, file, {
+async function tryUploadToBlob(file: File, onProgress: (percentage: number) => void): Promise<string> {
+  // Zelf een unieke naam kiezen: bij een vooraf ondertekende upload bepaalt
+  // de server niet meer zelf een willekeurig achtervoegsel.
+  const pathname = `templates/bron/${randomId()}.psd`;
+  const blob = await uploadPresigned(pathname, file, {
     access: "public",
     handleUploadUrl: "/api/admin/templates/upload/blob-auth",
     contentType: "application/octet-stream",
     // PSD-bestanden zijn vaak groot (embedded rasterlagen); multipart
     // splitst dit op in delen die parallel geüpload worden.
     multipart: true,
+    onUploadProgress: ({ percentage }) => onProgress(Math.min(100, Math.round(percentage))),
   });
   return blob.url;
 }
@@ -262,4 +295,13 @@ async function uploadDirectly(file: File, meta: UploadMeta): Promise<UploadResul
   form.append("deferred", "true");
   const res = await fetch("/api/admin/templates/upload", { method: "POST", body: form });
   return followJob(res);
+}
+
+function formatMb(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
+
+function randomId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }

@@ -15,7 +15,9 @@ import type { TemplateSchemaJson } from "@/lib/validations/template";
  * keer. Een inhoudelijke fout in het bestand wordt niet herhaald.
  */
 export const MAX_ATTEMPTS = 3;
-const LEASE_MS = 150_000;
+// Iets langer dan de maximale looptijd van de serverfunctie (300 s), zodat
+// een poging die nog bezig is niet tegelijk een tweede keer start.
+const LEASE_MS = 330_000;
 
 export interface ImportJobResult {
   templateId: string;

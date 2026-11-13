@@ -73,7 +73,7 @@ test("verborgen lagen en meldingen voor wat niet wordt nagebootst", () => {
     [
       { name: "weg", hidden: true, left: 0, top: 0, imageData: solid(1, 1, [255, 0, 0, 255]) },
       { name: "gloed", left: 0, top: 0, effects: { outerGlow: { enabled: true } }, imageData: solid(1, 1, [0, 0, 255, 255]) },
-      { name: "aanpassing", adjustment: { type: "brightness/contrast" } },
+      { name: "aanpassing", adjustment: { type: "selective color" } },
     ] as Layer[],
     { issues }
   );
@@ -113,4 +113,54 @@ test("verschilbeeld en kader van zichtbare pixels", () => {
   assert.deepEqual(alphaBounds(a), { left: 1, top: 1, width: 2, height: 2 });
   const d = diffBuffers(a, b);
   assert.equal(d.changedRatio, 2 / 16);
+});
+
+test("aanpassingslagen: omkeren met dekking en masker, verloopkaart, onbekend type", () => {
+  const dst = createBuffer(3, 1);
+  const issues: { layer: string; message: string }[] = [];
+  composeLayers(
+    dst,
+    [
+      { name: "grijs", left: 0, top: 0, imageData: solid(3, 1, [200, 100, 0, 255]) },
+      // Masker: alleen pixel 0 zichtbaar.
+      { name: "omkeren", adjustment: { type: "invert" }, mask: { left: 0, top: 0, imageData: solid(1, 1, [255, 255, 255, 255]), defaultColor: 0 } },
+      { name: "kanaalmixer", adjustment: { type: "channel mixer" } },
+    ] as Layer[],
+    { issues }
+  );
+  assert.deepEqual(px(dst, 0, 0), [55, 155, 255, 255]);
+  assert.deepEqual(px(dst, 1, 0), [200, 100, 0, 255], "buiten het masker onveranderd");
+  assert.equal(issues.length, 1);
+  assert.match(issues[0].message, /channel mixer/);
+
+  const map = createBuffer(2, 1);
+  composeLayers(map, [
+    { left: 0, top: 0, imageData: solid(1, 1, [0, 0, 0, 255]) },
+    { left: 1, top: 0, imageData: solid(1, 1, [255, 255, 255, 255]) },
+    {
+      name: "oranje verloop",
+      opacity: 1,
+      adjustment: {
+        type: "gradient map",
+        gradientType: "solid",
+        colorStops: [
+          { location: 0, midpoint: 0.5, color: { r: 20, g: 10, b: 0 } },
+          { location: 4096, midpoint: 0.5, color: { r: 255, g: 130, b: 0 } },
+        ],
+      },
+    },
+  ] as Layer[]);
+  assert.deepEqual(px(map, 0, 0), [20, 10, 0, 255], "zwart wordt de linkerkleur");
+  assert.deepEqual(px(map, 1, 0), [255, 130, 0, 255], "wit wordt de rechterkleur");
+});
+
+test("aanpassingslagen: transparantie blijft, helderheid/contrast neutraal bij 0", () => {
+  const dst = createBuffer(2, 1);
+  composeLayers(dst, [
+    { left: 0, top: 0, imageData: solid(1, 1, [120, 60, 30, 255]) },
+    { adjustment: { type: "brightness/contrast", brightness: 0, contrast: 0, meanValue: 127 } },
+    { adjustment: { type: "invert" } },
+  ] as Layer[]);
+  assert.deepEqual(px(dst, 0, 0), [135, 195, 225, 255]);
+  assert.deepEqual(px(dst, 1, 0), [0, 0, 0, 0], "lege pixel blijft leeg");
 });

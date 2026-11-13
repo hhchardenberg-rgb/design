@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** Maximaal aantal regels van een tekstveld (bijv. een statement of citaat). */
+export const MAX_TEXT_LINES = 40;
+
 /**
  * Genormaliseerde template-definitie.
  *
@@ -73,7 +76,7 @@ export const textLayerSchema = layerCommonSchema.extend({
   uppercase: z.boolean().default(false),
   letterSpacing: z.number().default(0),
   lineHeight: z.number().default(1.15),
-  maxLines: z.number().min(1).max(4).default(1),
+  maxLines: z.number().min(1).max(MAX_TEXT_LINES).default(1),
   allowTruncate: z.boolean().default(false),
   /**
    * Het concrete fontbestand (Font.id of "builtin-inter-<gewicht>"). Wordt

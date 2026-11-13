@@ -43,13 +43,19 @@ export function canSeeOwned(scope: Scope, rec: Owned, viewer: Viewer): boolean {
   return false;
 }
 
-/** Prisma-filter voor bedrijven (eigenaar = ownerId). */
+/**
+ * Prisma-filter voor bedrijven (eigenaar = ownerId). Verwijderde dossiers vallen er
+ * altijd buiten: die zijn alleen via het gesloten archief te zien.
+ */
 export function companyScopeWhere(scope: Scope, viewer: Viewer) {
-  if (scope === "ALL") return {};
+  if (scope === "ALL") return { deletedAt: null };
   const or: object[] = [{ ownerId: viewer.userId }];
   if (scope === "TEAM" && viewer.teamIds.length > 0) or.push({ teamId: { in: [...viewer.teamIds] } });
-  return { OR: or };
+  return { deletedAt: null, OR: or };
 }
+
+/** Taken zonder dossier, of met een dossier dat niet verwijderd is. */
+export const TASK_NOT_DELETED = { OR: [{ companyId: null }, { company: { is: { deletedAt: null } } }] };
 
 /** Taken: 'eigen' = toegewezen aan of aangemaakt door jou; team via teamId. */
 export function taskScopeWhere(scope: Scope, viewer: Viewer) {

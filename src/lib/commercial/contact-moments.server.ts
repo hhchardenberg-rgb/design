@@ -41,7 +41,7 @@ export async function computeContactGaps(now: Date, companyWhere: Prisma.Commerc
   if (interval.has(NO_TIER)) or.push({ sponsorTier: null });
 
   const companies = await prisma.commercialCompany.findMany({
-    where: { AND: [{ status: "ACTIVE", archivedAt: null, mergedIntoId: null }, companyWhere, { OR: or }] },
+    where: { AND: [{ status: "ACTIVE", archivedAt: null, mergedIntoId: null, deletedAt: null }, companyWhere, { OR: or }] },
     select: { id: true, name: true, sponsorTier: true, ownerId: true, createdAt: true },
   });
   if (companies.length === 0) return [];

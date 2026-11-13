@@ -18,13 +18,13 @@ test("bereik TEAM: eigen records en records van het eigen team", () => {
 
 test("bereik ALL ziet alles", () => {
   assert.ok(canSeeOwned("ALL", { ownerId: null, teamId: null }, me));
-  assert.deepEqual(companyScopeWhere("ALL", me), {});
+  assert.deepEqual(companyScopeWhere("ALL", me), { deletedAt: null });
 });
 
 test("Prisma-filters volgen dezelfde regels", () => {
-  assert.deepEqual(companyScopeWhere("OWN", me), { OR: [{ ownerId: "me" }] });
-  assert.deepEqual(companyScopeWhere("TEAM", me), { OR: [{ ownerId: "me" }, { teamId: { in: ["t1"] } }] });
-  assert.deepEqual(companyScopeWhere("TEAM", { userId: "me", teamIds: [] }), { OR: [{ ownerId: "me" }] });
+  assert.deepEqual(companyScopeWhere("OWN", me), { deletedAt: null, OR: [{ ownerId: "me" }] });
+  assert.deepEqual(companyScopeWhere("TEAM", me), { deletedAt: null, OR: [{ ownerId: "me" }, { teamId: { in: ["t1"] } }] });
+  assert.deepEqual(companyScopeWhere("TEAM", { userId: "me", teamIds: [] }), { deletedAt: null, OR: [{ ownerId: "me" }] });
   assert.deepEqual(taskScopeWhere("OWN", me), { OR: [{ assigneeId: "me" }, { createdById: "me" }] });
 });
 

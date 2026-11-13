@@ -69,10 +69,13 @@ function fieldData(f: Partial<CompanyFields>): Prisma.CommercialCompanyUnchecked
   };
 }
 
-/** Haalt een bedrijf op dat binnen het bereik van de gebruiker valt, anders 404. */
+/**
+ * Haalt een bedrijf op dat binnen het bereik van de gebruiker valt, anders 404.
+ * Een verwijderd dossier (gesloten archief) is hier voor iedereen 'niet gevonden'.
+ */
 export async function visibleCompany(ctx: RecordCtx, id: string) {
   const company = await prisma.commercialCompany.findUnique({ where: { id } });
-  if (!company || !canSeeOwned(ctx.scope("companies"), company, ctx.viewer)) notFound("Bedrijf");
+  if (!company || company.deletedAt || !canSeeOwned(ctx.scope("companies"), company, ctx.viewer)) notFound("Bedrijf");
   return company;
 }
 
@@ -166,6 +169,7 @@ export async function findDuplicates(ctx: RecordCtx, input: { name: string; kvkN
   const key = normalizeNameKey(input.name);
   const where: Prisma.CommercialCompanyWhereInput = {
     id: input.excludeId ? { not: input.excludeId } : undefined,
+    deletedAt: null,
     OR: [{ nameKey: key }, ...(input.kvkNumber ? [{ kvkNumber: input.kvkNumber.trim() }] : [])],
   };
   const all = await prisma.commercialCompany.findMany({ where, select: { id: true, name: true, city: true, ownerId: true, teamId: true, archivedAt: true } });

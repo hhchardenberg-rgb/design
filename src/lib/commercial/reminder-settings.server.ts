@@ -50,7 +50,8 @@ export async function mutedCompanyIds(userId: string): Promise<Set<string>> {
 /** Voor beheerders: wie welke sponsor op stil zette. */
 export async function listReminderMutes(ctx: RecordCtx) {
   need(ctx, "settings:manage_settings");
-  const mutes = await prisma.commercialReminderMute.findMany({ orderBy: { createdAt: "desc" } });
+  // Stilzettingen voor verwijderde dossiers (gesloten archief) blijven bewaard maar niet getoond.
+  const mutes = await prisma.commercialReminderMute.findMany({ where: { companyId: { notIn: (await prisma.commercialCompany.findMany({ where: { deletedAt: { not: null } }, select: { id: true } })).map((c) => c.id) } }, orderBy: { createdAt: "desc" } });
   const [users, companies] = await Promise.all([
     prisma.user.findMany({ where: { id: { in: [...new Set(mutes.map((m) => m.userId))] } }, select: { id: true, name: true, email: true } }),
     prisma.commercialCompany.findMany({ where: { id: { in: [...new Set(mutes.map((m) => m.companyId))] } }, select: { id: true, name: true } }),

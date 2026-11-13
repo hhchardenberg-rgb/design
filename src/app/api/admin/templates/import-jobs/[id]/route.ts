@@ -4,7 +4,9 @@ import { isClaimable, runImportJob } from "@/lib/psd/import-job.server";
 import { importJobResponse } from "@/lib/psd/import-job-response";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Grote PSD's (tot 250 MB) uitpakken en samenstellen duurt al snel langer
+// dan een minuut; 300 seconden is het maximum dat Vercel hier toestaat.
+export const maxDuration = 300;
 
 /**
  * Status van een PSD-import. Staat de taak nog in de wachtrij of is de

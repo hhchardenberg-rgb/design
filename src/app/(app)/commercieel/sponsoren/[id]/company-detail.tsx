@@ -16,6 +16,7 @@ import { FilesTab } from "./files-tab";
 import { MergePanel } from "./merge-panel";
 import { ContractsTab } from "./contracts-tab";
 import { TicketmailTab } from "./ticketmail-tab";
+import { DeleteCompanyButton } from "./delete-dialog";
 
 interface Company {
   id: string;
@@ -131,7 +132,7 @@ export function CompanyDetail({ id, permissions, ticketsOn = false }: { id: stri
         ))}
       </div>
 
-      {tab === "overview" && <Overview company={company} canEdit={can("companies:update")} canArchive={can("companies:archive")} onSaved={load} />}
+      {tab === "overview" && <Overview company={company} canEdit={can("companies:update")} canArchive={can("companies:archive")} canDelete={can("companies:archive") && can("deleted_archive:update")} onSaved={load} />}
       {tab === "overview" && can("companies:update") && can("companies:archive") && !company.archivedAt && <MergePanel companyId={id} companyName={company.name} onDone={load} />}
       {tab === "contacts" && <Contacts companyId={id} can={can} />}
       {tab === "history" && <History companyId={id} can={can} />}
@@ -149,7 +150,7 @@ const FIELD_LABELS: [keyof Company, string][] = [
   ["billingName", "Factuur t.a.v."], ["billingEmail", "Factuur e-mailadres"], ["industry", "Branche"], ["sponsorCategory", "Overige categorie (vrije tekst)"], ["source", "Herkomst van de relatie"],
 ];
 
-function Overview({ company, canEdit, canArchive, onSaved }: { company: Company; canEdit: boolean; canArchive: boolean; onSaved: () => Promise<void> }) {
+function Overview({ company, canEdit, canArchive, canDelete, onSaved }: { company: Company; canEdit: boolean; canArchive: boolean; canDelete: boolean; onSaved: () => Promise<void> }) {
   const toast = useToast();
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -236,6 +237,7 @@ function Overview({ company, canEdit, canArchive, onSaved }: { company: Company;
       <div className="flex flex-wrap gap-2">
         {canEdit && <Button type="submit" disabled={saving}>{saving ? "Opslaan…" : "Opslaan"}</Button>}
         {canArchive && <Button type="button" variant="outline" onClick={archive}>{company.archivedAt ? "Dossier herstellen" : "Dossier archiveren"}</Button>}
+        {canDelete && <span className="sm:ml-auto"><DeleteCompanyButton companyId={company.id} /></span>}
       </div>
       {!canEdit && <p className="text-sm text-muted-foreground">Je kunt dit dossier bekijken maar niet wijzigen.</p>}
     </form>
