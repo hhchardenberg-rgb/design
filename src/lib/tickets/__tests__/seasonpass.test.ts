@@ -68,3 +68,13 @@ test("actiecode: beschikbaarheid volgt status, tijdvak en maximum", () => {
   assert.equal(promoAvailability({ ...base, claimFrom: new Date("2026-11-15T00:00:00Z") }, now).ok, false);
   assert.equal(promoAvailability({ ...base, claimUntil: new Date("2026-11-13T00:00:00Z") }, now).ok, false);
 });
+
+test("banner: lopend binnen de periode en alleen als actief", async () => {
+  const { bannerLive } = await import("../banner.server");
+  const now = new Date("2026-11-13T12:00:00Z");
+  assert.equal(bannerLive({ active: true, startsOn: null, endsOn: null }, now), true);
+  assert.equal(bannerLive({ active: false, startsOn: null, endsOn: null }, now), false);
+  assert.equal(bannerLive({ active: true, startsOn: new Date("2026-11-14T00:00:00Z"), endsOn: null }, now), false);
+  assert.equal(bannerLive({ active: true, startsOn: null, endsOn: new Date("2026-11-13T00:00:00Z") }, now), true, "einddatum geldt tot en met die dag");
+  assert.equal(bannerLive({ active: true, startsOn: null, endsOn: new Date("2026-11-12T00:00:00Z") }, now), false);
+});

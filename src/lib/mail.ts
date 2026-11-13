@@ -145,11 +145,15 @@ export async function sendMailingEmail(mail: { to: string; name: string | null; 
 }
 
 /** Ticketmail met een persoonlijke link. Zakelijk bericht aan één ontvanger, zonder afmeldlink. */
-export async function sendTicketEmail(mail: { to: string; subject: string; bodyText: string; linkUrl: string; buttonLabel?: string }): Promise<{ providerMessageId: string | null }> {
+export async function sendTicketEmail(mail: { to: string; subject: string; bodyText: string; linkUrl: string; buttonLabel?: string; banner?: { title: string; text: string | null; buttonLabel: string; url: string } }): Promise<{ providerMessageId: string | null }> {
   const resend = getClient();
   const paragraphs = mail.bodyText.split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a;max-width:560px">${paragraphs}<p style="margin:22px 0"><a href="${mail.linkUrl}" style="background:#f26a21;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold">${escapeHtml(mail.buttonLabel ?? "Bekijk je ticket")}</a></p></div>`;
-  const { data, error } = await resend.emails.send({ from: FROM_EMAIL, to: mail.to, subject: mail.subject, html, text: mail.bodyText });
+  const b = mail.banner;
+  const bannerHtml = b
+    ? `<div style="margin:28px 0 0;padding:16px;border:1px solid #e5e5e5;border-radius:8px"><p style="margin:0 0 4px;font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.05em">Aangeboden door een sponsor</p><p style="margin:0 0 6px;font-weight:bold;font-size:16px">${escapeHtml(b.title)}</p>${b.text ? `<p style="margin:0 0 12px">${escapeHtml(b.text)}</p>` : ""}<a href="${b.url}" style="color:#f26a21;font-weight:bold">${escapeHtml(b.buttonLabel)}</a></div>`
+    : "";
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a;max-width:560px">${paragraphs}<p style="margin:22px 0"><a href="${mail.linkUrl}" style="background:#f26a21;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold">${escapeHtml(mail.buttonLabel ?? "Bekijk je ticket")}</a></p>${bannerHtml}</div>`;
+  const { data, error } = await resend.emails.send({ from: FROM_EMAIL, to: mail.to, subject: mail.subject, html, text: mail.bodyText + (b ? `\n\n${b.title}${b.text ? `\n${b.text}` : ""}\n${b.url}` : "") });
   if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
   return { providerMessageId: data?.id ?? null };
 }

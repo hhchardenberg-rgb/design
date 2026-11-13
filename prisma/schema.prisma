@@ -2262,3 +2262,50 @@ model TicketSyncRun {
   @@index([startedAt])
   @@map("tickets_sync_runs")
 }
+
+/// Sponsorbanner of -aanbieding onder de ticketmail. Hoort bij een CZ-bedrijf (alleen het id; de gegevens blijven in CZ).
+model TicketBanner {
+  id          String    @id @default(cuid())
+  companyId   String?
+  name        String
+  title       String
+  text        String?
+  buttonLabel String    @default("Bekijk het aanbod")
+  targetUrl   String
+  active      Boolean   @default(true)
+  startsOn    DateTime?
+  endsOn      DateTime?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sends  TicketBannerSend[]
+  clicks TicketBannerClick[]
+
+  @@index([companyId])
+  @@map("tickets_banners")
+}
+
+/// Eén keer getoond: de banner stond in een verstuurde ticketmail.
+model TicketBannerSend {
+  id        String       @id @default(cuid())
+  bannerId  String
+  banner    TicketBanner @relation(fields: [bannerId], references: [id], onDelete: Cascade)
+  ticketId  String
+  createdAt DateTime     @default(now())
+
+  @@index([bannerId, createdAt])
+  @@map("tickets_banner_sends")
+}
+
+/// Eén klik op de banner. Alleen het ticket-id, geen e-mailadres of naam.
+model TicketBannerClick {
+  id        String       @id @default(cuid())
+  bannerId  String
+  banner    TicketBanner @relation(fields: [bannerId], references: [id], onDelete: Cascade)
+  ticketId  String?
+  createdAt DateTime     @default(now())
+
+  @@index([bannerId, createdAt])
+  @@map("tickets_banner_clicks")
+}

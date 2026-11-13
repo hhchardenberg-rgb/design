@@ -15,6 +15,7 @@ import { ActivityList, KIND, NATURE } from "@/components/commercial/activity-lis
 import { FilesTab } from "./files-tab";
 import { MergePanel } from "./merge-panel";
 import { ContractsTab } from "./contracts-tab";
+import { TicketmailTab } from "./ticketmail-tab";
 
 interface Company {
   id: string;
@@ -53,9 +54,9 @@ interface Task { id: string; title: string; status: "OPEN" | "DONE"; dueAt: stri
 
 const STATUS: Record<string, string> = { PROSPECT: "Potentieel", ACTIVE: "Actief", FORMER: "Voormalig" };
 
-type Tab = "overview" | "contacts" | "history" | "tasks" | "contracts" | "files";
+type Tab = "overview" | "contacts" | "history" | "tasks" | "contracts" | "files" | "ticketmail";
 
-export function CompanyDetail({ id, permissions }: { id: string; permissions: Permission[] }) {
+export function CompanyDetail({ id, permissions, ticketsOn = false }: { id: string; permissions: Permission[]; ticketsOn?: boolean }) {
   const can = useCallback((p: Permission) => permissions.includes(p), [permissions]);
   const [company, setCompany] = useState<Company | null>(null);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
@@ -99,6 +100,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
     { key: "tasks", label: "Taken", show: can("tasks:read") },
     { key: "contracts", label: "Contracten", show: can("contracts:read") },
     { key: "files", label: "Bestanden", show: can("files:read") },
+    { key: "ticketmail", label: "Ticketmail", show: can("companies:read") && ticketsOn },
   ];
 
   return (
@@ -135,6 +137,7 @@ export function CompanyDetail({ id, permissions }: { id: string; permissions: Pe
       {tab === "history" && <History companyId={id} can={can} />}
       {tab === "tasks" && <CompanyTasks companyId={id} can={can} />}
       {tab === "contracts" && <ContractsTab companyId={id} can={can} />}
+      {tab === "ticketmail" && <TicketmailTab companyId={id} can={can} />}
       {tab === "files" && <FilesTab companyId={id} can={can} onChange={load} />}
     </div>
   );

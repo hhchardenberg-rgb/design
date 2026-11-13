@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { sendTicketEmail } from "@/lib/mail";
 import { formatDay, formatDayTime } from "@/lib/date-format";
+import { pickBanner, recordBannerSend } from "./banner.server";
 import { ticketAudit } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
 import { asLocale, templateKeyFor, textsFor } from "./i18n";
@@ -86,14 +87,18 @@ export async function deliverTicketMail(id: string, by: { id: string | null; nam
   const tpl = await loadTemplate(templateKeyFor("ticket", locale));
   const link = ticketLink(t.publicId, t.linkVersion);
   const vars = { voornaam: t.firstName, achternaam: t.lastName, type: t.type.name, wedstrijd: describeValidity(t, locale), link, datum: "", oudedatum: "", bericht: "" };
+  // Een lopende sponsorbanner onder de mail; een storing hierin houdt het ticket nooit tegen.
+  const picked = await pickBanner().catch(() => null);
+  const banner = picked ? { title: picked.title, text: picked.text, buttonLabel: picked.buttonLabel, url: `${APP_URL()}/b/${picked.id}?t=${linkTokenFor(t.publicId, t.linkVersion)}` } : undefined;
   try {
-    await sendTicketEmail({ to: t.email, subject: fillTemplate(tpl.subject, vars), bodyText: fillTemplate(tpl.body, vars), linkUrl: link, buttonLabel: textsFor(locale).viewTicket });
+    await sendTicketEmail({ to: t.email, subject: fillTemplate(tpl.subject, vars), bodyText: fillTemplate(tpl.body, vars), linkUrl: link, buttonLabel: textsFor(locale).viewTicket, banner });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
     await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "FAILED", error: message.slice(0, 300), byId: by.id, byName: by.name } });
     throw new ApiError(502, `Versturen mislukt: ${message}`);
   }
   await prisma.ticketDelivery.create({ data: { ticketId: id, channel: "EMAIL", status: "SENT", kind: "TICKET", byId: by.id, byName: by.name } });
+  if (picked) await recordBannerSend(picked.id, id).catch(() => {});
   await ticketAudit({ action: "ticket.mailed", actor: by, ticketId: id });
   return { ok: true };
 }

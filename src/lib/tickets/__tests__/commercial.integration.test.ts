@@ -33,6 +33,7 @@ async function wipe() {
   await db.ticketEvent.deleteMany();
   await db.ticketSeason.deleteMany();
   await db.ticketAuditEvent.deleteMany();
+  await db.ticketBanner.deleteMany();
   await db.ticketPublicHit.deleteMany();
   await db.ticketDelivery.deleteMany();
   await db.ticketSettings.deleteMany();
@@ -133,4 +134,23 @@ test("ticket opnieuw opvragen: altijd hetzelfde antwoord, alleen naar het bekend
   await resend.requestTicketResend({ email: "s2@bedrijf.nl" }, "10.9.9.4");
   await assert.rejects(resend.requestTicketResend({ email: "s2@bedrijf.nl" }, "10.9.9.5"), /al een aanvraag/);
   await assert.rejects(resend.requestTicketResend({ email: "geen-adres" }, "10.9.9.6"));
+});
+
+test("sponsorbanner: om de beurt gekozen, klik geteld per ticket en alleen naar de opgeslagen link", { skip }, async () => {
+  const b = await import("../banner.server");
+  const a = await db.ticketBanner.create({ data: { companyId: "bedrijf-1", name: "A", title: "Aanbod A", targetUrl: "https://a.example/actie" } });
+  const c = await db.ticketBanner.create({ data: { companyId: "bedrijf-2", name: "B", title: "Aanbod B", targetUrl: "https://b.example/actie" } });
+  const t = await db.ticket.findFirstOrThrow({ where: { externalRef: "contract:1:quota:1" } });
+  const first = (await b.pickBanner())!;
+  await b.recordBannerSend(first.id, t.id);
+  const second = (await b.pickBanner())!;
+  assert.notEqual(first.id, second.id, "de volgende mail krijgt de andere banner");
+  const link = token.linkTokenFor(t.publicId, t.linkVersion);
+  assert.equal(await b.registerBannerClick(a.id, link), "https://a.example/actie");
+  await b.registerBannerClick(a.id, link);
+  await b.registerBannerClick(a.id, "onzin");
+  assert.equal(await b.registerBannerClick("bestaat-niet", link), null);
+  assert.equal(await db.ticketBannerClick.count({ where: { bannerId: a.id } }), 3);
+  assert.equal(await db.ticketBannerClick.count({ where: { bannerId: a.id, ticketId: t.id } }), 2);
+  await db.ticketBanner.delete({ where: { id: c.id } });
 });
