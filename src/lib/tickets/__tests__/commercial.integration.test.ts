@@ -34,6 +34,7 @@ async function wipe() {
   await db.ticketSeason.deleteMany();
   await db.ticketAuditEvent.deleteMany();
   await db.ticketPublicHit.deleteMany();
+  await db.ticketDelivery.deleteMany();
   await db.ticketSettings.deleteMany();
 }
 
@@ -118,7 +119,8 @@ test("exports: rechten, geen persoonsgegevens zonder recht, auditlog", { skip },
 
 test("ticket opnieuw opvragen: altijd hetzelfde antwoord, alleen naar het bekende adres, met limiet", { skip }, async () => {
   const resend = await import("../resend.server");
-  const before = await db.ticketDelivery.count();
+  await db.ticketDelivery.deleteMany();
+  const before = 0;
   const unknown = await resend.requestTicketResend({ email: "onbekend@nergens.nl" }, "10.9.9.1");
   assert.equal(await db.ticketDelivery.count(), before, "geen pogingen voor een onbekend adres");
   const known = await resend.requestTicketResend({ email: "S2@bedrijf.nl" }, "10.9.9.2");
