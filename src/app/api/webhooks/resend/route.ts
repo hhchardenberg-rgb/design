@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/commercial/mail-security";
 import { applyMailEvent } from "@/lib/commercial/mailings.server";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
 
 export const dynamic = "force-dynamic";
 
 /** Webhook van Resend (Svix-handtekening). Dicht zonder RESEND_WEBHOOK_SECRET; verwerking is idempotent per gebeurtenis. */
 export async function POST(req: Request) {
+  // Commerciële Zaken uit: gebeurtenissen niet verwerken, wel 200 zodat Resend niet blijft herhalen.
+  if (!isCommercialEnabled()) return NextResponse.json({ skipped: true });
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) return NextResponse.json({ error: "Webhook niet geconfigureerd." }, { status: 503 });
   const body = await req.text();

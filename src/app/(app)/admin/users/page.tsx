@@ -45,6 +45,8 @@ export default function AdminUsersPage() {
   const [roles, setRoles] = useState<RoleView[]>([]);
   const [manager, setManager] = useState<Manager>({ full: false, sections: [], commercial: false });
   const [loaded, setLoaded] = useState(false);
+  // Staat Commerciële Zaken uit, dan toont dit scherm er niets van.
+  const [czOn, setCzOn] = useState(false);
   const [version, setVersion] = useState(0);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -75,6 +77,7 @@ export default function AdminUsersPage() {
     setUsers(data.users ?? []);
     setRoles(data.roles ?? []);
     if (data.manager) setManager(data.manager);
+    setCzOn(data.commercialEnabled === true);
     setLoaded(true);
     setVersion((v) => v + 1);
   }, []);
@@ -143,13 +146,13 @@ export default function AdminUsersPage() {
   const isSelf = (id: string) => id === session?.user?.id;
 
   return (
-    <CommercialAccessProvider version={version}>
+    <CommercialAccessProvider version={version} enabled={czOn}>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-bold">Gebruikers en rechten</h1>
             <p className="mt-1 text-muted-foreground">
-              Iedereen krijgt toegang via rollen. Een rol bepaalt per onderdeel (Communicatie, Ticketing, Commerciële Zaken) wat iemand mag; met meerdere rollen tellen de rechten op.
+              Iedereen krijgt toegang via rollen. Een rol bepaalt per onderdeel {czOn ? "(Communicatie, Ticketing, Commerciële Zaken)" : "(Communicatie, Ticketing)"} wat iemand mag; met meerdere rollen tellen de rechten op.
               {!manager.full && " Je kunt alleen rollen toewijzen die binnen jouw eigen beheer vallen."}
             </p>
           </div>
@@ -335,7 +338,7 @@ export default function AdminUsersPage() {
                       </div>
                     )}
                   </div>
-                  {!u.isAdmin && <UserCommercialPanel userId={u.id} isSelf={isSelf(u.id)} />}
+                  {czOn && !u.isAdmin && <UserCommercialPanel userId={u.id} isSelf={isSelf(u.id)} />}
                 </CardContent>
               </Card>
             );

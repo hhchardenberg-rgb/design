@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { apiErrorResponse, ApiError } from "@/lib/api-guards";
 import { processAndStoreImage } from "@/lib/uploadImage";
 import { requireNewsManager, sectionsFromForm, sectionsWith } from "@/lib/news.server";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
 
 // De centrale nieuwsmodule. Een bericht kan bij meerdere onderdelen staan; een beheerder
 // publiceert alleen bij de onderdelen waarvoor die rechten heeft.
@@ -19,7 +20,9 @@ export async function GET() {
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
       include: { author: { select: { name: true } } },
     });
-    return NextResponse.json({ posts });
+    // Commerciële Zaken uit: dat onderdeel niet tonen (het blijft wel aan het bericht gekoppeld).
+    const czOn = isCommercialEnabled();
+    return NextResponse.json({ posts: czOn ? posts : posts.map((p) => ({ ...p, sections: p.sections.filter((s) => s !== "commercial") })) });
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -8,6 +8,9 @@ import { ALL_TICKET_PERMISSIONS } from "../permissions";
 const url = process.env.TEST_DATABASE_URL;
 const skip = !url;
 if (url) process.env.DATABASE_URL = url;
+// De sponsorbanner komt uit Commerciële Zaken en telt alleen mee als die sectie aan staat.
+process.env.COMMERCIAL_ENABLED = "true";
+(process.env as Record<string, string>).NODE_ENV = "test";
 
 let db: typeof import("@/lib/prisma")["prisma"];
 let bridge: typeof import("../commercial-bridge.server");

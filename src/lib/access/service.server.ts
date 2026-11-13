@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { effectiveRoles } from "@/lib/roles";
 import { findInconsistencies, isPermission, type Permission } from "@/lib/commercial/permissions";
 import { ROLE_TEMPLATES } from "@/lib/commercial/role-templates";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { ticketPermissionIssues, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
 import {
   checkAssignment,
@@ -51,6 +52,29 @@ export function grantOf(r: {
     tickets: r.ticketsAccess ? (r.ticketsPermissions ?? []) : null,
   };
 }
+
+// --- Commerciële Zaken uit -----------------------------------------------------------
+// Staat CZ uit (zie src/lib/commercial/flag.ts), dan is het in gebruikersbeheer onzichtbaar:
+// rollen die alleen CZ-toegang geven verdwijnen uit de lijsten, en bij andere rollen valt het
+// CZ-deel weg. Niets wordt gewist: toewijzingen en CZ-bevoegdheden blijven staan, zodat alles
+// terugkomt zodra CZ weer aan gaat.
+
+/** Geeft deze rol alleen toegang tot Commerciële Zaken (en verder nergens)? */
+export function isCommercialOnlyGrant(g: RoleGrant): boolean {
+  return !g.isAdmin && g.hubLevel === "NONE" && g.ticketingLevel === "NONE" && !g.tickets && g.commercial !== null;
+}
+
+/** Rol die verborgen is omdat Commerciële Zaken uit staat. */
+export function isHiddenRole(r: Parameters<typeof grantOf>[0]): boolean {
+  return !isCommercialEnabled() && isCommercialOnlyGrant(grantOf(r));
+}
+
+/** De rol zoals beheerders hem zien: zonder CZ-deel als CZ uit staat. */
+function visibleGrant(g: RoleGrant): RoleGrant {
+  return isCommercialEnabled() ? g : { ...g, commercial: null };
+}
+
+const NOT_FOUND_ROLE = "Rol niet gevonden.";
 
 function enforce(d: Decision, status = 403) {
   if (!d.ok) throw new ApiError(status, d.message);
@@ -304,8 +328,8 @@ export async function listRoles(scope: ManagerScope): Promise<RoleView[]> {
     include: { ...ROLE_INCLUDE, _count: { select: { users: true } } },
     orderBy: [{ isSystem: "desc" }, { name: "asc" }],
   });
-  return roles.map((r) => {
-    const g = grantOf(r);
+  return roles.filter((r) => !isHiddenRole(r)).map((r) => {
+    const g = visibleGrant(grantOf(r));
     const d = checkRoleEdit(scope, g, g);
     return {
       id: r.id,
@@ -335,8 +359,8 @@ export async function assignmentsByUser(): Promise<Map<string, string[]>> {
 
 export async function roleNamesOf(userId: string): Promise<string[]> {
   await ensureAccessReady();
-  const rows = await prisma.userAccessRole.findMany({ where: { userId }, select: { role: { select: { name: true, isSystem: true } } } });
-  return rows.map((r) => r.role).sort((a, b) => Number(b.isSystem) - Number(a.isSystem) || a.name.localeCompare(b.name, "nl")).map((r) => r.name);
+  const rows = await prisma.userAccessRole.findMany({ where: { userId }, select: { role: { include: ROLE_INCLUDE } } });
+  return rows.map((r) => r.role).filter((r) => !isHiddenRole(r)).sort((a, b) => Number(b.isSystem) - Number(a.isSystem) || a.name.localeCompare(b.name, "nl")).map((r) => r.name);
 }
 
 // --- Toewijzen ---------------------------------------------------------------------
@@ -350,21 +374,26 @@ async function assertKeepsAnAdmin(tx: Tx, userId: string, nextIsAdmin: boolean) 
 /** Zet de rollen van een gebruiker. Alleen rollen die binnen je eigen beheer vallen, kun je toevoegen of weghalen. */
 export async function setUserRoles(actor: AccessActor, userId: string, roleIds: string[]) {
   await ensureAccessReady();
-  const wanted = [...new Set(roleIds)];
+  let wanted = [...new Set(roleIds)];
   return prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(LOCK);
     await reconcileUser(tx, userId);
     const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true, role: true, roles: true, accessRoles: { select: { role: { include: ROLE_INCLUDE } } } } });
     if (!user) throw new ApiError(404, "Gebruiker niet gevonden.");
     const current = user.accessRoles.map((a) => a.role);
+    // Verborgen CZ-rollen (CZ staat uit) kun je niet kiezen en blijven altijd staan zoals ze zijn.
+    const hiddenCurrent = current.filter((r) => isHiddenRole(r)).map((r) => r.id);
+    if (hiddenCurrent.length) wanted = [...new Set([...wanted, ...hiddenCurrent])];
     const roles = await tx.accessRole.findMany({ where: { id: { in: wanted } }, include: ROLE_INCLUDE });
-    if (roles.length !== wanted.length) throw new ApiError(404, "Een van de gekozen rollen bestaat niet (meer). Ververs de pagina.");
+    if (roles.length !== wanted.length || roles.some((r) => isHiddenRole(r) && !hiddenCurrent.includes(r.id))) {
+      throw new ApiError(404, "Een van de gekozen rollen bestaat niet (meer). Ververs de pagina.");
+    }
     const currentIds = new Set(current.map((r) => r.id));
     const added = roles.filter((r) => !currentIds.has(r.id));
     const removed = current.filter((r) => !wanted.includes(r.id));
     if (added.length === 0 && removed.length === 0) return { changed: false };
 
-    enforce(checkAssignment(actor.scope, { userId, isAdmin: effectiveRoles(user).includes("ADMIN") }, [...added, ...removed].map(grantOf)));
+    enforce(checkAssignment(actor.scope, { userId, isAdmin: effectiveRoles(user).includes("ADMIN") }, [...added, ...removed].map((r) => visibleGrant(grantOf(r)))));
     if (current.some((r) => r.isAdmin) || effectiveRoles(user).includes("ADMIN")) await assertKeepsAnAdmin(tx, userId, roles.some((r) => r.isAdmin));
 
     await tx.userAccessRole.deleteMany({ where: { userId, roleId: { in: removed.map((r) => r.id) } } });
@@ -430,7 +459,8 @@ const holds = async (tx: Tx, userId: string, roleId: string) => !!(await tx.user
 
 export async function createAccessRole(actor: AccessActor, input: RoleInput) {
   await ensureAccessReady();
-  const commercial = cleanCommercial(input.commercial);
+  // CZ uit: een nieuwe rol krijgt nooit CZ-toegang.
+  const commercial = isCommercialEnabled() ? cleanCommercial(input.commercial) : null;
   const tickets = cleanTickets(input.tickets);
   const next: RoleGrant = { isAdmin: false, hubLevel: input.hubLevel, ticketingLevel: input.ticketingLevel, commercial, tickets };
   enforce(checkRoleEdit(actor.scope, null, next));
@@ -461,13 +491,14 @@ export async function createAccessRole(actor: AccessActor, input: RoleInput) {
 
 export async function updateAccessRole(actor: AccessActor, roleId: string, input: RoleInput) {
   await ensureAccessReady();
-  const commercial = cleanCommercial(input.commercial);
+  const czOn = isCommercialEnabled();
+  const commercial = czOn ? cleanCommercial(input.commercial) : null;
   const tickets = cleanTickets(input.tickets);
   try {
     return await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(LOCK);
       const role = await tx.accessRole.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
-      if (!role) throw new ApiError(404, "Rol niet gevonden.");
+      if (!role || isHiddenRole(role)) throw new ApiError(404, NOT_FOUND_ROLE);
       const before = grantOf(role);
       // Oudere clients sturen `tickets` niet mee: dan blijft de HHC Tickets-toegang ongewijzigd.
       const nextTickets = input.tickets === undefined ? (before.tickets ?? null) : tickets;
@@ -475,10 +506,11 @@ export async function updateAccessRole(actor: AccessActor, roleId: string, input
         isAdmin: role.isAdmin,
         hubLevel: role.isAdmin ? "NONE" : input.hubLevel,
         ticketingLevel: role.isAdmin ? "NONE" : input.ticketingLevel,
-        commercial: role.isAdmin ? null : commercial,
+        // CZ uit: het (onzichtbare) CZ-deel van de rol blijft ongewijzigd bewaard.
+        commercial: role.isAdmin ? null : czOn ? commercial : before.commercial,
         tickets: role.isAdmin ? null : nextTickets,
       };
-      enforce(checkRoleEdit(actor.scope, before, after, { holdsRole: await holds(tx, actor.scope.userId, roleId), isSystem: role.isSystem }));
+      enforce(checkRoleEdit(actor.scope, visibleGrant(before), visibleGrant(after), { holdsRole: await holds(tx, actor.scope.userId, roleId), isSystem: role.isSystem }));
 
       const name = input.name.trim();
       let commercialRoleId = role.commercialRoleId;
@@ -524,12 +556,13 @@ export async function deleteAccessRole(actor: AccessActor, roleId: string) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(LOCK);
     const role = await tx.accessRole.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
-    if (!role) throw new ApiError(404, "Rol niet gevonden.");
-    enforce(checkRoleEdit(actor.scope, grantOf(role), null, { holdsRole: await holds(tx, actor.scope.userId, roleId), isSystem: role.isSystem }));
+    if (!role || isHiddenRole(role)) throw new ApiError(404, NOT_FOUND_ROLE);
+    enforce(checkRoleEdit(actor.scope, visibleGrant(grantOf(role)), null, { holdsRole: await holds(tx, actor.scope.userId, roleId), isSystem: role.isSystem }));
     const holders = (await tx.userAccessRole.findMany({ where: { roleId }, select: { userId: true } })).map((h) => h.userId);
     await tx.accessRole.delete({ where: { id: roleId } });
     for (const userId of holders) await syncUserAccess(tx, userId);
-    if (role.commercialRole) await dropCommercialRole(tx, role.commercialRole.id);
+    // CZ uit: de CZ-bevoegdhedenset blijft bewaard (er wordt dan niets uit CZ gewist).
+    if (role.commercialRole && isCommercialEnabled()) await dropCommercialRole(tx, role.commercialRole.id);
     await audit(tx, actor, { action: "access.role.delete", entity: "role", entityId: roleId, before: { name: role.name, ...grantOf(role), users: holders.length } });
     return { removedFrom: holders.length };
   }, TX_OPTS);

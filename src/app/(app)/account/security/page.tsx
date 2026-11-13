@@ -283,7 +283,7 @@ export default function AccountSecurityPage() {
             <div>
               <p className="font-semibold">Stel eerst tweestapsverificatie in</p>
               <p className="mt-1 text-muted-foreground">
-                Omdat je beheerrechten of toegang tot Commerciële Zaken hebt, is een tweede stap bij het inloggen verplicht. Kies hieronder een
+                Omdat je beheerrechten of toegang tot gevoelige gegevens hebt, is een tweede stap bij het inloggen verplicht. Kies hieronder een
                 authenticator-app of een passkey. Daarna kun je de Hub weer gewoon gebruiken.
               </p>
             </div>

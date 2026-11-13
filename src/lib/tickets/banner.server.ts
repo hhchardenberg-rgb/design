@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { auditRecord, need, type RecordCtx } from "@/lib/commercial/ctx.server";
 import { visibleCompany } from "@/lib/commercial/companies.server";
 import { parseLinkToken } from "./token";
+import { isCommercialEnabled } from "@/lib/commercial/flag";
 
 // Sponsorbanner in de ticketmail. Beheer en cijfers staan in Commerciële Zaken (tab Ticketmail bij het dossier);
 // de mail kiest hier de banner en telt klikken via een eigen doorverwijzing.
@@ -33,6 +34,8 @@ export function bannerLive(b: { active: boolean; startsOn: Date | null; endsOn: 
 
 /** Kiest de banner voor een mail: van de lopende banners die met de minste weergaven, zodat sponsors om de beurt aan bod komen. */
 export async function pickBanner(now = new Date()) {
+  // Banners worden in Commerciële Zaken beheerd; staat dat uit, dan gaat de ticketmail zonder banner.
+  if (!isCommercialEnabled()) return null;
   const all = await prisma.ticketBanner.findMany({ include: { _count: { select: { sends: true } } } });
   const live = all.filter((b) => bannerLive(b, now));
   live.sort((a, b) => a._count.sends - b._count.sends || a.createdAt.getTime() - b.createdAt.getTime());

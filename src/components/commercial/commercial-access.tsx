@@ -20,15 +20,17 @@ const Ctx = createContext<State | null>(null);
 const useAccess = () => useContext(Ctx);
 
 /** Laadt de rechten van Commerciële Zaken één keer voor het hele gebruikersscherm. */
-export function CommercialAccessProvider({ children, version }: { children: React.ReactNode; version?: number }) {
+export function CommercialAccessProvider({ children, version, enabled = true }: { children: React.ReactNode; version?: number; enabled?: boolean }) {
   const [state, setState] = useState<Omit<State, "reload">>({ rights: null, canManage: false });
 
   const reload = useCallback(async () => {
+    // Commerciële Zaken uit: niets ophalen en niets tonen.
+    if (!enabled) return;
     const res = await fetch("/api/commercial/rights", { cache: "no-store" });
     const rights = res.ok ? ((await res.json()) as Overview) : null;
     // Wijzigen mag alleen met rechtenbeheer; dat blijkt uit de bevoegdheden die de beheerder kan toekennen.
     setState({ rights, canManage: !!rights && rights.grantable.includes("rights:manage_rights") });
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     void reload();
