@@ -1,6 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { ApiError, requireHubAdmin } from "@/lib/api-guards";
+import { MAX_PSD_UPLOAD_BYTES } from "@/lib/psd/upload-limits";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         // dat geen bron van onnodige upload-fouten te laten zijn.
         return {
           addRandomSuffix: true,
+          maximumSizeInBytes: MAX_PSD_UPLOAD_BYTES,
         };
       },
       onUploadCompleted: async () => {

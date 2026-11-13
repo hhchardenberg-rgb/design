@@ -17,7 +17,9 @@ async function assertLoadable(url: string) {
 }
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Grote PSD's (tot 250 MB) uitpakken en samenstellen duurt al snel langer
+// dan een minuut; 300 seconden is het maximum dat Vercel hier toestaat.
+export const maxDuration = 300;
 
 const MAX_FORM_UPLOAD_BYTES = 50 * 1024 * 1024;
 
