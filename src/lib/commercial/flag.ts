@@ -11,9 +11,9 @@
  * Weer aanzetten: COMMERCIAL_SECTION_ACTIVE op true zetten én in Vercel
  * COMMERCIAL_ENABLED=true laten staan (of zetten).
  *
- * Uitgezet op verzoek van Jermaine op 13/11/2026.
+ * Uitgezet op verzoek van Jermaine op 13/11/2026, weer aangezet op 14/11/2026.
  */
-export const COMMERCIAL_SECTION_ACTIVE = false;
+export const COMMERCIAL_SECTION_ACTIVE = true;
 
 export function isCommercialEnabled(): boolean {
   // De (database)tests van CZ draaien met NODE_ENV=test; in een Next-build is NODE_ENV altijd "production".
