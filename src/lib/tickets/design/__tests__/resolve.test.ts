@@ -206,3 +206,11 @@ test("herstellen van een onderdeel laat zien wat verdwijnt; verschillen worden p
 test("de ingebouwde ontwerpen zijn geldig", () => {
   for (const s of BUILTIN_SETS) assert.deepEqual(sanitizeOverrides(s.overrides, { isSet: true }).errors, [], s.name);
 });
+
+test("de testcode van voorbeeldtickets is nooit een geldige HHC-code", async () => {
+  process.env.TICKETS_SIGNING_KEY ??= Buffer.alloc(32, 7).toString("base64");
+  const { parseQrCode, parseLinkToken } = await import("../../token");
+  const { SAMPLE_CODE } = await import("../view");
+  assert.equal(parseQrCode(SAMPLE_CODE), null);
+  assert.equal(parseLinkToken(SAMPLE_CODE), null);
+});

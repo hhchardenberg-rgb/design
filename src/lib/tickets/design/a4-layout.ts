@@ -238,13 +238,6 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
   }
 
   boxes.push(...footerBoxes);
-  if (view.sample) {
-    boxes.push({ t: "rect", x: 0, y: 0, w: A4_W, h: mm(7), fill: "#B91C1C" });
-    const label = m.clean("VOORBEELD – GEEN TOEGANG – NIET GELDIG BIJ DE INGANG", "inter-700");
-    boxes.push({ t: "text", x: (A4_W - m.width(label, "inter-700", 9)) / 2, y: mm(4.8), size: 9, font: "inter-700", color: "#FFFFFF", text: label });
-    const wm = m.clean("VOORBEELD", "inter-800");
-    boxes.push({ t: "text", x: A4_W / 2 - m.width(wm, "inter-800", 90) / 2 * Math.cos(Math.PI / 5) , y: A4_H / 2 + 120, size: 90, font: "inter-800", color: "#B91C1C", text: wm, rotate: 36, opacity: 0.08 });
-  }
 
   return { width: A4_W, height: A4_H, boxes, issues, degradations: [], spare: limit - (y - gap), sample: view.sample, generatedAt };
 
@@ -422,12 +415,6 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
         y += cs * 1.35;
         boxes.push({ t: "text", x: x0 + (w - m.width(l, B, cs)) / 2, y, size: cs, font: B, color: muted, text: l });
       }
-    }
-    if (b.sample) {
-      const ss = 8.5;
-      y += ss * 1.5;
-      const l = m.clean("Testcode – geeft geen toegang", BB);
-      boxes.push({ t: "text", x: x0 + (w - m.width(l, BB, ss)) / 2, y, size: ss, font: BB, color: "#B91C1C", text: l });
     }
     return y;
   }

@@ -156,7 +156,6 @@ export function MobileTicket(props: {
               <QrSvg code={b.code} label={b.sample ? `QR-code (voorbeeld, geeft geen toegang)` : "QR-code van je ticket"} />
             </div>
             {b.caption && <p style={{ ...body, color: s.muted, fontSize: `${0.85 * s.scale}rem`, margin: "0.5rem 0 0" }}>{b.caption}</p>}
-            {b.sample && <p style={{ ...body, color: "#B91C1C", fontWeight: 700, fontSize: "0.8rem", margin: "0.25rem 0 0" }}>{L.sample}</p>}
             <div style={{ display: "grid", gap: "0.5rem", marginTop: "0.75rem" }}>
               <button type="button" onClick={(e) => { e.stopPropagation(); setQrOpen(true); }} style={{ ...body, minHeight: "3rem", borderRadius: 12, border: "none", background: s.primary, color: s.onPrimary, fontWeight: 700, fontSize: "1rem", cursor: "pointer" }}>
                 {L.showQr}
@@ -266,7 +265,6 @@ export function MobileTicket(props: {
   return (
     <div style={{ background: s.page, padding: "0.75rem 0.5rem 2rem", minHeight: "100%" }}>
       <article aria-label="Ticket" style={{ maxWidth: "28rem", margin: "0 auto", background: s.background, color: s.text, borderRadius: s.radius, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.12)", border: s.border ? `1px solid ${s.muted}44` : undefined, ...body }}>
-        {view.sample && <p role="note" style={{ margin: 0, background: "#B91C1C", color: "#FFFFFF", textAlign: "center", fontWeight: 700, fontSize: "0.8rem", padding: "0.35rem" }}>{L.sample.toUpperCase()}</p>}
         {view.notices.map((n, i) => (
           <p key={i} role="status" style={{ margin: 0, background: "#FEF3C7", color: "#78350F", fontSize: "0.9rem", padding: "0.75rem 1.15rem", fontWeight: 600 }}>
             {n}
