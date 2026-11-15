@@ -118,6 +118,11 @@ body {
  * loopt. Bewust buiten @layer, zodat dit boven utilities als px-2 wint.
  * De kleur in de svg is --muted-foreground (een data-URL kan geen
  * CSS-variabelen lezen).
+ * Geen verticale padding: de hoogte komt van de h-* klasse. Met py-2 én een
+ * vaste hoogte bleef er (zeker op mobiel, waar de letter 16px is) te weinig
+ * ruimte over voor één regel, waardoor de onderkant van de tekst wegviel.
+ * Zonder appearance zet Safari de tekst bovenaan het inhoudsvak; met
+ * padding 0 en line-height normal staat hij netjes in het midden.
  */
 select:not([multiple]):not([size]) {
   -webkit-appearance: none;
@@ -129,6 +134,9 @@ select:not([multiple]):not([size]) {
   background-size: 16px 16px;
   padding-right: 34px;
   padding-inline-end: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: normal;
   text-overflow: ellipsis;
 }
 
