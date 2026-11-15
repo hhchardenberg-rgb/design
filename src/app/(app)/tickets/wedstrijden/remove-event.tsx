@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
@@ -26,32 +25,35 @@ interface Usage {
  * Wedstrijd verwijderen of archiveren. Eerst ziet de beheerder wat eraan hangt; verwijderen kan
  * alleen zonder tickets, scans of verzonden mails. Ter bevestiging typ je de titel over.
  */
-export function RemoveEvent({ event, onDone }: { event: { id: string; title: string }; onDone: () => void }) {
+export function RemoveEvent({ event, onDone, onClose }: { event: { id: string; title: string }; onDone: () => void; onClose: () => void }) {
   const toast = useStableToast();
-  const [open, setOpen] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [confirm, setConfirm] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function start() {
-    setOpen(true);
-    setUsage(null);
-    setConfirm("");
-    try {
-      setUsage(await api<Usage>(`/api/tickets/events/${event.id}/remove`));
-    } catch (e) {
-      toast.error(errorText(e));
-      setOpen(false);
-    }
-  }
+  useEffect(() => {
+    let live = true;
+    api<Usage>(`/api/tickets/events/${event.id}/remove`).then(
+      (u) => live && setUsage(u),
+      (e) => {
+        if (!live) return;
+        toast.error(errorText(e));
+        onClose();
+      },
+    );
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]);
 
   async function go(mode: "delete" | "archive") {
     setBusy(true);
     try {
       await api(`/api/tickets/events/${event.id}/remove`, { body: { mode, confirmTitle: confirm, reason: reason || null } });
       toast.success(mode === "delete" ? "Wedstrijd verwijderd." : "Wedstrijd gearchiveerd. Je vindt hem terug via 'Gearchiveerde wedstrijden tonen'.");
-      setOpen(false);
+      onClose();
       onDone();
     } catch (e) {
       toast.error(errorText(e));
@@ -60,16 +62,9 @@ export function RemoveEvent({ event, onDone }: { event: { id: string; title: str
     }
   }
 
-  if (!open)
-    return (
-      <Button size="sm" variant="ghost" onClick={start} aria-label={`${event.title} verwijderen of archiveren`} title="Verwijderen of archiveren">
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    );
-
   const matches = confirm.trim().toLowerCase() === event.title.trim().toLowerCase();
   return (
-    <div className="basis-full rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
       {!usage ? (
         <p className="text-muted-foreground">Controleren wat er aan deze wedstrijd hangt…</p>
       ) : (
@@ -111,7 +106,7 @@ export function RemoveEvent({ event, onDone }: { event: { id: string; title: str
                 Archiveren
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => setOpen(false)}>
+            <Button size="sm" variant="outline" onClick={onClose}>
               Annuleren
             </Button>
           </div>
