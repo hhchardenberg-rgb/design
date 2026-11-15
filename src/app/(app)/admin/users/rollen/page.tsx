@@ -52,7 +52,7 @@ const EMPTY: Draft = { id: null, isSystem: false, name: "", description: "", hub
 
 const SECTION_HINTS: Record<"hub" | "ticketing", Record<SectionLevel, string>> = {
   hub: { NONE: "Ziet Communicatie niet.", USER: "Designtool, agenda, nieuws, kennisbank en meer.", ADMIN: "Gebruiker, plus de inhoud beheren en anderen toegang geven." },
-  ticketing: { NONE: "Ziet Ticketing niet.", USER: "Handleidingen en procedures van Ticketing.", ADMIN: "Gebruiker, plus de inhoud beheren en anderen toegang geven." },
+  ticketing: { NONE: "Ziet Klantenservice niet.", USER: "Handleidingen en procedures van Klantenservice.", ADMIN: "Gebruiker, plus de inhoud beheren en anderen toegang geven." },
 };
 
 function LevelChoice({
@@ -222,7 +222,7 @@ export default function RolesPage() {
               <>
                 <div className="grid gap-3 md:grid-cols-2">
                   <LevelChoice label="Communicatie" section="hub" value={draft.hubLevel} onChange={(v) => setDraft({ ...draft, hubLevel: v })} allowed={canLevel("hub")} />
-                  <LevelChoice label="Ticketing" section="ticketing" value={draft.ticketingLevel} onChange={(v) => setDraft({ ...draft, ticketingLevel: v })} allowed={canLevel("ticketing")} />
+                  <LevelChoice label="Klantenservice" section="ticketing" value={draft.ticketingLevel} onChange={(v) => setDraft({ ...draft, ticketingLevel: v })} allowed={canLevel("ticketing")} />
                 </div>
 
                 {czOn && (

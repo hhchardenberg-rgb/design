@@ -46,8 +46,8 @@ const HUB_PREFIXES = [
   "/persberichten",
 ];
 
-// Het afgeschermde Ticketing-gedeelte — vereist de rol TICKETING.
-const TICKETING_PREFIXES = ["/ticketing"];
+// Het afgeschermde Klantenservice-gedeelte — vereist de rol TICKETING.
+const TICKETING_PREFIXES = ["/klantenservice"];
 
 // Vereist alleen ingelogd zijn, geen specifieke rol (bv. de "geen
 // toegang"-pagina voor gebruikers zonder enige rol, en
@@ -83,12 +83,12 @@ function guard(req: Parameters<Parameters<typeof auth>[0]>[0]): NextResponse {
   }
   if (pathname.startsWith("/api/")) return NextResponse.next();
   const isAdminRoute = pathname.startsWith("/admin");
-  // Eén beheer, drie onderdelen: Ticketing-content (/admin/ticketing) is voor de
-  // ticketingbeheerder, de overige inhoud voor de communicatiebeheerder, en de
+  // Eén beheer, drie onderdelen: Klantenservice-content (/admin/klantenservice) is voor de
+  // klantenservicebeheerder, de overige inhoud voor de communicatiebeheerder, en de
   // hoofdadmin mag overal. Het overzicht (/admin) en gebruikersbeheer (/admin/users)
   // staan ook open voor beheerders van Commerciële Zaken, wier rechten uit de
   // database komen; die controle gebeurt server-side op de pagina en in de API.
-  const isTicketingAdminRoute = pathname.startsWith("/admin/ticketing");
+  const isTicketingAdminRoute = pathname.startsWith("/admin/klantenservice");
   // De centrale nieuwsmodule (/admin/nieuws) is voor beheerders van elk onderdeel; de pagina en
   // de API bepalen per onderdeel wat iemand mag.
   const isSharedAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/users") || pathname.startsWith("/admin/nieuws");
@@ -147,7 +147,7 @@ export const config = {
     "/stopwatch/:path*",
     "/contactpersonen/:path*",
     "/persberichten/:path*",
-    "/ticketing/:path*",
+    "/klantenservice/:path*",
     "/geen-toegang/:path*",
     "/account/:path*",
     "/commercieel/:path*",

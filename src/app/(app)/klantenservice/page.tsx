@@ -7,7 +7,7 @@ import { QuickLinks } from "@/components/quick-links";
 import { NewsPosts } from "@/components/news-posts";
 import { isNewsEnabled, listNewsPosts } from "@/lib/news.server";
 
-export const metadata: Metadata = { title: "Ticketing" };
+export const metadata: Metadata = { title: "Klantenservice" };
 
 export default async function TicketingPage() {
   const newsEnabled = await isNewsEnabled("ticketing");
@@ -17,7 +17,7 @@ export default async function TicketingPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="rounded-xl bg-hhc-black p-8 text-hhc-white">
-        <h1 className="text-2xl font-bold">Ticketing</h1>
+        <h1 className="text-2xl font-bold">Klantenservice</h1>
         <p className="mt-1 text-white/70">
           Handleidingen, procedures en belangrijke informatie over het ticketingsysteem.
         </p>
@@ -29,7 +29,7 @@ export default async function TicketingPage() {
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Nieuws</h2>
-            <Link href="/ticketing/nieuws" className="text-sm font-medium text-hhc-orange-dark hover:underline">
+            <Link href="/klantenservice/nieuws" className="text-sm font-medium text-hhc-orange-dark hover:underline">
               Alle berichten
             </Link>
           </div>

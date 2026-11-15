@@ -44,10 +44,10 @@ export async function requireHubAdmin() {
   return user;
 }
 
-/** Beheer van de inhoud van Ticketing: hoofdadmin of ticketingbeheerder. */
+/** Beheer van de inhoud van Klantenservice: hoofdadmin of klantenservicebeheerder. */
 export async function requireTicketingAdmin() {
   const user = await requireUser();
-  if (!isSectionAdmin(user.roles, "ticketing")) throw new ApiError(403, "Alleen voor beheerders van Ticketing.");
+  if (!isSectionAdmin(user.roles, "ticketing")) throw new ApiError(403, "Alleen voor beheerders van Klantenservice.");
   return user;
 }
 

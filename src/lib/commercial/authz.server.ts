@@ -10,7 +10,7 @@ import { commercialBasePermissions, ensureAccessReady } from "@/lib/access/servi
 // Server-side autorisatie voor Commerciële Zaken. Een hoofdadmin (rol ADMIN) heeft automatisch
 // volledige toegang; voor ieder ander is een rol met toegang tot Commerciële Zaken nodig (zie
 // src/lib/access). De bevoegdheden van al iemands rollen tellen op. Een beheerder
-// van alleen een ander onderdeel (Communicatie, Ticketing) heeft hier geen toegang. Rechten
+// van alleen een ander onderdeel (Communicatie, Klantenservice) heeft hier geen toegang. Rechten
 // worden bij elk verzoek uit de database berekend, niet uit het JWT, zodat intrekken direct
 // effect heeft.
 

@@ -6,7 +6,7 @@ import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Rendert de tekst van een handleiding (Kennisbank/Ticketing) als Markdown:
+ * Rendert de tekst van een handleiding (Kennisbank/Klantenservice) als Markdown:
  * ## voor kopjes per stap, **vet** voor nadruk, - voor lijstjes, en > voor
  * een "let op"-kader. Platte tekst zonder Markdown-opmaak (oudere
  * handleidingen) blijft gewoon leesbaar als normale alinea's.

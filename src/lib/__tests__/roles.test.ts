@@ -37,6 +37,6 @@ test("gewone gebruikers hebben geen beheer", () => {
 
 test("startpagina volgt de rollen", () => {
   assert.equal(resolveHomePath(["HUB"]), "/hub");
-  assert.equal(resolveHomePath(["TICKETING_ADMIN"]), "/ticketing");
+  assert.equal(resolveHomePath(["TICKETING_ADMIN"]), "/klantenservice");
   assert.equal(resolveHomePath([]), "/geen-toegang");
 });

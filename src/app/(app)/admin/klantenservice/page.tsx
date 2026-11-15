@@ -3,23 +3,23 @@ import Link from "next/link";
 import { BookOpen, Mail, FileSpreadsheet, Newspaper } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Ticketing" };
+export const metadata: Metadata = { title: "Klantenservice" };
 
 const sections = [
   {
-    href: "/admin/ticketing/handleidingen",
+    href: "/admin/klantenservice/handleidingen",
     title: "Handleidingen",
     description: "Stap-voor-stap-instructies en procedures voor het ticketingsysteem.",
     icon: BookOpen,
   },
   {
-    href: "/admin/ticketing/emails",
+    href: "/admin/klantenservice/emails",
     title: "Standaard e-mails",
     description: "Kant-en-klare e-mailteksten voor veelvoorkomende situaties.",
     icon: Mail,
   },
   {
-    href: "/admin/ticketing/excel",
+    href: "/admin/klantenservice/excel",
     title: "Excel-sjablonen",
     description: "Standaard Excel-bestanden om te downloaden bij het ticketingsysteem.",
     icon: FileSpreadsheet,
@@ -27,7 +27,7 @@ const sections = [
   {
     href: "/admin/nieuws",
     title: "Nieuws",
-    description: "Nieuwsberichten voor Ticketing plaatsen in de centrale nieuwsmodule, en het nieuws aan of uit zetten.",
+    description: "Nieuwsberichten voor Klantenservice plaatsen in de centrale nieuwsmodule, en het nieuws aan of uit zetten.",
     icon: Newspaper,
   },
 ];
@@ -36,8 +36,8 @@ export default function AdminTicketingOverviewPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Ticketing</h1>
-        <p className="mt-1 text-muted-foreground">Beheer de inhoud van het afgeschermde Ticketing-gedeelte.</p>
+        <h1 className="text-2xl font-bold">Klantenservice</h1>
+        <p className="mt-1 text-muted-foreground">Beheer de inhoud van het afgeschermde Klantenservice-gedeelte.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

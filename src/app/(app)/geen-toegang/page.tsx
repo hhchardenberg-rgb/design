@@ -33,7 +33,7 @@ export default async function GeenToegangPage() {
           <h1 className="text-lg font-semibold">Nog geen toegang</h1>
           <p className="text-sm text-muted-foreground">
             Je account is nog niet gekoppeld aan een onderdeel van de HHC Hardenberg Hub. Neem contact op met een
-            beheerder om toegang te krijgen tot bijvoorbeeld de communicatie-hub of het Ticketing-gedeelte.
+            beheerder om toegang te krijgen tot bijvoorbeeld de communicatie-hub of het Klantenservice-gedeelte.
           </p>
         </CardContent>
       </Card>

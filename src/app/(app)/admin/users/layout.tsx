@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Gebruikersbeheer is voor iedereen met beheerrechten: de hoofdadmin, de beheerders van Communicatie en
- * Ticketing en de beheerders van Commerciële Zaken. Wat je er mag doen bepaalt de API per rol.
+ * Klantenservice en de beheerders van Commerciële Zaken. Wat je er mag doen bepaalt de API per rol.
  */
 export default async function AdminUsersLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();

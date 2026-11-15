@@ -12,7 +12,7 @@ import { useToast } from "@/components/toast";
 import { cn } from "@/lib/utils";
 import { NEWS_SECTIONS, NEWS_SECTION_KEYS, type NewsEnabledMap, type NewsRightsMap, type NewsSection } from "@/lib/news";
 
-const CATEGORY_SUGGESTIONS = ["Design", "Sponsoring", "Vrijwilligers", "Communicatie", "Ticketing", "Social media", "Magazine", "Wedstrijden"];
+const CATEGORY_SUGGESTIONS = ["Design", "Sponsoring", "Vrijwilligers", "Communicatie", "Klantenservice", "Social media", "Magazine", "Wedstrijden"];
 
 interface NewsPost {
   id: string;

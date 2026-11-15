@@ -125,8 +125,8 @@ const PRESETS: { name: string; description: string; isSystem?: boolean; isAdmin?
   { name: "Hoofdadmin", description: "Ziet en beheert alles: alle onderdelen, gebruikers en rollen.", isSystem: true, isAdmin: true },
   { name: "Communicatie", description: "Toegang tot de communicatie-hub: designtool, agenda, nieuws, kennisbank en meer.", hubLevel: "USER" },
   { name: "Communicatiebeheerder", description: "Beheert de inhoud en de gebruikers van Communicatie.", hubLevel: "ADMIN" },
-  { name: "Ticketing", description: "Toegang tot Ticketing met handleidingen en procedures.", ticketingLevel: "USER" },
-  { name: "Ticketingbeheerder", description: "Beheert de inhoud en de gebruikers van Ticketing.", ticketingLevel: "ADMIN" },
+  { name: "Klantenservice", description: "Toegang tot Klantenservice met handleidingen en procedures.", ticketingLevel: "USER" },
+  { name: "Klantenservicebeheerder", description: "Beheert de inhoud en de gebruikers van Klantenservice.", ticketingLevel: "ADMIN" },
 ];
 
 async function freeName(tx: Tx, wanted: string): Promise<string> {

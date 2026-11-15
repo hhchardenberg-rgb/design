@@ -46,7 +46,7 @@ function ticketingMenuGroups(newsEnabled: boolean): NavMenuGroup[] {
   return [
     {
       id: "ticketing",
-      label: "Ticketing",
+      label: "Klantenservice",
       items: ticketingModules
         .filter((m) => m.id !== "nieuws" || newsEnabled)
         .map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
@@ -58,7 +58,7 @@ function ticketingMenuGroups(newsEnabled: boolean): NavMenuGroup[] {
 // heeft. Nieuwe rol met een eigen sectie? Hier een entry toevoegen.
 const SECTION_DEFINITIONS: (SectionLink & { role: AppRole })[] = [
   { key: "hub", role: "HUB", label: "Communicatie", href: "/hub", icon: Megaphone },
-  { key: "ticketing", role: "TICKETING", label: "Ticketing", href: "/ticketing", icon: Ticket },
+  { key: "ticketing", role: "TICKETING", label: "Klantenservice", href: "/klantenservice", icon: Ticket },
 ];
 
 export interface CommercialShellState {
@@ -78,7 +78,7 @@ export function AppShell({
   commercial: CommercialShellState;
   /** Toegang tot HHC Tickets (server-side bepaald: flag + rol). */
   tickets?: boolean;
-  /** Of het nieuws van Communicatie en Ticketing aan staat (server-side uit de database). */
+  /** Of het nieuws van Communicatie en Klantenservice aan staat (server-side uit de database). */
   news: { hub: boolean; ticketing: boolean };
 }) {
   const pathname = usePathname();
@@ -86,9 +86,9 @@ export function AppShell({
   const roles = session?.user?.roles ?? [];
 
   const isAdminSection = pathname?.startsWith("/admin");
-  const isTicketingSection = !isAdminSection && pathname?.startsWith("/ticketing");
+  const isTicketingSection = !isAdminSection && pathname?.startsWith("/klantenservice");
   const isCommercialSection = !isAdminSection && pathname?.startsWith("/commercieel");
-  // Let op: "/ticketing" begint niet met "/tickets/", dus de twee onderdelen lopen niet door elkaar.
+  // Let op: "/klantenservice" begint niet met "/tickets/", dus de twee onderdelen lopen niet door elkaar.
   const isTicketsSection = !isAdminSection && (pathname === "/tickets" || !!pathname?.startsWith("/tickets/"));
   const isDesigntoolSection =
     !isAdminSection &&
