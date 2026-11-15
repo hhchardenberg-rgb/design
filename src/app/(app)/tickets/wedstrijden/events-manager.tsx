@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Pencil, Plus, RotateCcw, Palette } from "lucide-react";
+import { CalendarClock, CheckCircle2, Pencil, Plus, RotateCcw, Palette, Trash2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox, Input, Label, Select } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
+import { cn } from "@/lib/utils";
 import { formatDayTime } from "@/lib/date-format";
 import { EVENT_STATUS_LABELS } from "@/lib/tickets/rules";
 import { seasonOptionLabel } from "@/lib/commercial/season-phase";
@@ -65,6 +66,9 @@ interface Draft {
   matchId: string;
 }
 
+/** Gelijke vierkante icoonknoppen in de actierij van een wedstrijd. */
+const ICON_BTN = "h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-foreground";
+
 const EMPTY: Draft = { id: null, title: "", opponent: "", competition: "", isHome: true, location: "", startsAt: "", endsAt: "", seasonId: "", status: "ACTIVE", allowReentry: false, capacity: "", matchId: "" };
 
 /** Wat elke status doet; staat onder het statusveld. */
@@ -95,6 +99,9 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
   const [fh, setFh] = useState<FhDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  /** Welk uitklappaneel (afgelasten/verplaatsen of verwijderen) onder welke wedstrijd open staat. */
+  const [panel, setPanel] = useState<{ id: string; kind: "change" | "remove" } | null>(null);
+  const togglePanel = (id: string, kind: "change" | "remove") => setPanel((p) => (p?.id === id && p.kind === kind ? null : { id, kind }));
 
   const load = useCallback(async () => {
     try {
@@ -393,54 +400,97 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
             <p className="p-4 text-sm text-muted-foreground">{archived ? "Geen gearchiveerde wedstrijden." : `Nog geen wedstrijden. ${canManage ? "Voeg de eerste toe." : ""}`}</p>
           ) : (
             <ul className="divide-y divide-border">
-              {events.map((e) => (
-                <li key={e.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{e.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDayTime(e.startsAt)} · {e.isHome ? "thuis" : "uit"}
-                      {e.competition ? ` · ${e.competition}` : ""}
-                      {e.season ? ` · ${e.season.name}` : ""}
-                      {e.allowReentry ? " · herintrede seizoenskaarten" : ""}
-                      {e.source === "FULLHOUSE" ? " · Fullhouse" : ""}
-                      {e.archivedAt ? ` · gearchiveerd ${formatDayTime(e.archivedAt)}${e.archivedBy ? ` door ${e.archivedBy}` : ""}` : ""}
-                    </p>
+              {events.map((e) => {
+                const open = panel?.id === e.id ? panel.kind : null;
+                return (
+                <li key={e.id} className="text-sm">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+                    <div className="min-w-[14rem] flex-1">
+                      <p className="truncate font-medium">{e.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {formatDayTime(e.startsAt)} · {e.isHome ? "thuis" : "uit"}
+                        {e.competition ? ` · ${e.competition}` : ""}
+                        {e.season ? ` · ${e.season.name}` : ""}
+                        {e.allowReentry ? " · herintrede seizoenskaarten" : ""}
+                        {e.source === "FULLHOUSE" ? " · Fullhouse" : ""}
+                        {e.archivedAt ? ` · gearchiveerd ${formatDayTime(e.archivedAt)}${e.archivedBy ? ` door ${e.archivedBy}` : ""}` : ""}
+                      </p>
+                    </div>
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
+                      <span className="mr-1 w-20 text-right text-xs text-muted-foreground tabular-nums">{e.linkedTickets} tickets</span>
+                      <span className="mr-1 inline-flex w-[5.5rem] justify-center">
+                        <EventStatusBadge status={e.status} />
+                      </span>
+                      {e.archivedAt ? (
+                        canDelete && (
+                          <Button size="sm" variant="outline" disabled={busy} onClick={() => quick(async () => { await api(`/api/tickets/events/${e.id}/restore`, { body: {} }); return `${e.title} teruggezet.`; })}>
+                            <RotateCcw className="h-4 w-4" /> Terugzetten
+                          </Button>
+                        )
+                      ) : (
+                        <>
+                          {canManage && e.status === "DRAFT" && (
+                            <Button size="sm" variant="outline" className="mr-1" disabled={busy} onClick={() => activate(e)} title="Status op Actief zetten">
+                              <CheckCircle2 className="h-4 w-4" /> Activeren
+                            </Button>
+                          )}
+                          {canManage && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className={ICON_BTN}
+                              onClick={() => (e.source === "FULLHOUSE" ? setFh({ id: e.id, title: e.title, status: e.status === "CANCELLED" ? "ACTIVE" : e.status, seasonId: e.seasonId ?? "", capacity: e.capacity ? String(e.capacity) : "", allowReentry: e.allowReentry }) : edit(e))}
+                              aria-label={`${e.title} wijzigen`}
+                              title={e.source === "FULLHOUSE" ? "Status, seizoen en herintrede instellen" : "Wijzigen"}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Link href={`/tickets/ontwerp?scope=event:${e.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), ICON_BTN)} aria-label={`Ticketontwerp voor ${e.title}`} title="Ticketontwerp voor dit duel">
+                            <Palette className="h-4 w-4" />
+                          </Link>
+                          {canManage && e.status !== "CLOSED" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className={cn(ICON_BTN, open === "change" && "bg-surface-muted text-foreground")}
+                              onClick={() => togglePanel(e.id, "change")}
+                              aria-label={`${e.title} afgelasten of verplaatsen`}
+                              aria-expanded={open === "change"}
+                              title="Afgelasten of verplaatsen"
+                            >
+                              <CalendarClock className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className={cn(ICON_BTN, "hover:text-destructive", open === "remove" && "bg-surface-muted text-destructive")}
+                              onClick={() => togglePanel(e.id, "remove")}
+                              aria-label={`${e.title} verwijderen of archiveren`}
+                              aria-expanded={open === "remove"}
+                              title="Verwijderen of archiveren"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs text-muted-foreground tabular-nums">{e.linkedTickets} tickets</span>
-                  <EventStatusBadge status={e.status} />
-                  {e.archivedAt ? (
-                    canDelete && (
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => quick(async () => { await api(`/api/tickets/events/${e.id}/restore`, { body: {} }); return `${e.title} teruggezet.`; })}>
-                        <RotateCcw className="h-4 w-4" /> Terugzetten
-                      </Button>
-                    )
-                  ) : (
-                    <>
-                      {canManage && e.status === "DRAFT" && (
-                        <Button size="sm" variant="outline" disabled={busy} onClick={() => activate(e)} title="Status op Actief zetten">
-                          <CheckCircle2 className="h-4 w-4" /> Activeren
-                        </Button>
+                  {open && !e.archivedAt && (
+                    <div className="px-4 pb-3">
+                      {open === "change" ? (
+                        <ChangeEvent event={e} canMail={canMail} onClose={() => setPanel(null)} onDone={() => void load()} />
+                      ) : (
+                        <RemoveEvent event={e} onClose={() => setPanel(null)} onDone={() => void load()} />
                       )}
-                      {canManage && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => (e.source === "FULLHOUSE" ? setFh({ id: e.id, title: e.title, status: e.status === "CANCELLED" ? "ACTIVE" : e.status, seasonId: e.seasonId ?? "", capacity: e.capacity ? String(e.capacity) : "", allowReentry: e.allowReentry }) : edit(e))}
-                          aria-label={`${e.title} wijzigen`}
-                          title={e.source === "FULLHOUSE" ? "Status, seizoen en herintrede instellen" : "Wijzigen"}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Link href={`/tickets/ontwerp?scope=event:${e.id}`} className="inline-flex items-center rounded p-2 text-muted-foreground hover:text-foreground" aria-label={`Ticketontwerp voor ${e.title}`} title="Ticketontwerp voor dit duel">
-                        <Palette className="h-4 w-4" />
-                      </Link>
-                      {canManage && e.status !== "CLOSED" && <ChangeEvent event={e} canMail={canMail} onDone={() => void load()} />}
-                      {canDelete && <RemoveEvent event={e} onDone={() => void load()} />}
-                    </>
+                    </div>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </CardContent>
