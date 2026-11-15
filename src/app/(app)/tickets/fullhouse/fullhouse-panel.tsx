@@ -6,16 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { formatDayTime } from "@/lib/date-format";
 import { api, errorText, PageTitle } from "@/components/tickets/parts";
+import { CatalogCard } from "./catalog-card";
 
 interface Overview {
   config: { mode: string; apiKey: boolean; accessToken: boolean; webhookSecret: boolean; baseUrl: string };
   provider: string;
   writesEnabled: boolean;
-  events: { id: string; title: string; startsAt: string; status: string; externalId: string | null; counts: Record<string, number>; kinds?: { type: string | null; zone: string | null; count: number }[] }[];
+  events: { id: string; title: string; startsAt: string; status: string; externalId: string | null; counts: Record<string, number>; kinds?: { type: string | null; zone: string | null; hhcType?: string | null; hhcZone?: string | null; count: number }[] }[];
   runs: { id: string; kind: string; eventExtId: string | null; status: string; mode: string; fetched: number; upserted: number; error: string | null; startedAt: string; finishedAt: string | null; startedBy: string | null }[];
 }
 
-export function FullhousePanel({ canManage }: { canManage: boolean }) {
+export function FullhousePanel({ canManage, canCreate = false }: { canManage: boolean; canCreate?: boolean }) {
   const toast = useStableToast();
   const [d, setD] = useState<Overview | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export function FullhousePanel({ canManage }: { canManage: boolean }) {
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run("diag", async () => { const r = await api<NonNullable<typeof diag>>("/api/tickets/fullhouse/diagnose", { body: {} }); setDiag(r); return "Koppeling gecontroleerd."; })}>
                 Controleer koppeling
               </Button>
-              <Button size="sm" disabled={!!busy} onClick={() => run("events", async () => { const r = await api<{ fetched: number; created: number }>("/api/tickets/fullhouse/events", { body: {} }); return `${r.fetched} evenementen gelezen, ${r.created} nieuw (als concept).`; })}>
+              <Button size="sm" disabled={!!busy} onClick={() => run("events", async () => { const r = await api<{ fetched: number; created: number; catalog: { types: number; zones: number } | null }>("/api/tickets/fullhouse/events", { body: {} }); return `${r.fetched} evenementen gelezen, ${r.created} nieuw${r.catalog ? `, ${r.catalog.types} kaartsoorten en ${r.catalog.zones} vakken bijgewerkt` : ""}.`; })}>
                 Evenementen ophalen
               </Button>
             </div>
@@ -80,10 +81,12 @@ export function FullhousePanel({ canManage }: { canManage: boolean }) {
         </CardContent>
       </Card>
 
+      <CatalogCard canManage={canManage} canCreate={canCreate} />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Fullhouse-wedstrijden en externe tickets</CardTitle>
-          <CardDescription>Opgehaalde wedstrijden staan als concept; activeer ze bij Wedstrijden om te kunnen scannen.</CardDescription>
+          <CardDescription>Opgehaalde wedstrijden staan ook bij Wedstrijden. Daar stel je status, seizoen en herintrede in, of archiveer je ze.</CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="divide-y divide-border">
@@ -103,7 +106,8 @@ export function FullhousePanel({ canManage }: { canManage: boolean }) {
                         {e.kinds.map((k, i) => (
                           <li key={i}>
                             {k.count}× {k.type ?? "onbekend kaarttype"}
-                            {k.zone ? ` · zone/categorie: ${k.zone}` : ""}
+                            {k.hhcType ? ` (HHC: ${k.hhcType})` : ""}
+                            {k.zone ? ` · vak: ${k.zone}${k.hhcZone ? ` (HHC: ${k.hhcZone})` : ""}` : ""}
                           </li>
                         ))}
                       </ul>

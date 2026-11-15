@@ -4,7 +4,20 @@ import type { FullhouseEvent, FullhouseScanResult, FullhouseTicket, OfflineScan,
 // previews. Barcodes: FH-TEST-0001 t/m FH-TEST-0050 zijn geldig, FH-TEST-INVALID is
 // ongeldig, al het andere bestaat niet.
 
-const EVENT: FullhouseEvent = { externalId: "mock-event-1", name: "Testwedstrijd (Fullhouse-testdata)", startsAt: null };
+const EVENT: FullhouseEvent = {
+  externalId: "mock-event-1",
+  name: "Testwedstrijd (Fullhouse-testdata)",
+  startsAt: null,
+  ticketTypes: [
+    { externalId: "mock-type", name: "Staanplaats (test)", price: 12.5, categoryRef: "mock-cat-tribune", active: true },
+    { externalId: "mock-type-kind", name: "Kind t/m 12 jaar (test)", price: 5, categoryRef: "mock-cat-tribune", active: true },
+    { externalId: "mock-type-vip", name: "Business seat (test)", price: 45, categoryRef: "mock-cat-vip", active: true },
+  ],
+  categories: [
+    { ref: "mock-cat-tribune", name: "Tribune" },
+    { ref: "mock-cat-vip", name: "Businessruimte" },
+  ],
+};
 
 function ticket(n: number, status = "VALID"): FullhouseTicket {
   const code = n < 0 ? "FH-TEST-INVALID" : `FH-TEST-${String(n).padStart(4, "0")}`;
@@ -14,7 +27,7 @@ function ticket(n: number, status = "VALID"): FullhouseTicket {
     name: `Testbezoeker ${Math.abs(n)}`,
     ticketTypeId: "mock-type",
     ticketName: "Staanplaats (test)",
-    categoryRef: null,
+    categoryRef: "mock-cat-tribune",
     eventId: EVENT.externalId,
     status,
     area: "Tribune",

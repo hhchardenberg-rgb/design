@@ -159,3 +159,36 @@ test("zonder recht op contactgegevens: alleen initialen en geen zoeken op naam",
   assert.equal(detail.phone, null);
   assert.equal(detail.canSeePersonal, false);
 });
+
+test("wedstrijd verwijderen kan alleen zonder tickets; met geldige tickets eerst afgelasten, dan archiveren en terugzetten", { skip }, async () => {
+  const inAWeek = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  // Leeg: verwijderen, maar alleen met de juiste titel.
+  const empty = (await catalog.saveEvent(admin, null, { title: "Leeg duel", startsAt: inAWeek }))!;
+  assert.equal(empty.status, "ACTIVE", "nieuwe wedstrijden beginnen op Actief");
+  await assert.rejects(catalog.removeEvent(admin, empty.id, { mode: "delete", confirmTitle: "fout" }), /titel/);
+  await catalog.removeEvent(admin, empty.id, { mode: "delete", confirmTitle: "leeg duel" });
+  assert.equal(await db.ticketEvent.count({ where: { id: empty.id } }), 0);
+  // Met een geldig ticket: niet verwijderen, niet archiveren zolang hij nog moet komen.
+  const used = (await catalog.saveEvent(admin, null, { title: "Duel met tickets", startsAt: inAWeek }))!;
+  await svc.issueTickets(admin, { typeId: typeSingle, eventIds: [used.id], holders: [holder(90)] });
+  const u = await catalog.eventUsage(used.id);
+  assert.deepEqual([u.canDelete, u.canArchive, u.activeTickets], [false, false, 1]);
+  await assert.rejects(catalog.removeEvent(admin, used.id, { mode: "delete", confirmTitle: "Duel met tickets" }), /archiveren/);
+  await assert.rejects(catalog.removeEvent(admin, used.id, { mode: "archive", confirmTitle: "Duel met tickets" }), /Gelast/);
+  // Afgesloten: archiveren mag; daarna weg uit de lijst en niet meer uit te geven, maar terug te zetten.
+  await db.ticketEvent.update({ where: { id: used.id }, data: { status: "CLOSED" } });
+  await catalog.removeEvent(admin, used.id, { mode: "archive", confirmTitle: "Duel met tickets", reason: "test" });
+  assert.ok(!(await catalog.listEvents({ includePast: true })).some((e) => e.id === used.id));
+  assert.ok((await catalog.listEvents({ archived: true })).some((e) => e.id === used.id));
+  assert.equal(await db.ticketEventLink.count({ where: { eventId: used.id } }), 1, "tickets blijven bewaard");
+  await catalog.restoreEvent(admin, used.id);
+  assert.ok((await catalog.listEvents({ includePast: true })).some((e) => e.id === used.id));
+});
+
+test("alle concepten activeren", { skip }, async () => {
+  const inAWeek = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const d = (await catalog.saveEvent(admin, null, { title: "Concept-duel", startsAt: inAWeek, status: "DRAFT" }))!;
+  const r = await catalog.activateDrafts(admin);
+  assert.ok(r.activated >= 1);
+  assert.equal((await db.ticketEvent.findUniqueOrThrow({ where: { id: d.id } })).status, "ACTIVE");
+});

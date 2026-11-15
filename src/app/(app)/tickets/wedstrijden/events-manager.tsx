@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { CheckCircle2, Pencil, Plus, RotateCcw } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox, Input, Label, Select } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
@@ -11,6 +12,7 @@ import { EVENT_STATUS_LABELS } from "@/lib/tickets/rules";
 import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 import { api, errorText, EventStatusBadge, fromLocalInput, PageTitle, toLocalInput } from "@/components/tickets/parts";
 import { ChangeEvent } from "./change-event";
+import { RemoveEvent } from "./remove-event";
 
 interface EventRow {
   id: string;
@@ -29,6 +31,8 @@ interface EventRow {
   source: string;
   matchId: string | null;
   linkedTickets: number;
+  archivedAt: string | null;
+  archivedBy: string | null;
 }
 interface Season {
   id: string;
@@ -61,21 +65,40 @@ interface Draft {
   matchId: string;
 }
 
-const EMPTY: Draft = { id: null, title: "", opponent: "", competition: "", isHome: true, location: "", startsAt: "", endsAt: "", seasonId: "", status: "DRAFT", allowReentry: false, capacity: "", matchId: "" };
+const EMPTY: Draft = { id: null, title: "", opponent: "", competition: "", isHome: true, location: "", startsAt: "", endsAt: "", seasonId: "", status: "ACTIVE", allowReentry: false, capacity: "", matchId: "" };
 
-export function EventsManager({ canManage, canMail = false }: { canManage: boolean; canMail?: boolean }) {
+/** Wat elke status doet; staat onder het statusveld. */
+const STATUS_HELP: Record<string, string> = {
+  DRAFT: "Concept: alleen een label voor 'nog in voorbereiding'. Uitgeven en scannen werken al wel.",
+  ACTIVE: "Actief: de wedstrijd gaat door. Uitgeven en scannen werken.",
+  CLOSED: "Afgesloten: geen nieuwe tickets meer; scannen kan nog.",
+  CANCELLED: "Afgelast: tickets voor alleen deze wedstrijd zijn ongeldig. Gebruik liever de knop Afgelasten, die houders ook mailt.",
+};
+
+interface FhDraft {
+  id: string;
+  title: string;
+  status: string;
+  seasonId: string;
+  capacity: string;
+  allowReentry: boolean;
+}
+
+export function EventsManager({ canManage, canMail = false, canDelete = false, canSeasons = false }: { canManage: boolean; canMail?: boolean; canDelete?: boolean; canSeasons?: boolean }) {
   const toast = useStableToast();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [all, setAll] = useState(false);
+  const [archived, setArchived] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [fh, setFh] = useState<FhDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [e, s] = await Promise.all([api<{ events: EventRow[] }>(`/api/tickets/events${all ? "?alle=1" : ""}`), api<{ seasons: Season[] }>("/api/tickets/seasons")]);
+      const [e, s] = await Promise.all([api<{ events: EventRow[] }>(`/api/tickets/events${archived ? "?archief=1" : all ? "?alle=1" : ""}`), api<{ seasons: Season[] }>("/api/tickets/seasons")]);
       setEvents(e.events);
       setSeasons(s.seasons);
     } catch (err) {
@@ -83,11 +106,39 @@ export function EventsManager({ canManage, canMail = false }: { canManage: boole
     } finally {
       setLoading(false);
     }
-  }, [all, toast]);
+  }, [all, archived, toast]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function quick(fn: () => Promise<string>) {
+    setBusy(true);
+    try {
+      toast.success(await fn());
+      await load();
+    } catch (err) {
+      toast.error(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const activate = (e: EventRow) => quick(async () => {
+    await api(`/api/tickets/events/${e.id}`, e.source === "FULLHOUSE" ? { method: "PATCH", body: { status: "ACTIVE" } } : { method: "PUT", body: { title: e.title, opponent: e.opponent, competition: e.competition, isHome: e.isHome, location: e.location, startsAt: e.startsAt, endsAt: e.endsAt, seasonId: e.seasonId, status: "ACTIVE", allowReentry: e.allowReentry, capacity: e.capacity, matchId: e.matchId } });
+    return `${e.title} staat nu op Actief.`;
+  });
+
+  async function saveFh() {
+    if (!fh) return;
+    await quick(async () => {
+      await api(`/api/tickets/events/${fh.id}`, { method: "PATCH", body: { status: fh.status, seasonId: fh.seasonId || null, capacity: fh.capacity ? Number(fh.capacity) : null, allowReentry: fh.allowReentry } });
+      setFh(null);
+      return "Fullhouse-wedstrijd opgeslagen.";
+    });
+  }
+
+  const drafts = events.filter((e) => e.status === "DRAFT" && new Date(e.endsAt) >= new Date()).length;
 
   useEffect(() => {
     if (!canManage || !draft || matches.length) return;
@@ -162,7 +213,17 @@ export function EventsManager({ canManage, canMail = false }: { canManage: boole
 
   return (
     <div>
-      <PageTitle title="Wedstrijden" description="Wedstrijden waarvoor HHC tickets uitgeeft en waarop later gescand wordt.">
+      <PageTitle title="Wedstrijden" description="Wedstrijden waarvoor HHC tickets uitgeeft en waarop gescand wordt. Wedstrijden uit Fullhouse komen er vanzelf bij.">
+        {canSeasons && (
+          <Link href="/tickets/tickettypes#seizoenen" className={buttonVariants({ variant: "outline" })}>
+            Seizoenen beheren
+          </Link>
+        )}
+        {canManage && drafts > 0 && !archived && (
+          <Button variant="outline" disabled={busy} onClick={() => quick(async () => { const r = await api<{ activated: number }>("/api/tickets/events/activate", { body: {} }); return `${r.activated} wedstrijd(en) op Actief gezet.`; })}>
+            <CheckCircle2 className="h-4 w-4" /> Alle concepten activeren ({drafts})
+          </Button>
+        )}
         {canManage && (
           <Button onClick={() => edit(null)}>
             <Plus className="h-4 w-4" /> Nieuwe wedstrijd
@@ -220,6 +281,11 @@ export function EventsManager({ canManage, canMail = false }: { canManage: boole
                   </option>
                 ))}
               </Select>
+              {seasons.length === 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Nog geen seizoenen. {canSeasons ? <Link className="text-hhc-orange-dark hover:underline" href="/tickets/tickettypes#seizoenen">Voeg er een toe</Link> : "Vraag een beheerder er een toe te voegen."}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="ev-status">Status</Label>
@@ -230,6 +296,7 @@ export function EventsManager({ canManage, canMail = false }: { canManage: boole
                   </option>
                 ))}
               </Select>
+              <p className="mt-1 text-xs text-muted-foreground">{STATUS_HELP[draft.status]}</p>
             </div>
             <div>
               <Label htmlFor="ev-loc">Locatie</Label>
@@ -257,9 +324,64 @@ export function EventsManager({ canManage, canMail = false }: { canManage: boole
         </Card>
       )}
 
-      <div className="mb-3 flex items-center gap-2 text-sm">
+      {fh && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Fullhouse-wedstrijd instellen: {fh.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <p className="text-xs text-muted-foreground sm:col-span-2">Titel en aftrap komen uit Fullhouse en wijzig je daar. Hier stel je in wat alleen voor de Hub geldt.</p>
+            <div>
+              <Label htmlFor="fh-status">Status</Label>
+              <Select id="fh-status" value={fh.status} onChange={(e) => setFh({ ...fh, status: e.target.value })}>
+                {Object.entries(EVENT_STATUS_LABELS)
+                  .filter(([k]) => k !== "CANCELLED")
+                  .map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">{STATUS_HELP[fh.status]}</p>
+            </div>
+            <div>
+              <Label htmlFor="fh-season">Seizoen</Label>
+              <Select id="fh-season" value={fh.seasonId} onChange={(e) => setFh({ ...fh, seasonId: e.target.value })}>
+                <option value="">Geen</option>
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {seasonOptionLabel(s)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="fh-cap">Capaciteit (optioneel)</Label>
+              <Input id="fh-cap" type="number" min={1} value={fh.capacity} onChange={(e) => setFh({ ...fh, capacity: e.target.value })} />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={fh.allowReentry} onChange={(e) => setFh({ ...fh, allowReentry: e.target.checked })} /> Herintrede toegestaan voor seizoenskaarten
+            </label>
+            <div className="flex gap-2 sm:col-span-2">
+              <Button onClick={saveFh} disabled={busy}>
+                Opslaan
+              </Button>
+              <Button variant="outline" onClick={() => setFh(null)}>
+                Annuleren
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-sm">
+        {!archived && (
+          <label className="flex items-center gap-2">
+            <Checkbox checked={all} onChange={(e) => setAll(e.target.checked)} /> Ook gespeelde wedstrijden tonen
+          </label>
+        )}
         <label className="flex items-center gap-2">
-          <Checkbox checked={all} onChange={(e) => setAll(e.target.checked)} /> Ook gespeelde wedstrijden tonen
+          <Checkbox checked={archived} onChange={(e) => setArchived(e.target.checked)} /> Gearchiveerde wedstrijden tonen
         </label>
       </div>
 
@@ -268,7 +390,7 @@ export function EventsManager({ canManage, canMail = false }: { canManage: boole
           {loading ? (
             <p className="p-4 text-sm text-muted-foreground">Laden…</p>
           ) : events.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">Nog geen wedstrijden. {canManage ? "Voeg de eerste toe." : ""}</p>
+            <p className="p-4 text-sm text-muted-foreground">{archived ? "Geen gearchiveerde wedstrijden." : `Nog geen wedstrijden. ${canManage ? "Voeg de eerste toe." : ""}`}</p>
           ) : (
             <ul className="divide-y divide-border">
               {events.map((e) => (
@@ -281,16 +403,39 @@ export function EventsManager({ canManage, canMail = false }: { canManage: boole
                       {e.season ? ` · ${e.season.name}` : ""}
                       {e.allowReentry ? " · herintrede seizoenskaarten" : ""}
                       {e.source === "FULLHOUSE" ? " · Fullhouse" : ""}
+                      {e.archivedAt ? ` · gearchiveerd ${formatDayTime(e.archivedAt)}${e.archivedBy ? ` door ${e.archivedBy}` : ""}` : ""}
                     </p>
                   </div>
                   <span className="text-xs text-muted-foreground tabular-nums">{e.linkedTickets} tickets</span>
                   <EventStatusBadge status={e.status} />
-                  {canManage && e.source === "HHC" && (
-                    <Button size="sm" variant="ghost" onClick={() => edit(e)} aria-label={`${e.title} wijzigen`}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                  {e.archivedAt ? (
+                    canDelete && (
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => quick(async () => { await api(`/api/tickets/events/${e.id}/restore`, { body: {} }); return `${e.title} teruggezet.`; })}>
+                        <RotateCcw className="h-4 w-4" /> Terugzetten
+                      </Button>
+                    )
+                  ) : (
+                    <>
+                      {canManage && e.status === "DRAFT" && (
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => activate(e)} title="Status op Actief zetten">
+                          <CheckCircle2 className="h-4 w-4" /> Activeren
+                        </Button>
+                      )}
+                      {canManage && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => (e.source === "FULLHOUSE" ? setFh({ id: e.id, title: e.title, status: e.status === "CANCELLED" ? "ACTIVE" : e.status, seasonId: e.seasonId ?? "", capacity: e.capacity ? String(e.capacity) : "", allowReentry: e.allowReentry }) : edit(e))}
+                          aria-label={`${e.title} wijzigen`}
+                          title={e.source === "FULLHOUSE" ? "Status, seizoen en herintrede instellen" : "Wijzigen"}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canManage && e.status !== "CLOSED" && <ChangeEvent event={e} canMail={canMail} onDone={() => void load()} />}
+                      {canDelete && <RemoveEvent event={e} onDone={() => void load()} />}
+                    </>
                   )}
-                  {canManage && e.status !== "CLOSED" && <ChangeEvent event={e} canMail={canMail} onDone={() => void load()} />}
                 </li>
               ))}
             </ul>

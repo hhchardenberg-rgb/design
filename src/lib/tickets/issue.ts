@@ -20,6 +20,7 @@ export interface EventForIssue {
   id: string;
   status: string;
   endsAt: Date;
+  archivedAt?: Date | null;
 }
 
 export interface SeasonForIssue {
@@ -70,6 +71,7 @@ export function resolveValidity(
     if (mode === "MULTI" && ids.length < 1) return fail("Kies minstens één wedstrijd voor dit tickettype.");
     const events = lookup.events.filter((e) => ids.includes(e.id));
     if (events.length !== ids.length) return fail("Een van de gekozen wedstrijden bestaat niet (meer).");
+    if (events.some((e) => e.archivedAt)) return fail("Een van de gekozen wedstrijden is gearchiveerd.");
     if (events.some((e) => e.status === "CANCELLED" || e.status === "CLOSED")) return fail("Je kunt geen tickets uitgeven voor een afgelaste of afgesloten wedstrijd.");
     const validUntil = computeValidUntil(mode, { events });
     if (validUntil && validUntil < now) return fail("De gekozen wedstrijd is al voorbij.");

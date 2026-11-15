@@ -12,6 +12,24 @@ export interface FullhouseEvent {
   externalId: string;
   name: string;
   startsAt: Date | null;
+  /** Kaartsoorten van dit evenement (vivenu `tickets[]`), als Fullhouse die meegeeft. */
+  ticketTypes?: FullhouseTicketType[];
+  /** Ticketcategorieën / toegangsvakken van dit evenement (vivenu `categories[]`). */
+  categories?: FullhouseCategory[];
+}
+
+export interface FullhouseTicketType {
+  externalId: string;
+  name: string;
+  price: number | null;
+  categoryRef: string | null;
+  active: boolean;
+}
+
+export interface FullhouseCategory {
+  /** De `ref` waarmee kaartsoorten (`categoryRef`) naar deze categorie verwijzen; anders het _id. */
+  ref: string;
+  name: string;
 }
 
 export interface FullhouseTicket {

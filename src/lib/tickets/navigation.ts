@@ -36,7 +36,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
     label: "Inrichting",
     items: [
       { href: "/tickets/wedstrijden", label: "Wedstrijden", requires: "events:read" },
-      { href: "/tickets/tickettypes", label: "Tickettypes en vakken", requires: "types:read" },
+      { href: "/tickets/tickettypes", label: "Tickettypes, vakken en seizoenen", requires: "types:read" },
     ],
   },
   {
@@ -62,10 +62,10 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
   },
 ];
 
-/** Wat in een volgende fase komt, voor het dashboard. */
-export const TICKETS_ROADMAP: { phase: number; title: string; items: string[] }[] = [
-  { phase: 2, title: "Wallet", items: ["Apple Wallet en Google Wallet (wachten op de accounts van HHC)", "Automatische walletupdates bij wijzigingen"] },
-  { phase: 5, title: "Uitbreiding", items: ["Geplande rapportagemails", "Scherm voor Commerciële Zaken om tickets uit te geven (de koppeling zelf staat klaar)"] },
+/** Wat nog niet gebouwd is, voor het dashboard. */
+export const TICKETS_ROADMAP: { title: string; items: string[] }[] = [
+  { title: "Wallet", items: ["Apple Wallet en Google Wallet (wachten op de accounts van HHC)", "Automatische walletupdates bij wijzigingen"] },
+  { title: "Uitbreiding", items: ["Geplande rapportagemails", "Scherm voor Commerciële Zaken om tickets uit te geven (de koppeling zelf staat klaar)", "Schrijven naar Fullhouse (bewust uit: de Hub leest alleen)"] },
 ];
 
 export function visibleTicketsNav(can: (p: TicketPermission) => boolean): TicketsNavGroup[] {

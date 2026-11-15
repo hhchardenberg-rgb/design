@@ -5,6 +5,7 @@ import { need, type TicketsActor } from "../authz.server";
 import { codeHash, initialsFromFullName } from "../scan.server";
 import { fullhouseConfigured, ticketProvider } from "./index";
 import { FullhouseError } from "./types";
+import { catalogNameMap, nameKey, syncFullhouseCatalog } from "./catalog.server";
 
 // Synchronisatie met Fullhouse (alleen lezen). Fullhouse blijft de bron: de Hub bewaart een
 // lokale kopie (barcode alleen als hash, naam alleen als initialen) om te kunnen scannen.
@@ -15,11 +16,12 @@ const errMsg = (e: unknown) => (e instanceof FullhouseError ? e.message : e inst
 
 export async function fullhouseOverview(actor: TicketsActor) {
   need(actor, "sync:read");
-  const [events, runs, counts, kinds] = await Promise.all([
-    prisma.ticketEvent.findMany({ where: { source: "FULLHOUSE" }, orderBy: { startsAt: "desc" }, take: 50 }),
+  const [events, runs, counts, kinds, names] = await Promise.all([
+    prisma.ticketEvent.findMany({ where: { source: "FULLHOUSE", archivedAt: null }, orderBy: { startsAt: "desc" }, take: 50 }),
     prisma.ticketSyncRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 }),
     prisma.ticketExternalTicket.groupBy({ by: ["eventExtId", "status"], _count: { _all: true } }),
     prisma.ticketExternalTicket.groupBy({ by: ["eventExtId", "ticketName", "categoryRef", "area"], where: { status: "VALID" }, _count: { _all: true } }),
+    catalogNameMap(),
   ]);
   return {
     config: fullhouseConfigured(),
@@ -33,13 +35,19 @@ export async function fullhouseOverview(actor: TicketsActor) {
       externalId: e.externalId,
       counts: Object.fromEntries(counts.filter((c) => c.eventExtId === e.externalId).map((c) => [c.status, c._count._all])),
       // Geldige tickets per kaarttype en zone/categorie zoals Fullhouse ze meegeeft.
-      kinds: kinds.filter((k) => k.eventExtId === e.externalId).map((k) => ({ type: k.ticketName, zone: k.area ?? k.categoryRef, count: k._count._all })).sort((a, b) => b.count - a.count),
+      kinds: kinds
+        .filter((k) => k.eventExtId === e.externalId)
+        .map((k) => {
+          const zone = k.area ?? k.categoryRef;
+          return { type: k.ticketName, zone, hhcType: k.ticketName ? (names.type.get(nameKey(k.ticketName)) ?? null) : null, hhcZone: zone ? (names.zone.get(nameKey(zone)) ?? null) : null, count: k._count._all };
+        })
+        .sort((a, b) => b.count - a.count),
     })),
     runs,
   };
 }
 
-/** Evenementen van Fullhouse als concept in de Hub zetten; een beheerder activeert ze zelf. */
+/** Evenementen van Fullhouse in de Hub zetten (direct actief: Fullhouse verkoopt er al voor), samen met kaartsoorten en vakken. */
 export async function importFullhouseEvents(actor: TicketsActor) {
   need(actor, "sync:manage");
   return importEventsAs({ id: actor.id, name: actor.name });
@@ -54,12 +62,19 @@ async function importEventsAs(actor: { id: string | null; name: string }) {
       const exists = await prisma.ticketEvent.findUnique({ where: { externalId: e.externalId }, select: { id: true } });
       if (exists) continue;
       const startsAt = e.startsAt ?? new Date(Date.now() + 7 * 86_400_000);
-      await prisma.ticketEvent.create({ data: { title: e.name.slice(0, 120), startsAt, endsAt: new Date(startsAt.getTime() + 6 * 3600_000), status: "DRAFT", source: "FULLHOUSE", externalId: e.externalId, visible: false } });
+      await prisma.ticketEvent.create({ data: { title: e.name.slice(0, 120), startsAt, endsAt: new Date(startsAt.getTime() + 6 * 3600_000), status: "ACTIVE", source: "FULLHOUSE", externalId: e.externalId, visible: false } });
       created++;
+    }
+    // Kaartsoorten en vakken meenemen; een fout daarin laat het ophalen van evenementen niet mislukken.
+    let catalog: Awaited<ReturnType<typeof syncFullhouseCatalog>> | null = null;
+    try {
+      catalog = await syncFullhouseCatalog(actor, list);
+    } catch (e) {
+      console.error("[fullhouse] kaartsoorten en vakken bijwerken mislukt", errMsg(e));
     }
     await prisma.ticketSyncRun.update({ where: { id: run.id }, data: { status: "OK", fetched: list.length, upserted: created, finishedAt: new Date() } });
     await ticketAudit({ action: "sync.completed", actor: { id: actor.id, name: actor.name }, summary: "Fullhouse-evenementen opgehaald", meta: { fetched: list.length, created } });
-    return { fetched: list.length, created };
+    return { fetched: list.length, created, catalog };
   } catch (e) {
     await prisma.ticketSyncRun.update({ where: { id: run.id }, data: { status: "FAILED", error: errMsg(e).slice(0, 300), finishedAt: new Date() } });
     await ticketAudit({ action: "sync.failed", actor: { id: actor.id, name: actor.name }, summary: "Fullhouse-evenementen ophalen mislukt", reason: errMsg(e) });
@@ -172,7 +187,7 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
 /** Voor de cron: alle Fullhouse-wedstrijden van gisteren tot 120 dagen vooruit (ook concepten) en alle seizoenspassen, stil bij fouten per evenement. */
 export async function syncUpcoming() {
   if (ticketProvider().mode === "mock") return { skipped: "testmodus" };
-  // Nieuwe Fullhouse-evenementen komen automatisch als concept binnen; een fout hier stopt de ticketsynchronisatie niet.
+  // Nieuwe Fullhouse-evenementen, kaartsoorten en vakken komen automatisch binnen; een fout hier stopt de ticketsynchronisatie niet.
   let imported: { fetched: number; created: number } | { error: string };
   try {
     imported = await importEventsAs({ id: null, name: "Automatisch" });
@@ -183,6 +198,7 @@ export async function syncUpcoming() {
     where: {
       source: "FULLHOUSE",
       externalId: { not: null },
+      archivedAt: null,
       status: { not: "CANCELLED" },
       // Seizoenspassen (titel met "seizoen") worden altijd gesynchroniseerd, ook als de datum voorbij is.
       OR: [{ startsAt: { lte: new Date(Date.now() + 120 * 86_400_000) }, endsAt: { gte: new Date(Date.now() - 86_400_000) } }, { title: { contains: "seizoen", mode: "insensitive" } }],

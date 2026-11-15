@@ -87,7 +87,7 @@ export function IssueSettings({ value, onChange, initialTypeId }: { value: Issue
               </option>
             ))}
           </Select>
-          {activeTypes.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Maak eerst een tickettype aan onder Tickettypes en vakken.</p>}
+          {activeTypes.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Maak eerst een tickettype aan onder Tickettypes, vakken en seizoenen.</p>}
         </div>
         <div>
           <Label htmlFor="is-zone">Toegangsvak</Label>
