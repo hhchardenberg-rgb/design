@@ -5,7 +5,7 @@
 // voor dat patroon).
 
 import type { QuickLink } from "@/components/quick-links";
-import { BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, Newspaper, type LucideIcon } from "lucide-react";
+import { Search, BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, Newspaper, type LucideIcon } from "lucide-react";
 
 export interface TicketingModule {
   id: string;
@@ -14,6 +14,13 @@ export interface TicketingModule {
   href: string;
   status: "available" | "soon";
   icon: LucideIcon;
+  /** Alleen zichtbaar met dit HHC Tickets-recht (server-side bepaald). */
+  requires?: "support:search";
+}
+
+/** Onderdelen die deze gebruiker mag zien. */
+export function visibleTicketingModules(opts: { newsEnabled: boolean; supportSearch: boolean }): TicketingModule[] {
+  return ticketingModules.filter((m) => (m.id !== "nieuws" || opts.newsEnabled) && (m.requires !== "support:search" || opts.supportSearch));
 }
 
 // Snelle links naar de externe systemen die bij ticketing horen — direct
@@ -46,6 +53,15 @@ export const ticketingQuickLinks: QuickLink[] = [
 ];
 
 export const ticketingModules: TicketingModule[] = [
+  {
+    id: "zoeken",
+    title: "Klant of ticket zoeken",
+    description: "Zoek klanten, tickets en seizoenskaarten in het HHC-ticketsysteem en in Fullhouse.",
+    href: "/klantenservice/zoeken",
+    status: "available",
+    icon: Search,
+    requires: "support:search",
+  },
   {
     // Alleen zichtbaar als het nieuws voor Klantenservice aan staat (zie src/lib/news.server.ts).
     id: "nieuws",

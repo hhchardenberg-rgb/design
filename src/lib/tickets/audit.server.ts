@@ -55,6 +55,7 @@ export const TICKET_AUDIT_ACTIONS = {
   "design.set_saved": "Ontwerpset opgeslagen",
   "design.asset_saved": "Afbeelding voor tickets opgeslagen",
   "design.reapplied": "Bestaande tickets opnieuw vormgegeven",
+  "support.search": "Klantenservice: klanten en tickets gezocht",
   "ticket.redesigned": "Ticket opnieuw vormgegeven (QR en rechten ongewijzigd)",
 } as const;
 export type TicketAuditAction = keyof typeof TICKET_AUDIT_ACTIONS;
