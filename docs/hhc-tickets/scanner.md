@@ -35,3 +35,7 @@ Niet te overrulen: bestaat niet, geannuleerd, afgelast, oude versie.
 ## Overig
 
 Scherm blijft aan tijdens het scannen (waar de browser dat toestaat), lamp-knop als de camera die heeft, camera start opnieuw na terugkomen in de app, dezelfde code wordt 6 seconden genegeerd zolang hij voor de camera blijft (geen "al gebruikt" voor iemand die net "geldig" kreeg).
+
+## Testcodes (ook in productie)
+
+`FH-TEST-0001` geeft altijd groen en `FH-TEST-DOWN` toont "Fullhouse niet bereikbaar". Een supervisor kan bij die laatste ook "toch toelaten" oefenen. Het werkt bij elke gekozen wedstrijd, ook zonder verbinding, en alleen voor iemand die in de scanner is ingelogd. Er wordt geen scan opgeslagen en niets telt mee in aantallen, rapporten of de wedstrijddag; er komt alleen een regel `scan.test` in het auditlog. Het scherm toont "Test · niemand binnengelaten". Afbeeldingen om te scannen staan in de projectbestanden onder `hhc-tickets/testcodes/`. In ontwikkeling en previews doet `FH-TEST-UNREACHABLE` (testdata) alsof Fullhouse echt onbereikbaar is.

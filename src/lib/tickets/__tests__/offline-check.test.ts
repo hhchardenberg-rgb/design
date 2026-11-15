@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cacheExpired, checkOffline, parseHhcCode, scanKey, ticketNumberFrom, type OfflineCache } from "../offline-check";
+import { cacheExpired, checkOffline, isTestCode, parseHhcCode, scanKey, ticketNumberFrom, type OfflineCache } from "../offline-check";
 
 const PID = "0123456789ABCDEF";
 const SIG = "A".repeat(22);
@@ -70,4 +70,11 @@ test("geldige scan geeft de sleutel terug, zodat het apparaat hem kan onthouden"
   assert.equal(scanKey("12345", "abc"), "abc");
   const r = checkOffline(cache(), "12345", "abc", new Map(), null, NOW);
   assert.equal(r.key, "abc");
+});
+
+test("alleen de twee vaste testcodes zijn testcodes", () => {
+  assert.equal(isTestCode("FH-TEST-0001"), true);
+  assert.equal(isTestCode(" fh-test-down "), true);
+  assert.equal(isTestCode("FH-TEST-0002"), false);
+  assert.equal(isTestCode("constructor"), false);
 });

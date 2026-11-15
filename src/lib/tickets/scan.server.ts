@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
-import { ticketAuditTx } from "./audit.server";
+import { ticketAudit, ticketAuditTx } from "./audit.server";
 import { initialsOf } from "./issue";
 import { ticketProvider } from "./fullhouse";
 import { FullhouseError } from "./fullhouse/types";
@@ -11,6 +11,7 @@ import { coversEvent, evaluateScan, SCAN_REASON_LABELS, type RuleEvent, type Rul
 import type { ScanActor } from "./scanner-auth.server";
 import { formatDay } from "@/lib/date-format";
 import { detectSource, parseQrCode, qrCodeFor } from "./token";
+import { isTestCode, TEST_CODES, TEST_DETAIL, TEST_LABEL } from "./offline-check";
 
 // De scanlogica op de server. De server is de enige die beslist: het apparaat krijgt een
 // uitslag terug. Elke poging (ook een mislukte) wordt vastgelegd. Dubbel scannen wordt
@@ -51,6 +52,8 @@ export interface ScanResponse {
   detail: string | null;
   /** De scan is ingevoerd op ticketnummer in plaats van met de QR-code. */
   byNumber: boolean;
+  /** Een vaste testcode: niets opgeslagen, telt nergens mee. */
+  test?: boolean;
   at: string;
 }
 
@@ -157,8 +160,37 @@ async function resolveTicketNumber(actor: ScanActor, input: ScanInput): Promise<
   return { input: { ...input, code: qrCodeFor(t.publicId, t.qrVersion), note }, byNumber: true };
 }
 
+/** Een vaste testcode: alleen een uitslag en een auditregel, geen scan, geen telling, geen echt ticket. */
+async function testScan(actor: ScanActor, input: ScanInput): Promise<ScanResponse> {
+  const code = input.code.trim().toUpperCase() as keyof typeof TEST_CODES;
+  const down = TEST_CODES[code] === "PROVIDER_DOWN";
+  if (input.override && !actor.canOverride) throw new ApiError(403, "Alleen een supervisor mag een scan overrulen.");
+  const admitted = !down || !!input.override;
+  await ticketAudit({ action: "scan.test", actor: { id: actor.userId ?? actor.scannerId, name: actor.name }, eventId: input.eventId, scannerId: actor.scannerId, reason: input.override?.reason ?? null, summary: `Testcode ${code} gescand`, meta: { code, result: admitted ? "VALID" : "INVALID" } });
+  return {
+    scanId: `test-${input.clientId}`,
+    clientId: input.clientId,
+    result: admitted ? "VALID" : "INVALID",
+    reason: admitted ? null : "PROVIDER_DOWN",
+    reasonLabel: admitted ? null : SCAN_REASON_LABELS.PROVIDER_DOWN,
+    reentry: false,
+    overridden: down && !!input.override,
+    source: "FULLHOUSE",
+    eventId: input.eventId,
+    label: TEST_LABEL,
+    previous: null,
+    overridable: down && !input.override && actor.canOverride,
+    zone: null,
+    detail: TEST_DETAIL,
+    byNumber: false,
+    test: true,
+    at: new Date().toISOString(),
+  };
+}
+
 export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanResponse> {
   const parsed = scanInputSchema.parse(raw);
+  if (isTestCode(parsed.code)) return testScan(actor, parsed);
   const existing = await prisma.ticketScan.findUnique({ where: { clientId: parsed.clientId } });
   if (existing) return rowToResponse(existing, actor);
   const { input, byNumber } = await resolveTicketNumber(actor, parsed);

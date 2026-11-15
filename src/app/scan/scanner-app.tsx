@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { AlertTriangle, Check, ChevronRight, Flashlight, FlashlightOff, Loader2, RotateCcw, Settings, WifiOff, X } from "lucide-react";
 import { formatDay, formatDayTime } from "@/lib/date-format";
-import { checkOffline, cacheExpired, parseHhcCode, scanKey, ticketNumberFrom, type OfflineCache } from "@/lib/tickets/offline-check";
+import { checkOffline, cacheExpired, isTestCode, parseHhcCode, scanKey, ticketNumberFrom, TEST_CODES, TEST_DETAIL, TEST_LABEL, type OfflineCache } from "@/lib/tickets/offline-check";
 
 // Mobiele scanner (PWA) voor de ingang. Scanners loggen in met een code en PIN; beheerders met een
 // Hub-account gebruiken hun eigen sessie. De server beslist; zonder verbinding valt de app terug op de
@@ -31,6 +31,7 @@ interface Resp {
   zone?: string | null;
   detail?: string | null;
   byNumber?: boolean;
+  test?: boolean;
   previous: { at: string; where: string | null } | null;
   overridable: boolean;
   offline?: boolean;
@@ -55,6 +56,7 @@ interface Recent {
   eventId: string | null;
   key: string | null;
   offline: boolean;
+  test?: boolean;
   /** Offline toegelaten, maar de server keurde hem bij het terugmelden af. */
   conflict?: string;
 }
@@ -464,7 +466,7 @@ export function ScannerApp() {
           if (typeof navigator !== "undefined" && navigator.onLine === false) throw new NetworkError("Geen verbinding");
           r = await call<Resp>("/api/scan/scan", { body: { eventId, ...(eventIds.length > 1 ? { eventIds } : {}), code, entranceId: entr, clientId, ...(override ? { override: { reason: override } } : {}) } });
           setOnline(true);
-          if (r.result === "VALID") remember(r.eventId, isHhc ? parseHhcCode(code)!.publicId : r.byNumber ? ticketNumberFrom(code) : await sha256(code), scannedAt);
+          if (r.result === "VALID" && !r.test) remember(r.eventId, isHhc ? parseHhcCode(code)!.publicId : r.byNumber ? ticketNumberFrom(code) : await sha256(code), scannedAt);
         } catch (e) {
           if (e instanceof AuthError) {
             localStorage.removeItem(LS.token);
@@ -482,7 +484,11 @@ export function ScannerApp() {
               return;
             }
             const caches = eventIds.map((id) => ({ id, cache: read<OfflineCache | null>(LS.cache(id), null) })).filter((x): x is { id: string; cache: OfflineCache } => !!x.cache);
-            if (!caches.length) {
+            if (isTestCode(code)) {
+              // Testcode zonder verbinding: alleen tonen, niets onthouden of terugmelden.
+              const down = TEST_CODES[code.trim().toUpperCase() as keyof typeof TEST_CODES] === "PROVIDER_DOWN";
+              r = { result: down ? "INVALID" : "VALID", reasonLabel: down ? "Fullhouse is niet bereikbaar: ticket kon niet worden gecontroleerd" : null, reentry: false, label: TEST_LABEL, detail: TEST_DETAIL, previous: null, overridable: false, offline: true, test: true, eventId };
+            } else if (!caches.length) {
               r = { result: "ERROR", reasonLabel: "Geen verbinding, en er is geen offline-lijst geladen voor deze wedstrijd. Laad de lijst zodra er weer bereik is.", reentry: false, label: null, previous: null, overridable: false, offline: true };
             } else {
               const hash = isHhc ? null : await sha256(code);
@@ -521,7 +527,7 @@ export function ScannerApp() {
         }
         setResult(r);
         signal(r.result === "VALID" ? "ok" : r.result === "WARNING" ? "warn" : "bad");
-        addRecent({ id: clientId, scanId: r.scanId, at: scannedAt, result: r.result, label: r.label, reason: r.result === "VALID" ? (r.reentry ? "Opnieuw binnen" : null) : r.reasonLabel, eventId: r.eventId ?? eventId, key: null, offline: !!r.offline });
+        addRecent({ id: clientId, scanId: r.scanId, test: !!r.test, at: scannedAt, result: r.result, label: r.label, reason: r.result === "VALID" ? (r.reentry ? "Opnieuw binnen" : null) : r.reasonLabel, eventId: r.eventId ?? eventId, key: null, offline: !!r.offline });
         if (dismissTimer.current) clearTimeout(dismissTimer.current);
         if (r.result === "VALID") dismissTimer.current = setTimeout(() => setResult(null), 1600);
       } finally {
@@ -677,7 +683,7 @@ export function ScannerApp() {
   const notToday = selected.length > 0 && !selected.some((e) => isToday(e.startsAt) || (new Date(e.startsAt).getTime() <= now && new Date(e.endsAt).getTime() >= now));
   const entrance = ctx.entrances.find((e) => e.id === entranceId) ?? null;
   const needsEntrance = ctx.entrances.length > 0 && !entrance;
-  const admittedHere = recent.filter((r) => r.result === "VALID" && eventIds.includes(r.eventId ?? "")).length;
+  const admittedHere = recent.filter((r) => r.result === "VALID" && !r.test && eventIds.includes(r.eventId ?? "")).length;
   const conflicts = recent.filter((r) => r.conflict).length;
 
   return (
@@ -796,10 +802,11 @@ export function ScannerApp() {
                         {timeOf(r.at)}
                         {r.reason ? ` · ${r.reason}` : ""}
                         {r.offline ? " · offline" : ""}
+                        {r.test ? " · test" : ""}
                       </p>
                       {r.conflict && <p className="text-xs font-semibold text-red-400">Achteraf: {r.conflict}</p>}
                     </div>
-                    {r.result === "VALID" && r.scanId && !r.offline && (
+                    {r.result === "VALID" && r.scanId && !r.offline && !r.test && (
                       <button onClick={() => setUndoFor(r)} className="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-800 px-2.5 py-2 text-xs" aria-label={`Scan van ${timeOf(r.at)} ongedaan maken`}>
                         <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Ongedaan
                       </button>
@@ -888,6 +895,7 @@ function ResultScreen(props: {
       <span className={`flex h-24 w-24 items-center justify-center rounded-full ${warn ? "bg-black text-amber-400" : "bg-white/95"} ${ok ? "text-green-700" : r.result === "INVALID" ? "text-red-600" : r.result === "ERROR" ? "text-neutral-800" : ""}`} aria-hidden>
         <Icon className="h-16 w-16" strokeWidth={3} />
       </span>
+      {r.test && <p className="rounded-full bg-black px-4 py-1 text-base font-bold uppercase tracking-wide text-white">Test · niemand binnengelaten</p>}
       <p className="text-5xl font-black tracking-tight">{title}</p>
       {r.label && <p className="text-2xl font-semibold">{r.label}</p>}
       {r.zone && <p className={`rounded-full px-4 py-1 text-xl font-bold ${subtle}`}>Vak {r.zone}</p>}

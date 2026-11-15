@@ -36,6 +36,17 @@ export function scanKey(code: string, sha256Hex: string | null): string | null {
   return parseHhcCode(code)?.publicId ?? sha256Hex;
 }
 
+/**
+ * Vaste testcodes om de scanner te proberen, ook in productie. Ze geven nooit toegang tot een echt
+ * ticket, worden niet als scan opgeslagen en tellen nergens mee (alleen een regel in het auditlog).
+ * FH-TEST-0001 toont groen, FH-TEST-DOWN toont "Fullhouse niet bereikbaar".
+ */
+export const TEST_CODES = { "FH-TEST-0001": "VALID", "FH-TEST-DOWN": "PROVIDER_DOWN" } as const;
+export type TestCode = keyof typeof TEST_CODES;
+export const isTestCode = (code: string): code is TestCode => Object.prototype.hasOwnProperty.call(TEST_CODES, code.trim().toUpperCase());
+export const TEST_LABEL = "Testcode · geen echte toegang";
+export const TEST_DETAIL = "Dit is een testcode. Er is niets geregistreerd en niemand telt als binnen.";
+
 export function cacheExpired(cache: Pick<OfflineCache, "expiresAt">, now = new Date()): boolean {
   return now.getTime() > new Date(cache.expiresAt).getTime();
 }
