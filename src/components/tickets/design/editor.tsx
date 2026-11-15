@@ -10,7 +10,7 @@ import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { seasonOptionLabel } from "@/lib/commercial/season-phase";
 import { formatDay } from "@/lib/date-format";
 import { FIELDS, FORMAT_LABEL, GROUPS, KIND_LABEL, type FieldDef, type GroupKey, type Layer, type TicketKind } from "@/lib/tickets/design/fields";
-import { chainFor, diffOverrides, listOverrides, overrideCount, resetGroup, resolveAll, scopeKeyOf, setOverride, type LayerInput, type Override, type OverrideMap, type ScopeRef, type SetLayer } from "@/lib/tickets/design/resolve";
+import { chainFor, diffOverrides, originText, listOverrides, overrideCount, resetGroup, resolveAll, scopeKeyOf, setOverride, type LayerInput, type Override, type OverrideMap, type ScopeRef, type SetLayer } from "@/lib/tickets/design/resolve";
 import { buildView, SAMPLE_PRESETS, type AssetMap, type SamplePreset, type ViewBlock } from "@/lib/tickets/design/view";
 import { sampleFacts, type SampleEvent } from "@/lib/tickets/design/sample";
 import { unsupportedOverrides, viewIssues, type DesignIssue } from "@/lib/tickets/design/validate";
@@ -66,7 +66,7 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
   const [future, setFuture] = useState<OverrideMap[]>([]);
   const [dirty, setDirty] = useState(false);
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
-  const [group, setGroup] = useState<GroupKey | "afwijkingen">("huisstijl");
+  const [group, setGroup] = useState<GroupKey | "afwijkingen" | "teksten">("teksten");
   const [advanced, setAdvanced] = useState(false);
   const [preview, setPreview] = useState<Preview>("mobile");
   const [preset, setPreset] = useState<SamplePreset>("kort");
@@ -415,6 +415,9 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
         {/* Onderdelen */}
         <nav aria-label="Onderdelen" className="flex flex-wrap items-center gap-1.5 lg:col-span-2">
+          <button type="button" onClick={() => setGroup("teksten")} aria-current={group === "teksten"} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${group === "teksten" ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-surface-muted"}`}>
+            Alle teksten
+          </button>
           <button type="button" onClick={() => setGroup("afwijkingen")} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${group === "afwijkingen" ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-surface-muted"}`}>
             Samenvatting afwijkingen <span className="text-xs">{overrideCount(draft)}</span>
           </button>
@@ -493,12 +496,12 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Voorbeeldticket met fictieve gegevens en een testcode die geen toegang geeft{data.event ? ` · wedstrijdgegevens van ${data.event.title}` : ""}. Klik op een blok om het onderdeel te openen.
+            Voorbeeldticket met fictieve gegevens en een testcode die geen toegang geeft{data.event ? ` · wedstrijdgegevens van ${data.event.title}` : ""}. Klik op een blok in het voorbeeld om de tekst of het onderdeel te bewerken.
           </p>
           <div className={`grid gap-4 ${preview === "both" ? "lg:grid-cols-2" : ""}`}>
             {preview !== "a4" && (
               <PhoneFrame device={device} bigText={bigText}>
-                <MobileTicket view={computed.mobileView} onSelectBlock={(id) => setGroup(groupForBlock(id))} selectedBlock={GROUPS.find((g) => g.key === group)?.block ?? null} />
+                <MobileTicket view={computed.mobileView} onSelectBlock={(id) => { const g = groupForBlock(id); const el = group === "teksten" ? document.getElementById(`tekst-${g}`) : null; if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.querySelector<HTMLElement>("input, textarea")?.focus({ preventScroll: true }); } else setGroup(g); }} selectedBlock={GROUPS.find((g) => g.key === group)?.block ?? null} />
               </PhoneFrame>
             )}
             {preview !== "mobile" && (
@@ -516,7 +519,18 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
 
         {/* Instellingen */}
         <aside aria-label="Instellingen" className="min-w-0 space-y-3">
-          {group === "afwijkingen" ? (
+          {group === "teksten" ? (
+            <TextsPanel
+              kind={kind}
+              advanced={advanced}
+              draft={draft}
+              res={computed.res}
+              scopeKey={data.scope.key}
+              readOnly={readOnly}
+              onSet={(key, o) => change(setOverride(draft, "shared", key, o))}
+              onOpenGroup={(g) => setGroup(g)}
+            />
+          ) : group === "afwijkingen" ? (
             <Summary draft={draft} published={row?.published ?? {}} onReset={(layer, key) => change(setOverride(draft, layer, key, undefined))} readOnly={readOnly} />
           ) : (
             <>
@@ -663,6 +677,127 @@ function PhoneFrame({ device, bigText, children }: { device: number; bigText: bo
         <div style={{ width: device, fontSize: bigText ? "125%" : undefined }}>{children}</div>
       </div>
       {scale < 1 && <p className="mt-2 text-center text-xs text-muted-foreground">Verkleind weergegeven ({Math.round(scale * 100)}%); de indeling is gelijk aan een scherm van {device} px.</p>}
+    </div>
+  );
+}
+
+const TEXT_TYPES = new Set(["text", "longtext"]);
+
+/**
+ * Alle teksten van het ticket op één plek, direct te bewerken. Een wijziging geldt voor beide formaten
+ * op het niveau dat je nu bewerkt; leegmaken betekent "bewust leeg". Afwijkingen per formaat en andere
+ * opties staan bij het onderdeel zelf ("Meer opties").
+ */
+function TextsPanel({ kind, advanced, draft, res, scopeKey, readOnly, onSet, onOpenGroup }: {
+  kind: TicketKind;
+  advanced: boolean;
+  draft: OverrideMap;
+  res: { mobile: Record<string, { state: string; value: unknown; origin: Parameters<typeof originText>[0] }>; a4: Record<string, { state: string; value: unknown }> };
+  scopeKey: string;
+  readOnly: boolean;
+  onSet: (key: string, o: Override | undefined) => void;
+  onOpenGroup: (g: GroupKey) => void;
+}) {
+  const fields = FIELDS.filter((f) => TEXT_TYPES.has(f.type) && (!f.kinds || f.kinds.includes(kind)) && (advanced || f.group !== "ontbrekend" || hasOverride(draft, f.key)));
+  const groups = GROUPS.filter((g) => fields.some((f) => f.group === g.key));
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-bold">Alle teksten</h2>
+        <p className="text-xs text-muted-foreground">Pas hier elke tekst van het ticket aan. Het voorbeeld verandert direct mee. Gegevens van het ticket voeg je in met bijvoorbeeld {"{{naam}}"} of {"{{uitclub}}"}. Een leeg veld blijft bewust leeg.</p>
+      </div>
+      {groups.map((g) => (
+        <section key={g.key} id={`tekst-${g.key}`} className="scroll-mt-4 space-y-2 rounded-lg border bg-surface p-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold">{g.label}</h3>
+            <button type="button" className="text-xs text-muted-foreground underline" onClick={() => onOpenGroup(g.key)}>
+              Meer opties
+            </button>
+          </div>
+          {fields.filter((f) => f.group === g.key).map((f) => (
+            <QuickText key={`${scopeKey}-${f.key}`} f={f} draft={draft} r={res.mobile[f.key]} a4={res.a4[f.key]} scopeKey={scopeKey} readOnly={readOnly} onSet={onSet} onOpenGroup={() => onOpenGroup(g.key)} />
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function QuickText({ f, draft, r, a4, scopeKey, readOnly, onSet, onOpenGroup }: {
+  f: FieldDef;
+  draft: OverrideMap;
+  r?: { state: string; value: unknown; origin: Parameters<typeof originText>[0] };
+  a4?: { state: string; value: unknown };
+  scopeKey: string;
+  readOnly: boolean;
+  onSet: (key: string, o: Override | undefined) => void;
+  onOpenGroup: () => void;
+}) {
+  const shown = r?.state === "value" ? String(r.value ?? "") : "";
+  const [text, setText] = useState(shown);
+  const [focus, setFocus] = useState(false);
+  // Waarde van buitenaf gewijzigd (ongedaan maken, herstel): het veld volgt mee zolang je er niet in typt.
+  const [last, setLast] = useState(shown);
+  if (!focus && shown !== last) {
+    setLast(shown);
+    setText(shown);
+  }
+  const own = draft.shared?.[f.key];
+  const perFormat = !!(draft.mobile?.[f.key] || draft.a4?.[f.key]);
+  const hidden = r?.state === "hidden";
+  const differs = a4 && (a4.state !== r?.state || String(a4.value ?? "") !== shown);
+  const commit = () => {
+    setFocus(false);
+    if (text === shown) return;
+    if (text.trim() === "") {
+      if (f.allowEmpty) onSet(f.key, { m: "empty" });
+      else setText(shown);
+      return;
+    }
+    onSet(f.key, { m: "value", v: f.maxLength ? text.slice(0, f.maxLength) : text });
+  };
+  const id = `qt-${f.key}`;
+  const Input = f.type === "longtext" ? "textarea" : "input";
+  return (
+    <div className={`rounded-md p-2 ${own ? "bg-primary/5" : ""}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="text-xs font-semibold">
+          {f.label}
+        </label>
+        {own && !readOnly && (
+          <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => onSet(f.key, undefined)}>
+            <RotateCcw className="h-3 w-3" /> Herstel
+          </button>
+        )}
+      </div>
+      {hidden ? (
+        <p className="text-xs text-muted-foreground">
+          Niet getoond.{" "}
+          <button type="button" className="underline" onClick={onOpenGroup}>
+            Aanpassen
+          </button>
+        </p>
+      ) : (
+        <Input
+          id={id}
+          value={text}
+          disabled={readOnly}
+          maxLength={f.maxLength}
+          rows={f.type === "longtext" ? 3 : undefined}
+          onFocus={() => setFocus(true)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === "Enter" && f.type !== "longtext") (e.target as HTMLElement).blur();
+          }}
+          placeholder={r?.state === "empty" ? "Bewust leeg" : "Leeg"}
+          className="mt-1 w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+        />
+      )}
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        {r ? originText(r.origin, scopeKey) : ""}
+        {perFormat || differs ? " · wijkt per formaat af, zie Meer opties" : ""}
+      </p>
     </div>
   );
 }

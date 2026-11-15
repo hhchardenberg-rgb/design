@@ -11,6 +11,10 @@ bovenaan **Seizoen** en het seizoen (of klik bij *Tickettypes, vakken en seizoen
 *Ticketontwerp*). Pas de onderdelen aan; alles wordt automatisch als concept bewaard. Wil je iets alleen voor
 één tickettype, kies dan rechts *Alleen <tickettype>*.
 
+**Teksten aanpassen.** *Alle teksten* (standaard open) toont elke tekst van het ticket op één plek; klik in
+het voorbeeld op een tekst om er direct naartoe te gaan. Een wijziging geldt voor mobiel en A4 op het niveau dat
+je bewerkt. *Meer opties* opent het onderdeel voor afwijkingen per formaat.
+
 **Uitzondering voor één duel.** Klik bij *Wedstrijden* op het palet-icoon achter het duel, of kies bovenaan
 **Duel**. Wijzig alleen wat anders moet; de rest blijft de seizoensstandaard volgen. *Bekijk verschillen met
 seizoenstandaard* laat zien wat afwijkt; *Gebruik seizoenstandaard* haalt alle afwijkingen weg.
@@ -66,7 +70,7 @@ Een seizoenskaart gebruikt nooit duelinstellingen en toont geen wedstrijdgegeven
 - Tribune/rij/stoel bestaan niet in het datamodel; het ticket toont vak en ingang.
 - Poorttijd: de wedstrijd heeft geen veld hiervoor; standaard "60 minuten voor aanvang", instelbaar.
 - Apple/Google Wallet: geen accounts/certificaten, dus geen knoppen. *Bewaar offline* slaat de pagina in de browser op.
-- Voorbeeldtickets gebruiken fictieve gegevens en de code `HHC-VOORBEELD-GEEN-TOEGANG`, die nooit toegang geeft.
+- Voorbeeldtickets gebruiken fictieve gegevens en de code `HHC-VOORBEELD-GEEN-TOEGANG`, die nooit toegang geeft (geen geldige HHC-handtekening; getest). Op het voorbeeldticket zelf staat geen voorbeeldmelding; de editor vermeldt het erbuiten.
 
 ## Tests
 
