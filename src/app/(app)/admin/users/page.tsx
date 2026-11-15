@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="text-2xl font-bold">Gebruikers en rechten</h1>
             <p className="mt-1 text-muted-foreground">
-              Iedereen krijgt toegang via rollen. Een rol bepaalt per onderdeel {czOn ? "(Communicatie, Ticketing, Commerciële Zaken)" : "(Communicatie, Ticketing)"} wat iemand mag; met meerdere rollen tellen de rechten op.
+              Iedereen krijgt toegang via rollen. Een rol bepaalt per onderdeel {czOn ? "(Communicatie, Klantenservice, Commerciële Zaken)" : "(Communicatie, Klantenservice)"} wat iemand mag; met meerdere rollen tellen de rechten op.
               {!manager.full && " Je kunt alleen rollen toewijzen die binnen jouw eigen beheer vallen."}
             </p>
           </div>

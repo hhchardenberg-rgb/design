@@ -8,7 +8,7 @@ import { NEWS_SECTION_KEYS, isNewsSection, type NewsEnabledMap, type NewsRights,
 // Server-side kant van de nieuwsmodule: aan/uit per onderdeel, rechten en ophalen.
 // Eén bericht kan bij meerdere onderdelen staan. Rechten gelden per onderdeel:
 //  - Communicatie: lezen met HUB, publiceren en aan/uit als communicatiebeheerder.
-//  - Ticketing: lezen met TICKETING, publiceren en aan/uit als ticketingbeheerder.
+//  - Klantenservice: lezen met TICKETING, publiceren en aan/uit als klantenservicebeheerder.
 //  - Commerciële Zaken: lezen als lid, publiceren met news:create/update/archive,
 //    aan/uit met settings:manage_settings.
 // De hoofdadmin mag overal alles.

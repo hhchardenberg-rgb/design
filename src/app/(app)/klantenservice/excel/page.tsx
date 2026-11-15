@@ -29,7 +29,7 @@ export default async function TicketingExcelPage() {
         <EmptyState
           icon={FileSpreadsheet}
           title="Nog geen sjablonen beschikbaar"
-          description="Een beheerder kan Excel-sjablonen uploaden via Beheer → Ticketing → Excel-sjablonen."
+          description="Een beheerder kan Excel-sjablonen uploaden via Beheer → Klantenservice → Excel-sjablonen."
         />
       )}
 

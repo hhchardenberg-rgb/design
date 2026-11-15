@@ -27,11 +27,11 @@ Beschermde sectie van de HHC Hub voor de sponsorcommissie. Alles hieronder is ge
 
 ## 2. Rechten
 
-**De site heeft drie onderdelen**: Communicatie, Ticketing en Commerciële Zaken. Gebruikers zien alleen de onderdelen
+**De site heeft drie onderdelen**: Communicatie, Klantenservice en Commerciële Zaken. Gebruikers zien alleen de onderdelen
 waarbij ze zijn aangesloten. Er is één beheer (Beheer), met drie soorten beheerders:
 
 - **Hoofdadmin** (ADMIN): ziet en beheert alles, ook Commerciële Zaken inclusief bedragen, zonder aparte toegang.
-- **Beheerder per onderdeel**: Communicatiebeheerder en Ticketingbeheerder (platformrollen) en Beheerder Commerciële Zaken
+- **Beheerder per onderdeel**: Communicatiebeheerder en Klantenservicebeheerder (platformrollen) en Beheerder Commerciële Zaken
   (rol met rechtenbeheer). Zo iemand beheert alleen dat onderdeel. Iemand kan beheerder van meerdere onderdelen zijn.
 - **Gebruiker**: aangesloten bij één of meer onderdelen, zonder beheer.
 
@@ -172,7 +172,7 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
   weer zichtbaar zoals het was. Verwijderen en terugzetten staan in het CZ-logboek en in Beheer > Audit-log.
 - **Toegang en rechten**: één rollensysteem voor de hele Hub, bij Beheer > Gebruikers en rechten. Op het
   tabblad *Rollen* maak je rollen aan, bewerk, kopieer of verwijder je ze. Een rol zegt per onderdeel wat
-  iemand mag: Communicatie en Ticketing (geen toegang, gebruiker of beheerder) en Commerciële Zaken (geen
+  iemand mag: Communicatie en Klantenservice (geen toegang, gebruiker of beheerder) en Commerciële Zaken (geen
   toegang, of toegang met bevoegdheden per onderdeel; snel in te vullen vanuit een voorbeeld zoals
   "Relatiebeheerder"). Op het tabblad *Gebruikers* vink je per persoon de rollen aan; met meerdere rollen
   tellen de rechten op. Wat voor één persoon anders moet dan de rol (bereik "alleen eigen", een extra of

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { NewsFeedPage } from "@/components/news-feed-page";
 import { isNewsEnabled, listNewsPosts, loadNewsRights } from "@/lib/news.server";
 
-export const metadata: Metadata = { title: "Nieuws – Ticketing" };
+export const metadata: Metadata = { title: "Nieuws – Klantenservice" };
 
 export default async function TicketingNieuwsPage() {
   const session = await auth();

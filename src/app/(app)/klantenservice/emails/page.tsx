@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { EmailTemplateBrowser } from "@/components/email-template-browser";
 
-export const metadata: Metadata = { title: "Standaard e-mails · Ticketing" };
+export const metadata: Metadata = { title: "Standaard e-mails · Klantenservice" };
 
 export default async function TicketingEmailsPage() {
   const templates = await prisma.ticketingEmailTemplate.findMany({

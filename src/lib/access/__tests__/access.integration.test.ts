@@ -71,10 +71,10 @@ test("overzetten: iedereen houdt precies dezelfde toegang", { skip }, async () =
   assert.equal((await access.reconcileAccess()).rebuilt, 0);
 
   assert.deepEqual(await roleNames(legacyAdmin.id), ["Communicatie", "Hoofdadmin"]);
-  assert.deepEqual(await roleNames(both.id), ["Communicatie", "Ticketingbeheerder"]);
+  assert.deepEqual(await roleNames(both.id), ["Communicatie", "Klantenservicebeheerder"]);
   assert.deepEqual(await roleNames(nobody.id), []);
   assert.deepEqual(await roleNames(czWithRole.id), ["Communicatie", "Relatiebeheerder"]);
-  assert.deepEqual(await roleNames(czNoRole.id), ["Commerciële Zaken (basistoegang)", "Ticketing"]);
+  assert.deepEqual(await roleNames(czNoRole.id), ["Commerciële Zaken (basistoegang)", "Klantenservice"]);
   assert.deepEqual(await roleNames(czOnly.id), ["Alleen lezen"]);
 
   // Inlogtoken-rollen blijven gelijk in betekenis; CZ-rechten (incl. persoonlijke uitzonderingen) exact gelijk.
@@ -86,7 +86,7 @@ test("overzetten: iedereen houdt precies dezelfde toegang", { skip }, async () =
 
   // Alle standaardrollen staan klaar, ook ongebruikte CZ-rollen; de vaste Hoofdadmin-rol is er één keer.
   const all = (await db.accessRole.findMany()).map((r) => r.name);
-  for (const n of ["Hoofdadmin", "Communicatie", "Communicatiebeheerder", "Ticketing", "Ticketingbeheerder", "Relatiebeheerder", "Alleen lezen"]) assert.ok(all.includes(n), n);
+  for (const n of ["Hoofdadmin", "Communicatie", "Communicatiebeheerder", "Klantenservice", "Klantenservicebeheerder", "Relatiebeheerder", "Alleen lezen"]) assert.ok(all.includes(n), n);
   assert.equal(await db.accessRole.count({ where: { isSystem: true } }), 1);
 });
 
@@ -150,7 +150,7 @@ test("beheerder van een onderdeel: alleen gebruikerstoegang tot dat onderdeel, n
 
   await access.setUserRoles(actor, target.id, [await byName("Communicatie")]);
   assert.deepEqual((await db.user.findUniqueOrThrow({ where: { id: target.id } })).roles, ["HUB"]);
-  await rejects(access.setUserRoles(actor, target.id, [await byName("Communicatie"), await byName("Ticketing")]), 403);
+  await rejects(access.setUserRoles(actor, target.id, [await byName("Communicatie"), await byName("Klantenservice")]), 403);
   await rejects(access.setUserRoles(actor, target.id, [await byName("Communicatiebeheerder")]), 403);
   await rejects(access.setUserRoles(actor, hubAdmin.id, []), 403);
   await rejects(access.createAccessRole(actor, { name: "Te ruim", hubLevel: "USER", ticketingLevel: "USER", commercial: null }), 403);

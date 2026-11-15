@@ -9,7 +9,7 @@
 
 export type AppRole = "ADMIN" | "HUB" | "TICKETING" | "HUB_ADMIN" | "TICKETING_ADMIN";
 
-// Opzet: drie onderdelen (Communicatie, Ticketing, Commerciële Zaken).
+// Opzet: drie onderdelen (Communicatie, Klantenservice, Commerciële Zaken).
 //  - HUB / TICKETING: toegang tot dat onderdeel.
 //  - HUB_ADMIN / TICKETING_ADMIN: beheert de inhoud en de gebruikers van dat onderdeel.
 //  - ADMIN (hoofdadmin): ziet en beheert alles, ook Commerciële Zaken.
@@ -60,7 +60,7 @@ export function effectiveRoles(user: { role: string; roles: string[] }): AppRole
 /** Waar een gebruiker met deze rollen naartoe moet na inloggen / bij een geweigerde toegang. */
 export function resolveHomePath(roles: AppRole[] | undefined | null): string {
   if (hasRole(roles, "HUB")) return "/hub";
-  if (hasRole(roles, "TICKETING")) return "/ticketing";
+  if (hasRole(roles, "TICKETING")) return "/klantenservice";
   if (hasAnyAdminRole(roles)) return "/admin";
   return "/geen-toegang";
 }

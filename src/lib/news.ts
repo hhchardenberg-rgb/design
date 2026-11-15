@@ -6,7 +6,7 @@ export type NewsSection = "hub" | "ticketing" | "commercial";
 
 export const NEWS_SECTIONS: Record<NewsSection, { label: string; feedHref: string; audience: string }> = {
   hub: { label: "Communicatie", feedHref: "/nieuws", audience: "Team Communicatie" },
-  ticketing: { label: "Ticketing", feedHref: "/ticketing/nieuws", audience: "Ticketing" },
+  ticketing: { label: "Klantenservice", feedHref: "/klantenservice/nieuws", audience: "Klantenservice" },
   commercial: { label: "Commerciële Zaken", feedHref: "/commercieel/nieuws", audience: "Commerciële Zaken" },
 };
 

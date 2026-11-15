@@ -1,4 +1,4 @@
-// Onderdelen van het afgeschermde Ticketing-gedeelte. Zelfde opzet als
+// Onderdelen van het afgeschermde Klantenservice-gedeelte. Zelfde opzet als
 // src/lib/hub-modules.ts: nieuwe categorieën kunnen hier eenvoudig aan
 // toegevoegd worden zodra er een eigen pagina/databron voor is (evt. eerst
 // met status "soon" als duidelijke plek in de structuur, zie hub-modules.ts
@@ -17,7 +17,7 @@ export interface TicketingModule {
 }
 
 // Snelle links naar de externe systemen die bij ticketing horen — direct
-// zichtbaar op de Ticketing-startpagina.
+// zichtbaar op de Klantenservice-startpagina.
 export const ticketingQuickLinks: QuickLink[] = [
   {
     id: "iapp",
@@ -47,11 +47,11 @@ export const ticketingQuickLinks: QuickLink[] = [
 
 export const ticketingModules: TicketingModule[] = [
   {
-    // Alleen zichtbaar als het nieuws voor Ticketing aan staat (zie src/lib/news.server.ts).
+    // Alleen zichtbaar als het nieuws voor Klantenservice aan staat (zie src/lib/news.server.ts).
     id: "nieuws",
     title: "Nieuws",
-    description: "Het laatste nieuws voor Ticketing.",
-    href: "/ticketing/nieuws",
+    description: "Het laatste nieuws voor Klantenservice.",
+    href: "/klantenservice/nieuws",
     status: "available",
     icon: Newspaper,
   },
@@ -59,7 +59,7 @@ export const ticketingModules: TicketingModule[] = [
     id: "handleidingen",
     title: "Handleidingen",
     description: "Stap-voor-stap-instructies voor het ticketingsysteem.",
-    href: "/ticketing/handleidingen",
+    href: "/klantenservice/handleidingen",
     status: "available",
     icon: BookOpen,
   },
@@ -67,7 +67,7 @@ export const ticketingModules: TicketingModule[] = [
     id: "emails",
     title: "Standaard e-mails",
     description: "Kant-en-klare e-mailteksten om te kopiëren naar je mailprogramma.",
-    href: "/ticketing/emails",
+    href: "/klantenservice/emails",
     status: "available",
     icon: Mail,
   },
@@ -75,7 +75,7 @@ export const ticketingModules: TicketingModule[] = [
     id: "wachtwoorden",
     title: "Wachtwoord genereren",
     description: "Maak een willekeurig wachtwoord voor een lid waarvoor je een pas aanmaakt.",
-    href: "/ticketing/wachtwoorden",
+    href: "/klantenservice/wachtwoorden",
     status: "available",
     icon: KeyRound,
   },
@@ -83,7 +83,7 @@ export const ticketingModules: TicketingModule[] = [
     id: "excel",
     title: "Excel-sjablonen",
     description: "Standaard Excel-bestanden om te downloaden bij het ticketingsysteem.",
-    href: "/ticketing/excel",
+    href: "/klantenservice/excel",
     status: "available",
     icon: FileSpreadsheet,
   },

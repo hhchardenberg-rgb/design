@@ -98,14 +98,14 @@ export default function AdminTicketingEmailsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/ticketing" className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/admin/klantenservice" className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Ticketing
+          Klantenservice
         </Link>
         <h1 className="text-2xl font-bold">Standaard e-mails</h1>
         <p className="mt-1 text-muted-foreground">
           Kant-en-klare e-mailteksten voor veelvoorkomende situaties — met een kopieerknop, zichtbaar voor
-          iedereen met de rol Ticketing.
+          iedereen met de rol Klantenservice.
         </p>
       </div>
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { KnowledgeBrowser } from "@/components/knowledge-browser";
 
-export const metadata: Metadata = { title: "Handleidingen · Ticketing" };
+export const metadata: Metadata = { title: "Handleidingen · Klantenservice" };
 
 export default async function TicketingHandleidingenPage() {
   const articles = await prisma.ticketingArticle.findMany({

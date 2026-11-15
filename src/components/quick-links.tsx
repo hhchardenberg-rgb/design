@@ -17,7 +17,7 @@ const columns: Record<number, string> = { 1: "sm:grid-cols-1", 2: "sm:grid-cols-
 
 const itemClass = "flex items-center gap-3 p-4 transition-colors hover:bg-surface-muted";
 
-/** De "Snelle links"-balk bovenaan een startpagina (Ticketing, Communicatie). */
+/** De "Snelle links"-balk bovenaan een startpagina (Klantenservice, Communicatie). */
 export function QuickLinks({ links, children }: { links: QuickLink[]; children?: React.ReactNode }) {
   return (
     <section>

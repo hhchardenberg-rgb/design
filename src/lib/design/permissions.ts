@@ -2,7 +2,7 @@ import { hasRole, isSectionAdmin, type AppRole } from "@/lib/roles";
 
 /**
  * Bevoegdheden binnen de designtool, afgeleid van de bestaande Hub-rollen.
- * Alleen Communicatie telt: rechten in andere onderdelen (Ticketing,
+ * Alleen Communicatie telt: rechten in andere onderdelen (Klantenservice,
  * Commerciële Zaken) geven hier niets, en andersom.
  *
  *  - design:create        ontwerpen maken en eigen ontwerpen beheren (Communicatie)

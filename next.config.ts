@@ -74,6 +74,11 @@ const nextConfig: NextConfig = {
       },
       { source: "/admin/commercieel", destination: "/admin/users", permanent: true },
       { source: "/commercieel/instellingen/rechten", destination: "/admin/users", permanent: true },
+      // Ticketing heet sinds 15/11/2026 Klantenservice; oude links en bladwijzers blijven werken.
+      { source: "/ticketing", destination: "/klantenservice", permanent: false },
+      { source: "/ticketing/:path*", destination: "/klantenservice/:path*", permanent: false },
+      { source: "/admin/ticketing", destination: "/admin/klantenservice", permanent: false },
+      { source: "/admin/ticketing/:path*", destination: "/admin/klantenservice/:path*", permanent: false },
     ];
   },
   async headers() {

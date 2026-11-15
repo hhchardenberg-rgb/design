@@ -1,6 +1,6 @@
 // Eén rollensysteem voor de hele Hub — de zuivere regels, zonder database, zodat
 // ze volledig testbaar zijn. Een rol zegt per onderdeel wat iemand mag:
-//  - Communicatie en Ticketing: geen toegang, gebruiker of beheerder;
+//  - Communicatie en Klantenservice: geen toegang, gebruiker of beheerder;
 //  - Commerciële Zaken: geen toegang, of toegang met een set bevoegdheden;
 //  - de vaste rol Hoofdadmin: alles.
 // Een gebruiker kan meerdere rollen hebben; de rechten tellen op.
@@ -81,7 +81,7 @@ export function describeRole(r: RoleGrant): string[] {
   if (r.isAdmin) return ["Alles: alle onderdelen, gebruikers en rollen"];
   const parts: string[] = [];
   if (r.hubLevel !== "NONE") parts.push(`Communicatie: ${LEVEL_LABELS[r.hubLevel].toLowerCase()}`);
-  if (r.ticketingLevel !== "NONE") parts.push(`Ticketing: ${LEVEL_LABELS[r.ticketingLevel].toLowerCase()}`);
+  if (r.ticketingLevel !== "NONE") parts.push(`Klantenservice: ${LEVEL_LABELS[r.ticketingLevel].toLowerCase()}`);
   if (r.commercial) {
     const n = r.commercial.filter(isPermission).length;
     parts.push(`Commerciële Zaken: ${n === 0 ? "toegang, nog geen bevoegdheden" : n === 1 ? "1 bevoegdheid" : `${n} bevoegdheden`}`);
@@ -123,7 +123,7 @@ export function roleWithinScope(m: ManagerScope, r: RoleGrant): Decision {
   if (r.isAdmin) return no("Alleen een hoofdadmin kan de rol Hoofdadmin toewijzen of aanpassen.");
   if (r.hubLevel === "ADMIN" || r.ticketingLevel === "ADMIN") return no("Beheerders van een onderdeel wijst de hoofdadmin aan.");
   if (r.hubLevel === "USER" && !m.hubAdmin) return no("Deze rol geeft toegang tot Communicatie; dat beheer je niet.");
-  if (r.ticketingLevel === "USER" && !m.ticketingAdmin) return no("Deze rol geeft toegang tot Ticketing; dat beheer je niet.");
+  if (r.ticketingLevel === "USER" && !m.ticketingAdmin) return no("Deze rol geeft toegang tot Klantenservice; dat beheer je niet.");
   // HHC Tickets-rechten deelt (voorlopig) alleen de hoofdadmin uit.
   if (r.tickets) return no("Toegang tot HHC Tickets geeft de hoofdadmin.");
   if (r.commercial) {

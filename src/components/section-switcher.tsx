@@ -14,7 +14,7 @@ export interface SectionLink {
 
 /**
  * Eén "Apps"-knop om te wisselen tussen de onderdelen van de Hub
- * (Communicatie, Ticketing, Commerciële Zaken, Beheer), als tegels — alsof
+ * (Communicatie, Klantenservice, Commerciële Zaken, Beheer), als tegels — alsof
  * het losse applicaties zijn. Onderin staan Profiel en Uitloggen, zodat de
  * kopregel op elk scherm rustig blijft en er nooit geswiped hoeft te worden.
  */
