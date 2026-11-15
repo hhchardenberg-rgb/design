@@ -6,3 +6,8 @@
 @font-face { font-family: "TicketInter"; src: url("/fonts/inter/inter-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
 @font-face { font-family: "TicketInter"; src: url("/fonts/inter/inter-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "TicketInter"; src: url("/fonts/inter/inter-800.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+
+/* Uitklapbare praktische informatie: pijltje draait mee, geen standaard driehoekje. */
+details > summary::-webkit-details-marker { display: none; }
+details[open] .hhc-ticket-chevron { transform: rotate(180deg); }
+.hhc-ticket-chevron { transition: transform 0.15s ease; flex-shrink: 0; }

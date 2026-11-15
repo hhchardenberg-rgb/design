@@ -69,7 +69,8 @@ const describe = (o: unknown) => {
   const v = x.v;
   if (Array.isArray(v)) return `${v.length} item(s)`;
   if (typeof v === "boolean") return v ? "aan" : "uit";
-  return String(v).slice(0, 60);
+  const s = String(v);
+  return s.length > 60 ? `${s.slice(0, 57).trimEnd()}…` : s;
 };
 
 /** Controleren en publiceren: meldingen, wijzigingen, gevolgen en de knop. */

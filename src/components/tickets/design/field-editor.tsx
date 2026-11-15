@@ -138,7 +138,7 @@ export function FieldEditor(props: {
           {modes.map((m) => (
             <option key={m} value={m}>
               {MODE_LABEL[m]}
-              {m === "inherit" && parentShown ? ` (${valueText(f, parentShown, props.assets, props.sets)})` : ""}
+              {m === "inherit" && parentShown ? ` (${valueText(f, parentShown, props.assets, props.sets).replace(/^\((.*)\)$/, "$1")})` : ""}
             </option>
           ))}
         </Select>

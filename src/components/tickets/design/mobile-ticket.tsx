@@ -211,7 +211,12 @@ export function MobileTicket(props: {
           "info",
           b.collapsed ? (
             <details style={{ borderTop: `1px solid ${s.muted}33`, paddingTop: "0.6rem" }}>
-              <summary style={{ ...heading, fontSize: `${1.05 * s.scale}rem`, cursor: "pointer", minHeight: "2.75rem", display: "flex", alignItems: "center" }}>{title}</summary>
+              <summary style={{ ...heading, fontSize: `${1.05 * s.scale}rem`, cursor: "pointer", minHeight: "2.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", listStyle: "none" }}>
+                {title}
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="hhc-ticket-chevron">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </summary>
               {content}
             </details>
           ) : (

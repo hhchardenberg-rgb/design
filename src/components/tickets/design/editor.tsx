@@ -281,7 +281,7 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
 
       {/* Niveau kiezen */}
       <div className="grid gap-3 rounded-xl border bg-surface p-3 md:grid-cols-[auto_1fr_auto]">
-        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Niveau">
+        <div className="flex flex-wrap gap-1 self-start" role="radiogroup" aria-label="Niveau">
           {(["club", "season", "event", "set"] as const).map((l) => (
             <button key={l} type="button" role="radio" aria-checked={level === l} onClick={() => switchTo(baseRef(l, l === "set" ? { typeId: undefined } : {}))} className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${level === l ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
               {LEVEL_NAMES[l]}
@@ -412,22 +412,22 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[13rem_minmax(0,1fr)_24rem]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
         {/* Onderdelen */}
-        <nav aria-label="Onderdelen" className="space-y-1">
-          <button type="button" onClick={() => setGroup("afwijkingen")} className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ${group === "afwijkingen" ? "bg-primary/10 font-semibold" : "hover:bg-surface-muted"}`}>
+        <nav aria-label="Onderdelen" className="flex flex-wrap items-center gap-1.5 lg:col-span-2">
+          <button type="button" onClick={() => setGroup("afwijkingen")} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${group === "afwijkingen" ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-surface-muted"}`}>
             Samenvatting afwijkingen <span className="text-xs">{overrideCount(draft)}</span>
           </button>
           {visibleGroups.map((g) => {
             const n = listOverrides(draft).filter((o) => FIELDS.find((f) => f.key === o.key)?.group === g.key).length;
             return (
-              <button key={g.key} type="button" onClick={() => setGroup(g.key)} aria-current={group === g.key} className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ${group === g.key ? "bg-primary/10 font-semibold" : "hover:bg-surface-muted"}`}>
+              <button key={g.key} type="button" onClick={() => setGroup(g.key)} aria-current={group === g.key} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${group === g.key ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-surface-muted"}`}>
                 {g.label}
                 {n > 0 && <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground">{n}</span>}
               </button>
             );
           })}
-          <label className="mt-3 flex items-center gap-2 px-3 text-sm">
+          <label className="ml-2 flex items-center gap-2 text-sm">
             <Checkbox checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} /> Uitgebreide weergave
           </label>
         </nav>
@@ -497,11 +497,9 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
           </p>
           <div className={`grid gap-4 ${preview === "both" ? "lg:grid-cols-2" : ""}`}>
             {preview !== "a4" && (
-              <div className="overflow-x-auto rounded-xl border bg-surface-muted p-3">
-                <div style={{ width: device, maxWidth: "100%", margin: "0 auto", fontSize: bigText ? "125%" : undefined }} className="overflow-hidden rounded-[1.5rem] border-4 border-neutral-800 bg-white">
-                  <MobileTicket view={computed.mobileView} onSelectBlock={(id) => setGroup(groupForBlock(id))} selectedBlock={GROUPS.find((g) => g.key === group)?.block ?? null} />
-                </div>
-              </div>
+              <PhoneFrame device={device} bigText={bigText}>
+                <MobileTicket view={computed.mobileView} onSelectBlock={(id) => setGroup(groupForBlock(id))} selectedBlock={GROUPS.find((g) => g.key === group)?.block ?? null} />
+              </PhoneFrame>
             )}
             {preview !== "mobile" && (
               <div className="rounded-xl border bg-surface-muted p-3">
@@ -640,6 +638,33 @@ const dedupe = (list: DesignIssue[]) => list.filter((x, i) => list.findIndex((y)
 function groupForBlock(id: ViewBlock["id"]): GroupKey {
   const map: Partial<Record<ViewBlock["id"], GroupKey>> = { header: "logos", hero: "sfeerbeeld", match: "wedstrijdkop", type: "tickettype", qr: "scan", holder: "houder", access: "toegang", message: "boodschap", info: "praktisch", sponsors: "sponsoren", extra: "extra", footer: "voettekst" };
   return map[id] ?? "layout";
+}
+
+/**
+ * Toont het mobiele ticket altijd op de gekozen schermbreedte. Is er minder ruimte (bijvoorbeeld
+ * naast het A4-voorbeeld), dan wordt het geheel verkleind in plaats van samengedrukt, zodat de
+ * regelafbreking gelijk blijft aan die op een echte telefoon.
+ */
+function PhoneFrame({ device, bigText, children }: { device: number; bigText: boolean; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [space, setSpace] = useState(device + 32);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setSpace(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const frame = device + 8;
+  const scale = Math.min(1, space / frame);
+  return (
+    <div ref={ref} className="rounded-xl border bg-surface-muted p-3">
+      <div style={{ width: frame, margin: "0 auto", zoom: scale }} className="overflow-hidden rounded-[1.5rem] border-4 border-neutral-800 bg-white">
+        <div style={{ width: device, fontSize: bigText ? "125%" : undefined }}>{children}</div>
+      </div>
+      {scale < 1 && <p className="mt-2 text-center text-xs text-muted-foreground">Verkleind weergegeven ({Math.round(scale * 100)}%); de indeling is gelijk aan een scherm van {device} px.</p>}
+    </div>
+  );
 }
 
 function SaveBadge({ save, dirty, readOnly, pending }: { save: SaveState; dirty: boolean; readOnly: boolean; pending: number }) {
