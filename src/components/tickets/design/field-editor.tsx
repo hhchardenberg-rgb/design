@@ -10,6 +10,8 @@ import { DYNAMIC_FIELDS } from "@/lib/tickets/design/dynamic";
 import { originText, type Override, type OverrideMap, type ResolvedField } from "@/lib/tickets/design/resolve";
 import { normalizeBlocks } from "@/lib/tickets/design/view";
 import { cn } from "@/lib/utils";
+import { TICKET_FONTS, headingFontKey, ticketFontStack, type TicketFontFamily, type TicketWeight } from "@/lib/tickets/design/fonts";
+import "./ticket-fonts.css";
 
 export interface AssetOption {
   id: string;
@@ -193,9 +195,29 @@ function ValueInput({ id, field: f, value, readOnly, assets, sets, onChange, onU
           <Checkbox id={id} checked={value === true} disabled={readOnly} onChange={(e) => onChange(e.target.checked)} /> {value ? "Aan" : "Uit"}
         </label>
       );
-    case "select":
     case "font":
     case "weight":
+      // Keuze met een voorbeeld in het echte lettertype, zodat je ziet wat je kiest.
+      return (
+        <div id={id} role="radiogroup" aria-label={f.label} className="grid gap-1.5 sm:grid-cols-3">
+          {f.options?.map((o) => {
+            const on = String(value) === o.value;
+            const sample =
+              f.type === "font"
+                ? { fontFamily: ticketFontStack(o.value as TicketFontFamily), fontWeight: o.value === "din" ? 700 : 600 }
+                : { fontFamily: ticketFontStack("din"), fontWeight: TICKET_FONTS[headingFontKey("din", o.value as TicketWeight)].weight };
+            return (
+              <button key={o.value} type="button" role="radio" aria-checked={on} disabled={readOnly} onClick={() => onChange(o.value)} className={cn("rounded-md border px-3 py-2 text-left", on ? "border-primary bg-primary/10" : "border-border hover:bg-surface-muted", readOnly && "opacity-60")}>
+                <span className="block truncate text-lg leading-tight" style={sample}>
+                  HHC Hardenberg
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">{o.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    case "select":
       return (
         <Select id={id} value={String(value)} disabled={readOnly} onChange={(e) => onChange(e.target.value)} className="h-9">
           {f.options?.map((o) => (

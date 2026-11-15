@@ -152,7 +152,9 @@ export async function sendTicketEmail(mail: { to: string; subject: string; bodyT
   const bannerHtml = b
     ? `<div style="margin:28px 0 0;padding:16px;border:1px solid #e5e5e5;border-radius:8px"><p style="margin:0 0 4px;font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.05em">Aangeboden door een sponsor</p><p style="margin:0 0 6px;font-weight:bold;font-size:16px">${escapeHtml(b.title)}</p>${b.text ? `<p style="margin:0 0 12px">${escapeHtml(b.text)}</p>` : ""}<a href="${b.url}" style="color:#f26a21;font-weight:bold">${escapeHtml(b.buttonLabel)}</a></div>`
     : "";
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a;max-width:560px">${paragraphs}<p style="margin:22px 0"><a href="${mail.linkUrl}" style="background:#f26a21;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold">${escapeHtml(mail.buttonLabel ?? "Bekijk je ticket")}</a></p>${bannerHtml}</div>`;
+  // Huisstijlletter Inter waar de mailapp webfonts toont (Apple Mail, iOS, Outlook-app); anders netjes Arial.
+  const fontFace = [400, 700].map((w) => `@font-face{font-family:"Inter";font-style:normal;font-weight:${w};src:url("${APP_URL}/fonts/inter/inter-${w}.woff2") format("woff2");}`).join("");
+  const html = `<style>${fontFace}</style><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a;max-width:560px">${paragraphs}<p style="margin:22px 0"><a href="${mail.linkUrl}" style="font-family:Inter,Arial,Helvetica,sans-serif;background:#f26a21;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold">${escapeHtml(mail.buttonLabel ?? "Bekijk je ticket")}</a></p>${bannerHtml}</div>`;
   const { data, error } = await resend.emails.send({ from: FROM_EMAIL, to: mail.to, subject: mail.subject, html, text: mail.bodyText + (b ? `\n\n${b.title}${b.text ? `\n${b.text}` : ""}\n${b.url}` : "") });
   if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
   return { providerMessageId: data?.id ?? null };

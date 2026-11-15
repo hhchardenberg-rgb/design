@@ -3,6 +3,7 @@ import path from "path";
 import fontkit from "@pdf-lib/fontkit";
 import sharp from "sharp";
 import { PDFDocument, degrees, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { TICKET_FONTS } from "./fonts";
 import { layoutA4, A4_H, A4_W, type A4Box, type A4Layout, type FontKey, type Measurer } from "./a4-layout";
 import { qrMatrix } from "./qr-matrix";
 import type { AssetRef, TicketView } from "./view";
@@ -10,15 +11,7 @@ import type { AssetRef, TicketView } from "./view";
 // A4-pdf van een ticket: echte vectortekst met ingebedde lettertypen (FF DIN en Inter), de
 // QR-code als vectorvlakken met stille zone, en afbeeldingen in hoge resolutie.
 
-const FONT_FILES: Record<FontKey, string> = {
-  "din-medium": "fonts/ff-din/FF_DIN_Medium.ttf",
-  "din-bold": "fonts/ff-din/FF_DIN_Bold.ttf",
-  "din-black": "fonts/ff-din/FF_DIN_Black.ttf",
-  "inter-400": "fonts/inter/inter-400.ttf",
-  "inter-600": "fonts/inter/inter-600.ttf",
-  "inter-700": "fonts/inter/inter-700.ttf",
-  "inter-800": "fonts/inter/inter-800.ttf",
-};
+const FONT_FILES = Object.fromEntries(Object.entries(TICKET_FONTS).map(([k, f]) => [k, f.pdf])) as Record<FontKey, string>;
 
 /** Geen contextuele varianten: Inter verschuift anders de dubbele punt in tijden (14:30). */
 const FEATURES = { calt: false, liga: false, ccmp: true };

@@ -81,3 +81,15 @@ Een seizoenskaart gebruikt nooit duelinstellingen en toont geen wedstrijdgegeven
 - Visueel gecontroleerd: voorbeeld-pdf's (kort, lang, ontbrekend) en de mobiele pagina in de preview.
 - Nog in de praktijk te testen: scannen van het A4 en het telefoonscherm met de echte scanner, printen op
   een kantoorprinter (ook zwart-wit) en de pagina op een echte iPhone/Android met grote tekst.
+
+## Lettertypen
+
+Het ticketontwerp gebruikt de huisstijlletters: **FF DIN** voor koppen (Medium 500, Bold 700, Black 900) en **Inter** voor lopende tekst (400, 600, 700, 800). Eén lijst in `src/lib/tickets/design/fonts.ts` bepaalt de bestanden en gewichten voor alle plekken:
+
+- **A4-pdf**: de TTF-versies uit `public/fonts/` worden ingesloten (gesubset), dus de pdf ziet er op elk apparaat hetzelfde uit.
+- **Mobiele ticketpagina en editorvoorbeelden**: dezelfde letters via `ticket-fonts.css` (OTF/WOFF2), vooraf geladen; ook de QR-weergave en de knoppen gebruiken ze.
+- **Offline bewaren**: de lettertypen worden mee opgeslagen, zodat het ticket zonder internet in de huisstijl blijft.
+- **Editor**: de keuze voor lettertype en gewicht toont een voorbeeld in de echte letter.
+- **Ticketmail**: Inter waar de mailapp webfonts toont (Apple Mail, iOS), anders Arial. FF DIN wordt bewust niet in mail gebruikt.
+
+`src/lib/tickets/design/__tests__/fonts.test.ts` controleert dat alle bestanden bestaan en dat de pdf FF DIN en Inter insluit.

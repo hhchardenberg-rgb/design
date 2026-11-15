@@ -3,6 +3,8 @@
 
 import "./ticket-fonts.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { preload } from "react-dom";
+import { TICKET_FONTS, headingFontKey, ticketFontStack, webFontsFor } from "@/lib/tickets/design/fonts";
 import { qrMatrix, qrPath } from "@/lib/tickets/design/qr-matrix";
 import type { TicketView, ViewBlock, ViewStyle } from "@/lib/tickets/design/view";
 
@@ -42,8 +44,9 @@ export const NL_LABELS: MobileLabels = {
   personalNote: "Persoonlijk ticket. Laat de QR-code niet door anderen scannen of kopiëren.",
 };
 
-const fontFamily = (f: "din" | "inter") => (f === "din" ? '"TicketDIN", "Arial Narrow", Arial, sans-serif' : '"TicketInter", Inter, Arial, sans-serif');
-const headingWeight = (s: ViewStyle) => (s.headingFont === "din" ? (s.headingWeight === "medium" ? 500 : s.headingWeight === "bold" ? 700 : 900) : s.headingWeight === "medium" ? 600 : s.headingWeight === "bold" ? 700 : 800);
+const fontFamily = ticketFontStack;
+// Zelfde gewicht als de kop in de A4-pdf (DIN 500/700/900, Inter 600/700/800).
+const headingWeight = (s: ViewStyle) => TICKET_FONTS[headingFontKey(s.headingFont, s.headingWeight)].weight;
 const space = (s: ViewStyle) => (s.spacing === "compact" ? 0.75 : s.spacing === "ruim" ? 1.5 : 1.1);
 
 function readableOn(hex: string): string {
@@ -80,6 +83,8 @@ export function MobileTicket(props: {
   const gap = `${space(s)}rem`;
   const heading = { fontFamily: fontFamily(s.headingFont), fontWeight: headingWeight(s), lineHeight: 1.08 } as const;
   const body = { fontFamily: fontFamily(s.bodyFont), lineHeight: s.lineHeight } as const;
+  // Lettertypen direct laten ophalen (niet pas als de css is verwerkt): geen flits van Arial.
+  for (const href of webFontsFor(s)) preload(href, { as: "font", type: href.endsWith(".woff2") ? "font/woff2" : "font/otf", crossOrigin: "anonymous" });
   const qr = view.blocks.find((b) => b.id === "qr") as Extract<ViewBlock, { id: "qr" }> | undefined;
   const match = view.blocks.find((b) => b.id === "match") as Extract<ViewBlock, { id: "match" }> | undefined;
   const holder = view.blocks.find((b) => b.id === "holder") as Extract<ViewBlock, { id: "holder" }> | undefined;
@@ -263,7 +268,7 @@ export function MobileTicket(props: {
   });
 
   return (
-    <div style={{ background: s.page, padding: "0.75rem 0.5rem 2rem", minHeight: "100%" }}>
+    <div style={{ background: s.page, padding: "0.75rem 0.5rem 2rem", minHeight: "100%", fontFamily: body.fontFamily }}>
       <article aria-label="Ticket" style={{ maxWidth: "28rem", margin: "0 auto", background: s.background, color: s.text, borderRadius: s.radius, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.12)", border: s.border ? `1px solid ${s.muted}44` : undefined, ...body }}>
         {view.notices.map((n, i) => (
           <p key={i} role="status" style={{ margin: 0, background: "#FEF3C7", color: "#78350F", fontSize: "0.9rem", padding: "0.75rem 1.15rem", fontWeight: 600 }}>
@@ -277,14 +282,16 @@ export function MobileTicket(props: {
         )}
         <div style={{ display: "grid", gap, paddingBottom: "1.25rem" }}>{blocks}</div>
       </article>
-      {offline && <OfflineSave labels={L} />}
+      {offline && <OfflineSave labels={L} fonts={webFontsFor(s)} />}
       {!view.sample && <p style={{ ...body, maxWidth: "28rem", margin: "0.75rem auto 0", textAlign: "center", fontSize: "0.8rem", color: "#57534E" }}>{L.personalNote}</p>}
-      {qrOpen && qr && <QrDialog code={qr.code} sample={qr.sample} title={match?.title ?? ""} name={holder?.name ?? ""} type={type?.label ?? ""} labels={L} onClose={() => setQrOpen(false)} />}
+      {qrOpen && qr && <QrDialog code={qr.code} sample={qr.sample} title={match?.title ?? ""} name={holder?.name ?? ""} type={type?.label ?? ""} labels={L} heading={heading} body={body} onClose={() => setQrOpen(false)} />}
     </div>
   );
 }
 
-function QrDialog({ code, sample, title, name, type, labels, onClose }: { code: string; sample: boolean; title: string; name: string; type: string; labels: MobileLabels; onClose: () => void }) {
+type FontStyle = { fontFamily: string; fontWeight?: number; lineHeight: number };
+
+function QrDialog({ code, sample, title, name, type, labels, heading, body, onClose }: { code: string; sample: boolean; title: string; name: string; type: string; labels: MobileLabels; heading: FontStyle; body: FontStyle; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const onKey = useCallback(
     (e: KeyboardEvent) => {
@@ -314,15 +321,15 @@ function QrDialog({ code, sample, title, name, type, labels, onClose }: { code: 
     };
   }, [onKey]);
   return (
-    <div role="dialog" aria-modal="true" aria-label={labels.qrDialog} style={{ position: "fixed", inset: 0, zIndex: 50, background: "#FFFFFF", color: "#000000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "1rem", gap: "0.75rem", overflowY: "auto" }}>
-      <p style={{ margin: 0, fontWeight: 700, fontSize: "1.05rem", textAlign: "center", overflowWrap: "anywhere" }}>{title}</p>
+    <div role="dialog" aria-modal="true" aria-label={labels.qrDialog} style={{ position: "fixed", inset: 0, zIndex: 50, background: "#FFFFFF", color: "#000000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "1rem", gap: "0.75rem", overflowY: "auto", fontFamily: body.fontFamily }}>
+      <p style={{ ...heading, margin: 0, fontSize: "1.15rem", textAlign: "center", overflowWrap: "anywhere" }}>{title}</p>
       <div style={{ width: "min(92vw, calc(100vh - 14rem), 30rem)" }}>
         <QrSvg code={code} label={sample ? "QR-code (voorbeeld, geeft geen toegang)" : "QR-code van je ticket"} />
       </div>
-      <p style={{ margin: 0, fontWeight: 800, fontSize: "1.25rem", textAlign: "center", overflowWrap: "anywhere" }}>{name}</p>
+      <p style={{ ...heading, margin: 0, fontSize: "1.35rem", textAlign: "center", overflowWrap: "anywhere" }}>{name}</p>
       <p style={{ margin: 0, fontWeight: 600, textAlign: "center" }}>{type}</p>
       <p style={{ margin: 0, fontSize: "0.85rem", color: "#44403C", textAlign: "center" }}>{labels.brightness}</p>
-      <button ref={closeRef} type="button" onClick={onClose} style={{ minHeight: "3rem", minWidth: "10rem", borderRadius: 12, border: "2px solid #000000", background: "#FFFFFF", fontWeight: 700, fontSize: "1rem", cursor: "pointer" }}>
+      <button ref={closeRef} type="button" onClick={onClose} style={{ minHeight: "3rem", minWidth: "10rem", borderRadius: 12, border: "2px solid #000000", background: "#FFFFFF", fontFamily: "inherit", fontWeight: 700, fontSize: "1rem", cursor: "pointer" }}>
         {labels.close}
       </button>
     </div>
@@ -330,7 +337,7 @@ function QrDialog({ code, sample, title, name, type, labels, onClose }: { code: 
 }
 
 /** Offline bewaren: de service worker bewaart de pagina en de pdf; tonen kan zonder internet, de geldigheid bepaalt de scanner. */
-function OfflineSave({ labels }: { labels: MobileLabels }) {
+function OfflineSave({ labels, fonts }: { labels: MobileLabels; fonts: string[] }) {
   const [state, setState] = useState<"idle" | "saved" | "unsupported">(() => (typeof navigator !== "undefined" && !("serviceWorker" in navigator) ? "unsupported" : "idle"));
   const [isOffline, setIsOffline] = useState(false);
   useEffect(() => {
@@ -347,7 +354,8 @@ function OfflineSave({ labels }: { labels: MobileLabels }) {
   const save = async () => {
     try {
       const reg = await navigator.serviceWorker.ready;
-      const urls = [location.pathname + location.search, ...[...document.querySelectorAll("a[href*='/pdf']")].map((a) => (a as HTMLAnchorElement).pathname)];
+      // Ook de lettertypen, zodat het opgeslagen ticket zonder internet in de huisstijl blijft.
+      const urls = [location.pathname + location.search, ...[...document.querySelectorAll("a[href*='/pdf']")].map((a) => (a as HTMLAnchorElement).pathname), ...fonts];
       reg.active?.postMessage({ type: "save", urls });
       const cache = await caches.open("hhc-ticket-v2");
       await Promise.all(urls.map((u) => fetch(u, { cache: "no-store" }).then((r) => (r.ok ? cache.put(u, r) : undefined)).catch(() => undefined)));
@@ -360,7 +368,7 @@ function OfflineSave({ labels }: { labels: MobileLabels }) {
     <div style={{ maxWidth: "28rem", margin: "0.75rem auto 0", display: "grid", gap: "0.4rem", padding: "0 0.25rem" }}>
       {isOffline && <p role="status" style={{ margin: 0, background: "#FEF3C7", color: "#78350F", padding: "0.6rem 0.8rem", borderRadius: 10, fontSize: "0.9rem" }}>{labels.offlineValidity}</p>}
       {state !== "unsupported" && (
-        <button type="button" onClick={save} disabled={state === "saved"} style={{ minHeight: "3rem", borderRadius: 12, border: "2px solid #44403C", background: "#FFFFFF", color: "#1C1917", fontWeight: 700, fontSize: "1rem", cursor: "pointer" }}>
+        <button type="button" onClick={save} disabled={state === "saved"} style={{ minHeight: "3rem", borderRadius: 12, border: "2px solid #44403C", background: "#FFFFFF", color: "#1C1917", fontFamily: "inherit", fontWeight: 700, fontSize: "1rem", cursor: "pointer" }}>
           {state === "saved" ? labels.savedOffline : labels.saveOffline}
         </button>
       )}

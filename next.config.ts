@@ -88,7 +88,12 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Inter (open licentie) mag ook vanuit mailapps worden geladen, voor de ticketmail.
+      // FF DIN bewust niet: die blijft alleen voor de eigen pagina's.
+      { source: "/fonts/inter/:file*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
+    ];
   },
 };
 
