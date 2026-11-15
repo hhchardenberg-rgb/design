@@ -5,7 +5,7 @@
 
 export interface TicketPermissionInfo {
   label: string;
-  group: "Overzicht" | "Tickets" | "Scannen" | "Inrichting" | "Rapportage" | "Beheer";
+  group: "Overzicht" | "Tickets" | "Scannen" | "Inrichting" | "Ontwerp" | "Rapportage" | "Beheer";
   /** Risicovol of privacygevoelig: in de rolbewerker gemarkeerd. */
   sensitive?: boolean;
 }
@@ -17,6 +17,10 @@ export const TICKET_PERMISSIONS = {
   "events:delete": { label: "Wedstrijden verwijderen of archiveren", group: "Inrichting", sensitive: true },
   "types:read": { label: "Tickettypes, vakken en seizoenen bekijken", group: "Inrichting" },
   "types:manage": { label: "Tickettypes, vakken en seizoenen beheren", group: "Inrichting" },
+  "design:read": { label: "Ticketontwerp en standaarden bekijken", group: "Ontwerp" },
+  "design:edit": { label: "Ticketontwerp bewerken (concepten, logo's en sponsoren)", group: "Ontwerp" },
+  "design:publish": { label: "Ticketontwerp publiceren en standaarden vastleggen", group: "Ontwerp", sensitive: true },
+  "design:apply": { label: "Bestaande tickets opnieuw vormgeven", group: "Ontwerp", sensitive: true },
   "tickets:read": { label: "Ticketoverzicht bekijken (zonder contactgegevens)", group: "Tickets" },
   "tickets:personal": { label: "Contactgegevens van tickethouders zien", group: "Tickets", sensitive: true },
   "tickets:issue": { label: "Tickets uitgeven", group: "Tickets" },
@@ -55,6 +59,9 @@ const REQUIRES: Partial<Record<TicketPermission, TicketPermission[]>> = {
   "events:delete": ["events:manage"],
   "types:manage": ["types:read"],
   "tickets:personal": ["tickets:read"],
+  "design:edit": ["design:read"],
+  "design:publish": ["design:edit"],
+  "design:apply": ["design:read", "tickets:read"],
   "tickets:issue": ["tickets:read", "events:read", "types:read"],
   "tickets:bulk": ["tickets:issue"],
   "bulk:approve": ["tickets:read"],
@@ -150,8 +157,8 @@ export const TICKET_ROLE_TEMPLATES: TicketRoleTemplate[] = [
   {
     key: "communicatie",
     name: "Communicatiebeheerder",
-    description: "E-mailtemplates beheren en tickets opnieuw versturen.",
-    permissions: withRequired(["dashboard:read", "events:read", "tickets:personal", "tickets:resend", "templates:manage"]),
+    description: "E-mailtemplates beheren, tickets opnieuw versturen en ticketontwerpen als concept bewerken.",
+    permissions: withRequired(["dashboard:read", "events:read", "tickets:personal", "tickets:resend", "templates:manage", "design:edit"]),
   },
   {
     key: "bestuur",

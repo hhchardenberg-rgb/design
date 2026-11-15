@@ -8,6 +8,7 @@ import { deliverTicketMail, ticketLink } from "./delivery.server";
 import { hitLimit, emailKey } from "./public-limit.server";
 import { holderSchema } from "./schemas";
 import { createTickets, prepareIssue } from "./tickets.server";
+import { stampDesignSafe } from "./design/context.server";
 
 // Actiecodes: wie de code invult krijgt zelf tickets, zonder dat een medewerker iets hoeft uit te geven.
 // Voorbeelden: "neem een vriend mee" (2 tickets per inwisseling) of een code voor een jeugdteam.
@@ -110,6 +111,7 @@ export async function claimPromo(raw: unknown, ip: string) {
     { timeout: 20_000, maxWait: 10_000 },
   );
 
+  await stampDesignSafe(ids);
   // Mailen buiten de transactie; lukt het niet, dan blijft het ticket bestaan en staat de mislukking in het verzendlog.
   let mailed = false;
   try {

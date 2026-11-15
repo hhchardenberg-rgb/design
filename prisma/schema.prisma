@@ -2041,6 +2041,10 @@ model Ticket {
   externalRef         String?
   commercialCompanyId String?
   anonymizedAt        DateTime?
+  // Ticketontwerp: de bij uitgifte (of bij een bewuste heruitgave) vastgelegde ontwerpversie.
+  // Leeg bij tickets van vóór de ontwerpmodule; die krijgen bij de eerste weergave het dan geldende ontwerp vastgelegd.
+  designSnapshotId    String?
+  designAppliedAt     DateTime?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -2350,4 +2354,122 @@ model TicketBannerClick {
 
   @@index([bannerId, createdAt])
   @@map("tickets_banner_clicks")
+}
+
+// ── Ticketontwerp en standaarden (alleen additief) ──────────────────────────
+// Zie docs/hhc-tickets/ticketontwerp.md. Instellingen worden per veld en per formaat bewaard
+// als bewuste afwijking op een niveau (ontwerpset, club, seizoen, duel, elk eventueel per tickettype).
+
+/// Ontwerpset: een samenhangende opmaak voor mobiel en A4. De inhoud staat in TicketDesignScope met sleutel "set:<id>".
+model TicketDesignSet {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  // MATCH | HOSPITALITY | SEASON: voor welk soort ticket de set bedoeld is.
+  kind        String    @default("MATCH")
+  // Ingebouwde basisontwerpen (worden één keer aangemaakt en zijn daarna gewoon bewerkbaar).
+  builtinKey  String?   @unique
+  sourceNote  String?
+  archivedAt  DateTime?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("tickets_design_sets")
+}
+
+/// Instellingen van één niveau: alleen de bewuste afwijkingen, per formaat (shared, mobile, a4).
+/// Gepubliceerd en concept staan naast elkaar; publiceren vervangt beide formaten in één keer.
+model TicketDesignScope {
+  id               String    @id @default(cuid())
+  // set:<id> | club | club:type:<id> | season:<id> | season:<id>:type:<id> | event:<id> | event:<id>:type:<id>
+  scopeKey         String    @unique
+  level            String
+  setId            String?
+  seasonId         String?
+  eventId          String?
+  typeId           String?
+  published        Json      @default("{}")
+  publishedVersion Int       @default(0)
+  publishedAt      DateTime?
+  publishedById    String?
+  publishedByName  String?
+  draft            Json?
+  // Elke opslag van het concept verhoogt dit; zo gaat het werk van een collega niet ongemerkt verloren.
+  draftRevision    Int       @default(0)
+  draftBaseVersion Int?
+  draftUpdatedAt   DateTime?
+  draftUpdatedById String?
+  draftUpdatedBy   String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([seasonId])
+  @@index([eventId])
+  @@index([level])
+  @@map("tickets_design_scopes")
+}
+
+/// Elke gepubliceerde versie van een niveau, voor historie en herstel.
+model TicketDesignScopeVersion {
+  id              String   @id @default(cuid())
+  scopeKey        String
+  version         Int
+  overrides       Json
+  note            String?
+  publishedAt     DateTime @default(now())
+  publishedById   String?
+  publishedByName String?
+
+  @@unique([scopeKey, version])
+  @@map("tickets_design_scope_versions")
+}
+
+/// Logo, sponsorlogo of sfeerbeeld voor tickets. Vervangen geeft een nieuwe versie; oude versies blijven bestaan.
+model TicketDesignAsset {
+  id               String    @id @default(cuid())
+  name             String
+  // LOGO | SPONSOR | PHOTO
+  kind             String
+  // Optioneel: het CZ-bedrijf waar een sponsorlogo bij hoort (alleen het id).
+  companyId        String?
+  currentVersionId String?
+  archivedAt       DateTime?
+  createdBy        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  versions TicketDesignAssetVersion[]
+
+  @@map("tickets_design_assets")
+}
+
+model TicketDesignAssetVersion {
+  id        String            @id @default(cuid())
+  assetId   String
+  asset     TicketDesignAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  version   Int
+  mimeType  String
+  width     Int
+  height    Int
+  bytes     Int
+  sha256    String
+  // Het bestand zelf: onveranderlijk, zodat een uitgegeven ticket altijd dezelfde afbeelding toont.
+  data      Bytes
+  createdBy String?
+  createdAt DateTime          @default(now())
+
+  @@unique([assetId, version])
+  @@map("tickets_design_asset_versions")
+}
+
+/// Het effectief gebruikte ontwerp van uitgegeven tickets (beide formaten, met herkomst en assetversies).
+/// Gelijke ontwerpen delen één rij (hash).
+model TicketDesignSnapshot {
+  id        String   @id @default(cuid())
+  hash      String   @unique
+  content   Json
+  createdAt DateTime @default(now())
+
+  @@map("tickets_design_snapshots")
 }

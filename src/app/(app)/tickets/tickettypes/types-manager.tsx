@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import Link from "next/link";
+import { Palette, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -395,6 +396,9 @@ export function TypesManager({ canManage }: { canManage: boolean }) {
                         {formatDay(s.startsOn.slice(0, 10))} t/m {formatDay(s.endsOn.slice(0, 10))}
                       </span>
                     </span>
+                    <Link href={`/tickets/ontwerp?scope=season:${s.id}`} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-hhc-orange-dark hover:underline" title="Ticketontwerp en standaarden voor dit seizoen">
+                      <Palette className="h-3.5 w-3.5" /> Ticketontwerp
+                    </Link>
                     {canManage && (
                       <Button size="sm" variant="ghost" aria-label={`${s.name} wijzigen`} onClick={() => setSeasonDraft({ id: s.id, name: s.name, startsOn: s.startsOn.slice(0, 10), endsOn: s.endsOn.slice(0, 10) })}>
                         <Pencil className="h-4 w-4" />

@@ -10,6 +10,7 @@ import { issueSchema, reissueSchema, statusChangeSchema, type HolderInput, type 
 import { getTicketSettings } from "./settings.server";
 import { newPublicId } from "./token";
 import type { Locale } from "./i18n";
+import { stampDesignSafe } from "./design/context.server";
 
 // Interne HHC-tickets: uitgeven, overzicht, status en opnieuw uitgeven.
 
@@ -149,6 +150,7 @@ export async function issueTickets(actor: TicketsActor, raw: unknown, origin: "M
     },
     { timeout: 60_000, maxWait: 15_000 },
   );
+  await stampDesignSafe(ids);
   return { pendingApproval: false, ticketIds: ids, count: ids.length };
 }
 

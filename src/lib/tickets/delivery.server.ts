@@ -1,17 +1,13 @@
-import QRCode from "qrcode";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { sendTicketEmail } from "@/lib/mail";
-import { formatDay, formatDayTime } from "@/lib/date-format";
+import { formatDay } from "@/lib/date-format";
 import { pickBanner, recordBannerSend } from "./banner.server";
 import { ticketAudit } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
 import { asLocale, templateKeyFor, textsFor } from "./i18n";
-import { DEFAULT_TEMPLATES, fillTemplate, pdfSafe, templateIssues } from "./delivery";
-import { displayStatus, type TicketStatus } from "./rules";
-import { HHC_LOGO_PNG_BASE64 } from "./pdf-logo";
-import { linkTokenFor, parseLinkToken, qrCodeFor } from "./token";
+import { DEFAULT_TEMPLATES, fillTemplate, templateIssues } from "./delivery";
+import { linkTokenFor } from "./token";
 
 // Aflevering van tickets: mail, persoonlijke link, ticketpagina en PDF.
 
@@ -156,108 +152,4 @@ export async function deliveriesFor(id: string) {
   return prisma.ticketDelivery.findMany({ where: { ticketId: id }, orderBy: { createdAt: "desc" }, take: 20 });
 }
 
-// ── Openbare ticketpagina en PDF (geen login; toegang = geldige, ondertekende link) ──
-
-export interface PublicTicket {
-  name: string;
-  typeName: string;
-  validity: string;
-  status: TicketStatus | "EXPIRED";
-  statusLabel: string;
-  usable: boolean;
-  validUntil: Date | null;
-  events: { title: string; startsAt: Date; location: string | null }[];
-  qr: string;
-  zone: string | null;
-  locale: string;
-}
-
-/** null = onbekende, vervalste of ingetrokken link. Bevat nooit e-mail of telefoon. */
-export async function publicTicketByToken(token: string): Promise<PublicTicket | null> {
-  const ref = parseLinkToken(token);
-  if (!ref) return null;
-  const t = await prisma.ticket.findUnique({
-    where: { publicId: ref.publicId },
-    include: { type: { select: { name: true } }, zone: { select: { name: true } }, season: { select: { name: true } }, links: { select: { event: { select: { title: true, startsAt: true, location: true } } } } },
-  });
-  if (!t || t.linkVersion !== ref.version || t.anonymizedAt) return null;
-  const status = displayStatus({ status: t.status as TicketStatus, validUntil: t.validUntil }, new Date());
-  const events = t.links.map((l) => l.event).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
-  return {
-    name: `${t.firstName} ${t.lastName}`.trim(),
-    typeName: t.type.name,
-    validity: describeValidity(t, t.locale),
-    status,
-    statusLabel: textsFor(t.locale).status[status],
-    usable: status === "ACTIVE",
-    validUntil: t.validUntil,
-    events,
-    qr: qrCodeFor(t.publicId, t.qrVersion),
-    zone: t.zone?.name ?? null,
-    locale: t.locale,
-  };
-}
-
-export const qrSvg = (data: string) => QRCode.toString(data, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
-
-/** Eén A4-pagina als toegangsbewijs: HHC-huisstijl, wedstrijdgegevens en een grote QR-code. Alleen voor actieve tickets. */
-export async function ticketPdf(pt: PublicTicket): Promise<Uint8Array> {
-  const tx = textsFor(pt.locale);
-  const W = 595.28;
-  const H = 841.89;
-  const pdf = await PDFDocument.create();
-  const page = pdf.addPage([W, H]);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const orange = rgb(0.949, 0.416, 0.129);
-  const dark = rgb(0.1, 0.1, 0.1);
-  const grey = rgb(0.4, 0.4, 0.4);
-  const text = (t: string, x: number, y: number, size: number, f = font, color = dark, maxWidth?: number) => page.drawText(pdfSafe(t), { x, y, size, font: f, color, ...(maxWidth ? { maxWidth } : {}) });
-  const centered = (t: string, y: number, size: number, f = font, color = dark) => {
-    const safe = pdfSafe(t);
-    page.drawText(safe, { x: Math.max(40, (W - f.widthOfTextAtSize(safe, size)) / 2), y, size, font: f, color });
-  };
-
-  // Kop in HHC-oranje met logo.
-  page.drawRectangle({ x: 0, y: H - 130, width: W, height: 130, color: orange });
-  const logo = await pdf.embedPng(Buffer.from(HHC_LOGO_PNG_BASE64, "base64"));
-  page.drawRectangle({ x: 36, y: H - 112, width: 70, height: 94, color: rgb(1, 1, 1) });
-  page.drawImage(logo, { x: 41, y: H - 107, width: 60, height: 84 });
-  text("HHC Hardenberg", 126, H - 66, 30, bold, rgb(1, 1, 1));
-  text(tx.pdf.title, 126, H - 92, 16, font, rgb(1, 1, 1));
-
-  // Wedstrijd: titel, datum en plaats (dd/mm/yyyy).
-  const first = pt.events[0];
-  const title = pt.events.length === 1 ? first.title : pt.events.length > 1 ? tx.matches(pt.events.length) : pt.validity;
-  let y = H - 190;
-  text(title, 40, y, 24, bold, dark, W - 80);
-  y -= 26;
-  if (pt.events.length === 1) {
-    text(formatDayTime(first.startsAt), 40, y, 15, font, grey);
-    if (first.location) text(first.location, 40, y - 20, 13, font, grey);
-  } else {
-    text(pt.validity, 40, y, 14, font, grey);
-  }
-
-  // QR-code: groot, met stille rand, voor een snelle scan.
-  const size = 300;
-  const qx = (W - size) / 2;
-  const qy = 255;
-  const png = await QRCode.toBuffer(pt.qr, { type: "png", margin: 2, width: 900, errorCorrectionLevel: "M" });
-  page.drawRectangle({ x: qx - 16, y: qy - 16, width: size + 32, height: size + 32, color: rgb(1, 1, 1), borderColor: orange, borderWidth: 3 });
-  page.drawImage(await pdf.embedPng(png), { x: qx, y: qy, width: size, height: size });
-  centered(tx.pdf.scanHere, qy - 38, 13, font, grey);
-
-  // Houder en soort ticket.
-  page.drawLine({ start: { x: 40, y: 190 }, end: { x: W - 40, y: 190 }, thickness: 1, color: rgb(0.85, 0.85, 0.85), dashArray: [4, 4] });
-  text(pt.name, 40, 155, 22, bold, dark, W - 80);
-  text(pt.typeName + (pt.zone ? ` - ${pt.zone}` : ""), 40, 131, 14, font, dark, W - 80);
-  if (pt.events.length !== 1) text(pt.validity, 40, 112, 12, font, grey, W - 80);
-  if (pt.validUntil) text(`${tx.pdf.validUntil} ${formatDayTime(pt.validUntil)}`, 40, pt.events.length !== 1 ? 94 : 112, 12, font, grey);
-
-  // Voet.
-  page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: orange });
-  centered(tx.pdf.personal, 48, 9, font, grey);
-  centered(tx.pdf.tip, 34, 9, font, grey);
-  return pdf.save();
-}
+// De openbare ticketpagina en de A4-pdf staan in src/lib/tickets/design/ (ticketontwerp).
