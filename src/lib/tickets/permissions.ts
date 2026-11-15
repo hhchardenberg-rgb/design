@@ -14,6 +14,7 @@ export const TICKET_PERMISSIONS = {
   "dashboard:read": { label: "Dashboard bekijken", group: "Overzicht" },
   "events:read": { label: "Wedstrijden bekijken", group: "Inrichting" },
   "events:manage": { label: "Wedstrijden beheren", group: "Inrichting" },
+  "events:delete": { label: "Wedstrijden verwijderen of archiveren", group: "Inrichting", sensitive: true },
   "types:read": { label: "Tickettypes, vakken en seizoenen bekijken", group: "Inrichting" },
   "types:manage": { label: "Tickettypes, vakken en seizoenen beheren", group: "Inrichting" },
   "tickets:read": { label: "Ticketoverzicht bekijken (zonder contactgegevens)", group: "Tickets" },
@@ -51,6 +52,7 @@ export function isTicketPermission(v: string): v is TicketPermission {
 /** Bevoegdheden die alleen werken samen met een andere (bv. uitgeven vereist het overzicht). */
 const REQUIRES: Partial<Record<TicketPermission, TicketPermission[]>> = {
   "events:manage": ["events:read"],
+  "events:delete": ["events:manage"],
   "types:manage": ["types:read"],
   "tickets:personal": ["tickets:read"],
   "tickets:issue": ["tickets:read", "events:read", "types:read"],

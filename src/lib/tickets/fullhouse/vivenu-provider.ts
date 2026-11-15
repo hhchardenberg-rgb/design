@@ -1,4 +1,4 @@
-import { FullhouseError, type FullhouseEvent, type FullhouseMode, type FullhouseScanResult, type FullhouseTicket, type OfflineScan, type TicketPage, type TicketProvider } from "./types";
+import { FullhouseError, type FullhouseCategory, type FullhouseEvent, type FullhouseTicketType, type FullhouseMode, type FullhouseScanResult, type FullhouseTicket, type OfflineScan, type TicketPage, type TicketProvider } from "./types";
 
 // Echte Fullhouse-provider (Fullhouse draait op vivenu; endpoints uit docs.vivenu.dev, zie
 // docs/hhc-tickets/architectuur.md §2). Uitgangspunten:
@@ -45,6 +45,33 @@ export function mapTicket(raw: unknown, fallbackEventId: string): FullhouseTicke
     seat: str(raw.seat),
     updatedAt: updated ? new Date(updated) : null,
   };
+}
+
+/** Kaartsoorten uit een vivenu-evenement (`tickets[]`: _id, name, price, categoryRef, active). Onbruikbare regels vallen weg. */
+export function mapTicketTypes(raw: unknown): FullhouseTicketType[] {
+  if (!Array.isArray(raw)) return [];
+  const out: FullhouseTicketType[] = [];
+  for (const t of raw) {
+    if (!isObj(t)) continue;
+    const externalId = str(t._id) ?? str(t.id);
+    const name = str(t.name);
+    if (!externalId || !name) continue;
+    out.push({ externalId, name, price: typeof t.price === "number" && Number.isFinite(t.price) ? t.price : null, categoryRef: str(t.categoryRef), active: t.active !== false });
+  }
+  return out;
+}
+
+/** Categorieën uit een vivenu-evenement (`categories[]`: _id, name, ref). */
+export function mapCategories(raw: unknown): FullhouseCategory[] {
+  if (!Array.isArray(raw)) return [];
+  const out: FullhouseCategory[] = [];
+  for (const c of raw) {
+    if (!isObj(c)) continue;
+    const ref = str(c.ref) ?? str(c._id) ?? str(c.id);
+    const name = str(c.name);
+    if (ref && name) out.push({ ref, name });
+  }
+  return out;
 }
 
 function docsOf(body: unknown): unknown[] {
@@ -100,7 +127,7 @@ export function createVivenuProvider(cfg: VivenuConfig): TicketProvider {
         const name = str(e.name);
         if (!externalId || !name) throw new FullhouseError("Een Fullhouse-evenement mist _id of name.", "bad_response");
         const start = str(e.start) ?? str(e.startDate);
-        return { externalId, name, startsAt: start && !Number.isNaN(Date.parse(start)) ? new Date(start) : null };
+        return { externalId, name, startsAt: start && !Number.isNaN(Date.parse(start)) ? new Date(start) : null, ticketTypes: mapTicketTypes(e.tickets), categories: mapCategories(e.categories) };
       });
     },
     async fetchTicketsPage(eventId, { top, skip, from, until }): Promise<TicketPage> {

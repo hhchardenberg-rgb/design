@@ -22,7 +22,9 @@ async function wipe() {
   await db.ticket.deleteMany();
   await db.ticketPromoClaim.deleteMany();
   await db.ticketPromo.deleteMany();
+  await db.ticketFullhouseItem.deleteMany();
   await db.ticketType.deleteMany();
+  await db.ticketZone.deleteMany();
   await db.ticketEvent.deleteMany();
   await db.ticketDelivery.deleteMany();
   await db.ticketAuditEvent.deleteMany();
@@ -41,12 +43,38 @@ after(async () => {
   await db.$disconnect();
 });
 
-test("evenementen ophalen zet ze als concept neer, zonder dubbelen", { skip }, async () => {
+test("evenementen ophalen zet ze direct op actief, zonder dubbelen, en haalt kaartsoorten en vakken mee", { skip }, async () => {
   const a = await sync.importFullhouseEvents(actor);
   assert.equal(a.created, 1);
   assert.equal((await sync.importFullhouseEvents(actor)).created, 0);
   const ev = await db.ticketEvent.findFirstOrThrow({ where: { externalId: "mock-event-1" } });
-  assert.deepEqual([ev.status, ev.source, ev.visible], ["DRAFT", "FULLHOUSE", false]);
+  assert.deepEqual([ev.status, ev.source, ev.visible], ["ACTIVE", "FULLHOUSE", false]);
+  const items = await db.ticketFullhouseItem.findMany({ orderBy: { name: "asc" } });
+  assert.deepEqual(items.filter((i) => i.kind === "ZONE").map((i) => i.name), ["Businessruimte", "Tribune"]);
+  const staan = items.find((i) => i.kind === "TYPE" && i.name === "Staanplaats (test)")!;
+  assert.equal(staan.price, 12.5);
+  assert.equal(staan.categoryRef, "Tribune");
+});
+
+test("kaartsoorten en vakken: koppelen, overnemen (type eerst niet actief, met vak) en automatisch koppelen op naam", { skip }, async () => {
+  const cat = await import("../fullhouse/catalog.server");
+  const zone = await db.ticketFullhouseItem.findFirstOrThrow({ where: { kind: "ZONE", name: "Tribune" } });
+  await cat.linkCatalogItem(actor, zone.id, { create: true });
+  const z = await db.ticketZone.findFirstOrThrow({ where: { name: "Tribune" } });
+  const type = await db.ticketFullhouseItem.findFirstOrThrow({ where: { kind: "TYPE", name: "Staanplaats (test)" } });
+  await cat.linkCatalogItem(actor, type.id, { create: true });
+  const t = await db.ticketType.findFirstOrThrow({ where: { name: "Staanplaats (test)" } });
+  assert.equal(t.active, false);
+  assert.equal(t.zoneId, z.id);
+  // Een HHC-vak met dezelfde naam wordt bij de volgende synchronisatie vanzelf gekoppeld.
+  const biz = await db.ticketZone.create({ data: { name: "businessruimte" } });
+  const r = await cat.syncFullhouseCatalog({ id: "a", name: "Admin" });
+  assert.ok(r.linked >= 1);
+  assert.equal((await db.ticketFullhouseItem.findFirstOrThrow({ where: { kind: "ZONE", name: "Businessruimte" } })).zoneId, biz.id);
+  const all = await cat.adoptAllCatalog(actor);
+  assert.equal(all.zones, 0);
+  assert.equal(all.types, 2);
+  assert.equal(await db.ticketFullhouseItem.count({ where: { typeId: null, kind: "TYPE" } }), 0);
 });
 
 test("tickets synchroniseren: alleen hash en initialen, tweede keer is incrementeel en idempotent", { skip }, async () => {

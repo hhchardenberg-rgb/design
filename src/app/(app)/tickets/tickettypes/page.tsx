@@ -3,7 +3,7 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { TypesManager } from "./types-manager";
 
-export const metadata: Metadata = { title: "Tickettypes en vakken – HHC Tickets" };
+export const metadata: Metadata = { title: "Tickettypes, vakken en seizoenen – HHC Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function TypesPage() {

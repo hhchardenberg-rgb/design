@@ -32,7 +32,7 @@ export async function prepareIssue(input: IssueInput): Promise<PreparedIssue> {
   if (zoneId && !(await prisma.ticketZone.findFirst({ where: { id: zoneId, active: true }, select: { id: true } }))) throw new ApiError(400, "Het gekozen vak bestaat niet of is niet actief.");
   const seasonId = input.seasonId ?? type.seasonId;
   const [events, season] = await Promise.all([
-    input.eventIds.length ? prisma.ticketEvent.findMany({ where: { id: { in: input.eventIds } }, select: { id: true, status: true, endsAt: true } }) : [],
+    input.eventIds.length ? prisma.ticketEvent.findMany({ where: { id: { in: input.eventIds } }, select: { id: true, status: true, endsAt: true, archivedAt: true } }) : [],
     seasonId ? prisma.ticketSeason.findUnique({ where: { id: seasonId } }) : null,
   ]);
   const r = resolveValidity(

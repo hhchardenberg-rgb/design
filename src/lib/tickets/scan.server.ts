@@ -262,6 +262,7 @@ export async function scanContext(actor: ScanActor) {
     prisma.ticketEvent.findMany({
       // Ook concept- en afgesloten wedstrijden zijn te kiezen (niet afgelaste), van een week terug tot ruim een jaar vooruit (het hele seizoen).
       where: {
+        archivedAt: null,
         status: { not: "CANCELLED" },
         // Seizoenspassen (titel met "seizoen") blijven altijd kiesbaar, ook als de datum voorbij is.
         OR: [

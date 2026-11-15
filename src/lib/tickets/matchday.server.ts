@@ -121,7 +121,7 @@ export function timeline(scans: Pick<ScanLite, "result" | "scannedAt" | "reentry
 export async function matchdayEvents() {
   const now = Date.now();
   const rows = await prisma.ticketEvent.findMany({
-    where: { status: { not: "CANCELLED" }, startsAt: { lte: new Date(now + 14 * 86_400_000) }, endsAt: { gte: new Date(now - 14 * 86_400_000) } },
+    where: { archivedAt: null, status: { not: "CANCELLED" }, startsAt: { lte: new Date(now + 14 * 86_400_000) }, endsAt: { gte: new Date(now - 14 * 86_400_000) } },
     orderBy: { startsAt: "asc" },
     select: { id: true, title: true, startsAt: true, endsAt: true },
   });

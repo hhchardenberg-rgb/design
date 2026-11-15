@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function FullhousePage() {
   const a = await ticketsPageAccess("sync:read");
   if (!a.allowed) return <NoAccess what="de Fullhouse-koppeling van HHC Tickets" />;
-  return <FullhousePanel canManage={a.can("sync:manage")} />;
+  return <FullhousePanel canManage={a.can("sync:manage")} canCreate={a.can("types:manage")} />;
 }

@@ -78,3 +78,13 @@ Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja
 - Pasfoto's bij tickets zijn niet gebouwd.
 - De echte Fullhouse-koppeling is nog niet getest, zie `architectuur.md` §13.
 - Toegang tot HHC Tickets geeft alleen de hoofdadmin; delegatie volgt later.
+
+## Wedstrijden verwijderen, archiveren en activeren (15/11/2026)
+
+- Nieuwe wedstrijden en wedstrijden uit Fullhouse beginnen op **Actief**. "Concept" is alleen een label (uitgeven en scannen werken ook bij Concept). Bij Wedstrijden zet je een concept met **Activeren** op Actief, of alles tegelijk met **Alle concepten activeren**. Fullhouse-wedstrijden hebben een potloodje voor status, seizoen, capaciteit en herintrede; titel en aftrap wijzig je in Fullhouse.
+- **Verwijderen of archiveren** (prullenbak) vraagt het recht "Wedstrijden verwijderen of archiveren" (`events:delete`, gevoelig) en het overtypen van de titel. Verwijderen kan alleen bij een HHC-wedstrijd zonder tickets, scans of verzonden mails. Anders kun je archiveren: de wedstrijd verdwijnt uit lijsten, scanner, dashboard en Fullhouse-synchronisatie, maar tickets, scans en rapportages blijven. Met nog geldige tickets kan archiveren pas als de wedstrijd gespeeld, afgesloten of afgelast is. Terugzetten via "Gearchiveerde wedstrijden tonen".
+- Seizoenen beheer je onder **Tickettypes, vakken en seizoenen** (kaart Seizoenen).
+
+## Soorten kaarten en toegangsvakken uit Fullhouse
+
+Alleen lezen: de Hub past Fullhouse nooit aan. Bij "Evenementen ophalen", bij de nachtelijke cron en met "Nu synchroniseren" op de Fullhouse-pagina leest de Hub per evenement de kaartsoorten (`tickets[]`) en categorieën (`categories[]`) en voegt ze samen op naam (tabel `tickets_fullhouse_items`). Per regel koppel je een HHC-tickettype of -vak, of je neemt hem over. Een HHC-type of -vak met precies dezelfde naam wordt vanzelf gekoppeld. Overgenomen tickettypes staan eerst op niet actief. Bij externe tickets toont de Fullhouse-pagina de gekoppelde HHC-naam.

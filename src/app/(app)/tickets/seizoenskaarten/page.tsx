@@ -19,7 +19,7 @@ export default async function SeasonCardsPage() {
   const [types, counts, reentryEvents] = await Promise.all([
     prisma.ticketType.findMany({ where: { isSeasonCard: true }, orderBy: { name: "asc" }, include: { season: true, zone: { select: { name: true } } } }),
     prisma.ticket.groupBy({ by: ["typeId"], where: { isSeasonCard: true, status: "ACTIVE", OR: [{ validUntil: null }, { validUntil: { gte: now } }] }, _count: { _all: true } }),
-    prisma.ticketEvent.count({ where: { allowReentry: true, endsAt: { gte: now } } }),
+    prisma.ticketEvent.count({ where: { allowReentry: true, archivedAt: null, endsAt: { gte: now } } }),
   ]);
   const count = new Map(counts.map((c) => [c.typeId, c._count._all]));
   return (
@@ -36,7 +36,7 @@ export default async function SeasonCardsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {types.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">Nog geen seizoenskaarten. Maak een tickettype met categorie &quot;Interne seizoenskaart&quot; aan onder Tickettypes en vakken.</p>
+            <p className="p-4 text-sm text-muted-foreground">Nog geen seizoenskaarten. Maak een tickettype met categorie &quot;Interne seizoenskaart&quot; aan onder Tickettypes, vakken en seizoenen.</p>
           ) : (
             <ul className="divide-y divide-border">
               {types.map((t) => (

@@ -38,12 +38,25 @@ export const eventSchema = z
     startsAt: instant,
     endsAt: optInstant,
     seasonId: optText(40),
-    status: z.enum(["DRAFT", "ACTIVE", "CLOSED", "CANCELLED"]).default("DRAFT"),
+    status: z.enum(["DRAFT", "ACTIVE", "CLOSED", "CANCELLED"]).default("ACTIVE"),
     allowReentry: z.boolean().default(false),
     capacity: z.number().int().min(1).max(100_000).nullish(),
     matchId: optText(40),
   })
   .refine((e) => !e.endsAt || new Date(e.endsAt) > new Date(e.startsAt), { message: "Het einde moet na de aftrap liggen.", path: ["endsAt"] });
+
+export const fullhouseEventSchema = z.object({
+  status: z.enum(["DRAFT", "ACTIVE", "CLOSED", "CANCELLED"]).optional(),
+  seasonId: optText(40).optional(),
+  capacity: z.number().int().min(1).max(100_000).nullable().optional(),
+  allowReentry: z.boolean().optional(),
+});
+
+export const removeEventSchema = z.object({
+  mode: z.enum(["delete", "archive"]),
+  confirmTitle: z.string().max(200),
+  reason: optText(300),
+});
 
 export const typeSchema = z.object({
   name: text(80).min(1, "Geef het tickettype een naam."),

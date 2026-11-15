@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function EventsPage() {
   const a = await ticketsPageAccess("events:read");
   if (!a.allowed) return <NoAccess what="de wedstrijden van HHC Tickets" />;
-  return <EventsManager canManage={a.can("events:manage")} canMail={a.can("tickets:resend")} />;
+  return <EventsManager canManage={a.can("events:manage")} canMail={a.can("tickets:resend")} canDelete={a.can("events:delete")} canSeasons={a.can("types:manage")} />;
 }

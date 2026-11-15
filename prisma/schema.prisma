@@ -1921,6 +1921,8 @@ model TicketZone {
   types   TicketType[]
   tickets Ticket[]
 
+  fullhouseItems TicketFullhouseItem[]
+
   @@map("tickets_zones")
 }
 
@@ -1947,6 +1949,9 @@ model TicketEvent {
   externalId   String?       @unique
   // Geïmporteerde Fullhouse-evenementen: door een beheerder zichtbaar/actief gemaakt.
   visible      Boolean       @default(true)
+  // Gearchiveerd: verborgen uit lijsten, scanner en synchronisatie; historie (tickets, scans) blijft.
+  archivedAt   DateTime?
+  archivedBy   String?
   matchId      String?
   match        Match?        @relation(fields: [matchId], references: [id], onDelete: SetNull)
   createdAt    DateTime      @default(now())
@@ -1986,6 +1991,8 @@ model TicketType {
   tickets Ticket[]
 
   promos TicketPromo[]
+
+  fullhouseItems TicketFullhouseItem[]
 
   @@map("tickets_types")
 }
@@ -2250,6 +2257,34 @@ model TicketExternalTicket {
   @@index([codeHash])
   @@index([eventExtId, status])
   @@map("tickets_external_tickets")
+}
+
+/// Kaartsoort (TYPE) of toegangsvak/categorie (ZONE) zoals Fullhouse die kent, samengevoegd op naam
+/// over alle evenementen heen. Alleen gelezen uit Fullhouse; de koppeling aan een HHC-tickettype of -vak legt een beheerder.
+model TicketFullhouseItem {
+  id          String      @id @default(cuid())
+  // TYPE | ZONE
+  kind        String
+  // Naam in kleine letters zonder dubbele spaties: de sleutel om dezelfde soort over evenementen heen te herkennen.
+  nameKey     String
+  name        String
+  // Fullhouse-id's (ticket type _id of category ref) per evenement; nodig om tickets aan deze soort te koppelen.
+  externalIds String[]    @default([])
+  // Alleen bij TYPE: de naam van de Fullhouse-categorie (het vak) waar de kaartsoort bij hoort, en de prijs in euro.
+  categoryRef String?
+  price       Float?
+  active      Boolean     @default(true)
+  eventCount  Int         @default(0)
+  typeId      String?
+  type        TicketType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  zoneId      String?
+  zone        TicketZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  lastSeenAt  DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([kind, nameKey])
+  @@map("tickets_fullhouse_items")
 }
 
 model TicketSyncRun {

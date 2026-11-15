@@ -116,7 +116,7 @@ export function TypesManager({ canManage }: { canManage: boolean }) {
 
   return (
     <div className="space-y-8">
-      <PageTitle title="Tickettypes en vakken" description="Per tickettype de categorie, geldigheid en het standaardvak. Wijzigingen gelden voor nieuwe tickets; uitgegeven tickets houden hun eigen regels.">
+      <PageTitle title="Tickettypes, vakken en seizoenen" description="Per tickettype de categorie, geldigheid en het standaardvak; onderaan de vakken en seizoenen. Wijzigingen gelden voor nieuwe tickets; uitgegeven tickets houden hun eigen regels.">
         {canManage && (
           <Button onClick={() => setDraft({ ...EMPTY_TYPE })}>
             <Plus className="h-4 w-4" /> Nieuw tickettype
@@ -343,7 +343,7 @@ export function TypesManager({ canManage }: { canManage: boolean }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="seizoenen" className="scroll-mt-24">
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div>
               <CardTitle className="text-base">Seizoenen</CardTitle>
