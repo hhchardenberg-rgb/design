@@ -283,7 +283,11 @@ export async function history(actor: TicketsActor, scopeKey: string) {
   const audit = await prisma.ticketAuditEvent.findMany({ where: { action: { startsWith: "design." }, meta: { path: ["scopeKey"], equals: key } }, orderBy: { at: "desc" }, take: 30, select: { at: true, actorName: true, summary: true } });
   return {
     versions: versions.map((v, i) => ({ version: v.version, at: v.publishedAt, by: v.publishedByName, note: v.note, count: overrideCount(asMap(v.overrides)), changes: diffOverrides(asMap(versions[i + 1]?.overrides), asMap(v.overrides)).length })),
-    log: audit,
+    // Leesbare namen in plaats van interne sleutels.
+    log: await (async () => {
+      const label = (await scopeLabels([requireScope(key)]))[key] ?? key;
+      return audit.map((a) => ({ ...a, summary: a.summary.split(key).join(label) }));
+    })(),
   };
 }
 
