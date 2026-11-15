@@ -425,7 +425,7 @@ export function ScannerApp() {
             </div>
             <label className="text-xs text-neutral-400">
               Ingang
-              <select value={entranceId} onChange={(e) => setEntranceId(e.target.value)} disabled={!!ctx.actor.entranceId} className="mt-1 w-full rounded bg-neutral-800 p-2 text-sm text-white">
+              <select value={entranceId} onChange={(e) => setEntranceId(e.target.value)} disabled={!!ctx.actor.entranceId} className="select-on-dark mt-1 w-full rounded bg-neutral-800 p-2 text-sm text-white">
                 <option value="">Kies…</option>
                 {ctx.entrances.map((e) => (
                   <option key={e.id} value={e.id}>
