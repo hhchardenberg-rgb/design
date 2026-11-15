@@ -58,7 +58,7 @@ export function buildAlerts(
   // 2. Hetzelfde ticket meerdere keer geweigerd of als "al gebruikt" gemeld.
   const refused = new Map<string, ScanLite[]>();
   for (const s of scans) {
-    if (s.result === "VALID") continue;
+    if (s.result === "VALID" || s.result === "VOIDED") continue;
     const k = keyOf(s);
     if (!k) continue;
     refused.set(k, [...(refused.get(k) ?? []), s]);

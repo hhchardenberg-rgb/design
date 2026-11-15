@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cacheExpired, checkOffline, parseHhcCode, type OfflineCache } from "../offline-check";
+import { cacheExpired, checkOffline, parseHhcCode, scanKey, ticketNumberFrom, type OfflineCache } from "../offline-check";
 
 const PID = "0123456789ABCDEF";
 const SIG = "A".repeat(22);
@@ -51,4 +51,23 @@ test("verkeerd vak en verlopen lijst worden geweigerd", () => {
   assert.equal(checkOffline(c, CODE, null, new Map(), "z2", NOW).result, "INVALID");
   assert.equal(cacheExpired(cache(), new Date("2026-11-15T00:00:00Z")), true);
   assert.equal(checkOffline(cache(), CODE, null, new Map(), null, new Date("2026-11-15T00:00:00Z")).result, "INVALID");
+});
+
+test("ticketnummer werkt offline alleen voor een supervisor en alleen als het in de lijst staat", () => {
+  const typed = "0123-4567-89ab-cdef";
+  assert.equal(ticketNumberFrom(typed), PID);
+  const denied = checkOffline(cache(), typed, null, new Map(), null, NOW);
+  assert.deepEqual([denied.result, denied.reason], ["INVALID", "NUMBER_NOT_ALLOWED"]);
+  const ok = checkOffline(cache(), typed, null, new Map(), null, NOW, { allowNumber: true });
+  assert.deepEqual([ok.result, ok.key], ["VALID", PID]);
+  // Onbekend nummer: wordt als Fullhouse-barcode behandeld (op hash), dus niet als "niet toegestaan".
+  const unknown = checkOffline(cache(), "FFFF-FFFF-FFFF-FFFF", "zzz", new Map(), null, NOW);
+  assert.deepEqual([unknown.result, unknown.reason], ["INVALID", "NOT_FOUND"]);
+});
+
+test("geldige scan geeft de sleutel terug, zodat het apparaat hem kan onthouden", () => {
+  assert.equal(scanKey(CODE, null), PID);
+  assert.equal(scanKey("12345", "abc"), "abc");
+  const r = checkOffline(cache(), "12345", "abc", new Map(), null, NOW);
+  assert.equal(r.key, "abc");
 });

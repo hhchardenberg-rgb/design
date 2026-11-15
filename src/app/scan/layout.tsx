@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: "HHC Scanner", statusBarStyle: "black-translucent" },
 };
-export const viewport: Viewport = { themeColor: "#f26a21", width: "device-width", initialScale: 1, maximumScale: 1, userScalable: false };
+export const viewport: Viewport = { themeColor: "#f26a21", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function ScanLayout({ children }: { children: React.ReactNode }) {
   if (!isTicketsEnabled()) notFound();

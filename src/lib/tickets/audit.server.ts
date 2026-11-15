@@ -24,6 +24,7 @@ export const TICKET_AUDIT_ACTIONS = {
   "ticket.scanned": "Ticket gescand",
   "scan.override": "Scan handmatig overruled",
   "scan.manual": "Ticket handmatig ingecheckt",
+  "scan.void": "Scan ongedaan gemaakt",
   "batch.requested": "Bulkuitgifte aangevraagd",
   "batch.approved": "Bulkuitgifte goedgekeurd",
   "batch.rejected": "Bulkuitgifte afgewezen",
