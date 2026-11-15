@@ -5,7 +5,7 @@
 
 export interface TicketPermissionInfo {
   label: string;
-  group: "Overzicht" | "Tickets" | "Scannen" | "Inrichting" | "Ontwerp" | "Rapportage" | "Beheer";
+  group: "Overzicht" | "Tickets" | "Klantenservice" | "Scannen" | "Inrichting" | "Ontwerp" | "Rapportage" | "Beheer";
   /** Risicovol of privacygevoelig: in de rolbewerker gemarkeerd. */
   sensitive?: boolean;
 }
@@ -29,6 +29,7 @@ export const TICKET_PERMISSIONS = {
   "tickets:block": { label: "Tickets blokkeren, annuleren en heractiveren", group: "Tickets", sensitive: true },
   "tickets:resend": { label: "Tickets opnieuw versturen of opnieuw uitgeven", group: "Tickets" },
   "tickets:anonymize": { label: "Persoonsgegevens anonimiseren", group: "Tickets", sensitive: true },
+  "support:search": { label: "Klanten en tickets zoeken in Klantenservice (HHC en Fullhouse)", group: "Klantenservice", sensitive: true },
   "scan:scan": { label: "Tickets scannen", group: "Scannen" },
   "scan:note": { label: "Scannotitie toevoegen", group: "Scannen" },
   "scan:history": { label: "Scanhistorie bekijken", group: "Scannen" },
@@ -135,6 +136,12 @@ export const TICKET_ROLE_TEMPLATES: TicketRoleTemplate[] = [
     name: "Ticketuitgever",
     description: "Tickets uitgeven (ook via CSV), opnieuw versturen en het overzicht bekijken.",
     permissions: withRequired(["dashboard:read", "tickets:personal", "tickets:issue", "tickets:bulk", "tickets:resend"]),
+  },
+  {
+    key: "klantenservice",
+    name: "Klantenservicemedewerker",
+    description: "Klanten en tickets zoeken (HHC en Fullhouse), ticketdetails bekijken en tickets opnieuw versturen.",
+    permissions: withRequired(["support:search", "tickets:read", "tickets:resend"]),
   },
   {
     key: "scannercoordinator",

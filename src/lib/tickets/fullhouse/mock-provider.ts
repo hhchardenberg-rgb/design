@@ -1,4 +1,4 @@
-import type { FullhouseEvent, FullhouseScanResult, FullhouseTicket, OfflineScan, TicketPage, TicketProvider } from "./types";
+import type { FullhouseHolderTicket, FullhouseSearchKind, FullhouseSearchResult, FullhouseEvent, FullhouseScanResult, FullhouseTicket, OfflineScan, TicketPage, TicketProvider } from "./types";
 
 // Testprovider: voorspelbare voorbeelddata, geen netwerk. Standaard in ontwikkeling en
 // previews. Barcodes: FH-TEST-0001 t/m FH-TEST-0050 zijn geldig, FH-TEST-INVALID is
@@ -39,10 +39,29 @@ function ticket(n: number, status = "VALID"): FullhouseTicket {
 
 const TICKETS = [...Array.from({ length: 50 }, (_, i) => ticket(i + 1)), ticket(-1, "INVALID")];
 
+/** Testkopers voor de zoektool: twee tickets per bestelling, bezoeker n heeft testbezoeker<n>@voorbeeld.nl. */
+function holder(t: FullhouseTicket, i: number): FullhouseHolderTicket {
+  const n = i + 1;
+  const order = Math.ceil(n / 2);
+  return { ...t, email: `testbezoeker${Math.abs(n)}@voorbeeld.nl`, customerId: `mock-customer-${order}`, transactionId: `mock-order-${order}`, createdAt: new Date(Date.UTC(2026, 7, 1 + (n % 28), 10)) };
+}
+const HOLDERS = TICKETS.map(holder);
+
+export function mockSearch(kind: FullhouseSearchKind, term: string): FullhouseSearchResult {
+  const t = term.trim().toLowerCase();
+  const hit = HOLDERS.filter((h) =>
+    kind === "ticket" ? h.barcode.toLowerCase() === t : kind === "order" ? h.transactionId === term.trim() : kind === "email" ? h.email === t : (h.name ?? "").toLowerCase().includes(t),
+  );
+  return { tickets: hit.slice(0, 50), truncated: hit.length > 50 };
+}
+
 export function createMockProvider(): TicketProvider {
   const scanned = new Set<string>();
   return {
     mode: "mock",
+    async searchHolders(kind, term) {
+      return mockSearch(kind, term);
+    },
     async listEvents() {
       return [EVENT];
     },

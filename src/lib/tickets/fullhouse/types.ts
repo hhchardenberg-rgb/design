@@ -76,6 +76,22 @@ export class FullhouseError extends Error {
   }
 }
 
+/** Een Fullhouse-ticket met de gegevens van de koper/houder, alleen voor de zoektool in Klantenservice. Wordt nooit opgeslagen. */
+export interface FullhouseHolderTicket extends FullhouseTicket {
+  email: string | null;
+  customerId: string | null;
+  transactionId: string | null;
+  createdAt: Date | null;
+}
+
+export type FullhouseSearchKind = "name" | "email" | "ticket" | "order";
+
+export interface FullhouseSearchResult {
+  tickets: FullhouseHolderTicket[];
+  /** Meer gevonden dan getoond. */
+  truncated: boolean;
+}
+
 export interface TicketProvider {
   readonly mode: FullhouseMode;
   /** Evenementen waartoe het scanapparaat (access user) toegang heeft. */
@@ -88,4 +104,9 @@ export interface TicketProvider {
   scanBarcode(barcode: string): Promise<FullhouseScanResult>;
   /** Offline gemaakte scans achteraf terugmelden. */
   pushOfflineScans(eventId: string, scans: OfflineScan[]): Promise<void>;
+  /**
+   * Alleen lezen: tickets zoeken op naam, e-mailadres, barcode of ordernummer (vivenu-transactie).
+   * Ontbreekt als de koppeling dat niet kan (alleen een scanapparaat-token: dan kan alleen op barcode).
+   */
+  searchHolders?(kind: FullhouseSearchKind, term: string): Promise<FullhouseSearchResult>;
 }

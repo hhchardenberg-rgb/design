@@ -22,17 +22,18 @@ async function commercialState(): Promise<CommercialShellState> {
   return { member: access.isMember, admin: access.can("rights:manage_rights") };
 }
 
-async function ticketsState(): Promise<boolean> {
-  if (!isTicketsEnabled()) return false;
+async function ticketsState(): Promise<{ hasAccess: boolean; supportSearch: boolean }> {
+  if (!isTicketsEnabled()) return { hasAccess: false, supportSearch: false };
   const session = await auth();
-  if (!session?.user) return false;
-  return (await loadTicketsAccess(session.user.id)).hasAccess;
+  if (!session?.user) return { hasAccess: false, supportSearch: false };
+  const access = await loadTicketsAccess(session.user.id);
+  return { hasAccess: access.hasAccess, supportSearch: access.hasAccess && access.can("support:search") };
 }
 
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
   const [commercial, news, tickets] = await Promise.all([commercialState(), loadNewsEnabled(), ticketsState()]);
   return (
-    <AppShell commercial={commercial} tickets={tickets} news={{ hub: news.hub, ticketing: news.ticketing }}>
+    <AppShell commercial={commercial} tickets={tickets.hasAccess} supportSearch={tickets.supportSearch} news={{ hub: news.hub, ticketing: news.ticketing }}>
       {children}
     </AppShell>
   );

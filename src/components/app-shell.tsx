@@ -10,7 +10,7 @@ import { GroupedNavMenu, type NavMenuGroup } from "@/components/grouped-nav-menu
 import { SectionSwitcher, type SectionLink } from "@/components/section-switcher";
 import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { visibleAdminGroups } from "@/lib/admin-modules";
-import { ticketingModules } from "@/lib/ticketing-modules";
+import { visibleTicketingModules } from "@/lib/ticketing-modules";
 import { hasAnyAdminRole, hasRole, resolveHomePath, type AppRole } from "@/lib/roles";
 
 // Sub-navigatie bínnen het designtool-onderdeel — apart van het apps-menu,
@@ -42,13 +42,12 @@ function hubMenuGroups(newsEnabled: boolean): NavMenuGroup[] {
   }));
 }
 
-function ticketingMenuGroups(newsEnabled: boolean): NavMenuGroup[] {
+function ticketingMenuGroups(newsEnabled: boolean, supportSearch: boolean): NavMenuGroup[] {
   return [
     {
       id: "ticketing",
       label: "Klantenservice",
-      items: ticketingModules
-        .filter((m) => m.id !== "nieuws" || newsEnabled)
+      items: visibleTicketingModules({ newsEnabled, supportSearch })
         .map((m) => ({ title: m.title, href: m.href, status: m.status, icon: m.icon })),
     },
   ];
@@ -72,12 +71,15 @@ export function AppShell({
   children,
   commercial,
   tickets = false,
+  supportSearch = false,
   news,
 }: {
   children: React.ReactNode;
   commercial: CommercialShellState;
   /** Toegang tot HHC Tickets (server-side bepaald: flag + rol). */
   tickets?: boolean;
+  /** Mag de zoektool in Klantenservice gebruiken (HHC Tickets-recht support:search). */
+  supportSearch?: boolean;
   /** Of het nieuws van Communicatie en Klantenservice aan staat (server-side uit de database). */
   news: { hub: boolean; ticketing: boolean };
 }) {
@@ -136,7 +138,7 @@ export function AppShell({
             {isAdminSection ? (
               <GroupedNavMenu groups={adminMenuGroups} label="Beheeronderdelen" />
             ) : isTicketingSection ? (
-              <GroupedNavMenu groups={ticketingMenuGroups(news.ticketing)} label="Onderdelen" />
+              <GroupedNavMenu groups={ticketingMenuGroups(news.ticketing, supportSearch)} label="Onderdelen" />
             ) : isCommercialSection || isTicketsSection ? null : (
               <GroupedNavMenu groups={hubMenuGroups(news.hub)} label="Onderdelen" />
             )}

@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ticketingModules, ticketingQuickLinks } from "@/lib/ticketing-modules";
+import { visibleTicketingModules, ticketingQuickLinks } from "@/lib/ticketing-modules";
+import { auth } from "@/lib/auth";
+import { isTicketsEnabled } from "@/lib/tickets/flag";
+import { loadTicketsAccess } from "@/lib/tickets/authz.server";
 import { QuickLinks } from "@/components/quick-links";
 import { NewsPosts } from "@/components/news-posts";
 import { isNewsEnabled, listNewsPosts } from "@/lib/news.server";
@@ -12,7 +15,9 @@ export const metadata: Metadata = { title: "Klantenservice" };
 export default async function TicketingPage() {
   const newsEnabled = await isNewsEnabled("ticketing");
   const newsPosts = newsEnabled ? await listNewsPosts("ticketing", 3) : [];
-  const modules = ticketingModules.filter((m) => m.id !== "nieuws" || newsEnabled);
+  const session = await auth();
+  const access = isTicketsEnabled() && session?.user ? await loadTicketsAccess(session.user.id) : null;
+  const modules = visibleTicketingModules({ newsEnabled, supportSearch: !!access?.hasAccess && access.can("support:search") });
 
   return (
     <div className="flex flex-col gap-8">

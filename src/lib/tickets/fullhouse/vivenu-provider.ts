@@ -1,4 +1,4 @@
-import { FullhouseError, type FullhouseCategory, type FullhouseEvent, type FullhouseTicketType, type FullhouseMode, type FullhouseScanResult, type FullhouseTicket, type OfflineScan, type TicketPage, type TicketProvider } from "./types";
+import { FullhouseError, type FullhouseHolderTicket, type FullhouseSearchKind, type FullhouseSearchResult, type FullhouseCategory, type FullhouseEvent, type FullhouseTicketType, type FullhouseMode, type FullhouseScanResult, type FullhouseTicket, type OfflineScan, type TicketPage, type TicketProvider } from "./types";
 
 // Echte Fullhouse-provider (Fullhouse draait op vivenu; endpoints uit docs.vivenu.dev, zie
 // docs/hhc-tickets/architectuur.md §2). Uitgangspunten:
@@ -44,6 +44,25 @@ export function mapTicket(raw: unknown, fallbackEventId: string): FullhouseTicke
     row: str(raw.row),
     seat: str(raw.seat),
     updatedAt: updated ? new Date(updated) : null,
+  };
+}
+
+/** Ticket met kopergegevens (vivenu-ticketvelden email, firstname/lastname, customerId, transactionId, createdAt). Alleen voor de zoektool; wordt nooit opgeslagen. */
+export function mapHolderTicket(raw: unknown, fallbackEventId: string): FullhouseHolderTicket {
+  const base = mapTicket(raw, fallbackEventId);
+  const r = raw as Obj;
+  const full = [str(r.firstname), str(r.lastname)].filter(Boolean).join(" ");
+  const created = str(r.createdAt);
+  return {
+    ...base,
+    name: base.name ?? (full || null),
+    area: base.area ?? str(r.sectionName) ?? str(r.categoryName),
+    row: base.row ?? str(r.rowName),
+    seat: base.seat ?? str(r.seatName),
+    email: str(r.email),
+    customerId: str(r.customerId),
+    transactionId: str(r.transactionId),
+    createdAt: created && !Number.isNaN(Date.parse(created)) ? new Date(created) : null,
   };
 }
 
@@ -115,10 +134,54 @@ export function createVivenuProvider(cfg: VivenuConfig): TicketProvider {
     }
     return all;
   }
+  /** Zoeken (alleen met API-sleutel, alleen GET). Begrensd aantal verzoeken per zoekopdracht. */
+  const SEARCH_TOP = 50;
+  const holderRows = (body: unknown) => docsOf(body).map((t) => mapHolderTicket(t, ""));
+  async function searchHolders(kind: FullhouseSearchKind, term: string): Promise<FullhouseSearchResult> {
+    const q = (o: Record<string, string>) => new URLSearchParams({ top: String(SEARCH_TOP), skip: "0", ...o });
+    if (kind === "ticket") {
+      const rows = holderRows(await get(`/tickets?${q({ barcode: term })}`));
+      return { tickets: rows, truncated: rows.length >= SEARCH_TOP };
+    }
+    if (kind === "name") {
+      const rows = holderRows(await get(`/tickets?${q({ name: term })}`));
+      return { tickets: rows, truncated: rows.length >= SEARCH_TOP };
+    }
+    if (kind === "order") {
+      // Ordernummer = id van de vivenu-transactie. Bestaat hij niet, dan niets gevonden.
+      const tx = await get(`/transactions/${encodeURIComponent(term)}`, true);
+      if (tx === null) return { tickets: [], truncated: false };
+      const rows = holderRows(await get(`/transactions/${encodeURIComponent(term)}/tickets`));
+      return { tickets: rows, truncated: false };
+    }
+    // E-mail: eerst de klant(en) met dat adres, dan hun tickets. Zonder klantrecord: via de bestellingen op dat adres.
+    const customers = docsOf(await get(`/customers?${new URLSearchParams({ email: term, top: "5", skip: "0" })}`))
+      .map((c) => (isObj(c) ? (str(c._id) ?? str(c.id)) : null))
+      .filter((id): id is string => !!id)
+      .slice(0, 3);
+    const out: FullhouseHolderTicket[] = [];
+    let truncated = false;
+    for (const id of customers) {
+      const rows = holderRows(await get(`/tickets?${q({ customerId: id })}`));
+      if (rows.length >= SEARCH_TOP) truncated = true;
+      out.push(...rows);
+    }
+    if (customers.length === 0) {
+      const txs = docsOf(await get(`/transactions/rich?${new URLSearchParams({ email: term, top: "5", skip: "0" })}`))
+        .map((t) => (isObj(t) ? (str(t._id) ?? str(t.id)) : null))
+        .filter((id): id is string => !!id)
+        .slice(0, 5);
+      for (const id of txs) out.push(...holderRows(await get(`/transactions/${encodeURIComponent(id)}/tickets`)));
+    }
+    const seen = new Set<string>();
+    return { tickets: out.filter((t) => (seen.has(t.externalId) ? false : (seen.add(t.externalId), true))), truncated };
+  }
+
   const writesOff = () => new FullhouseError("Schrijven naar Fullhouse staat uit (FULLHOUSE_ALLOW_WRITES). De Hub registreert deze scan zelf.", "config");
 
   return {
     mode: cfg.mode,
+    ...(cfg.apiKey ? { searchHolders } : {}),
     async listEvents(): Promise<FullhouseEvent[]> {
       const raw = cfg.apiKey ? await listAllEvents() : await get("/accessusers/events");
       return docsOf(raw).map((e) => {
