@@ -109,6 +109,34 @@ body {
   }
 }
 
+/*
+ * Keuzelijsten: overal hetzelfde pijltje op dezelfde plek. Het eigen pijltje
+ * van de browser staat per lijst en per browser op een andere afstand van de
+ * rand (zeker bij smalle lijsten met px-2), daarom zetten we het uit en tekenen
+ * we één eigen pijltje: 16px breed, 10px van de rechterrand, verticaal in het
+ * midden. De rechterpadding is vast (34px), zodat tekst nooit onder het pijltje
+ * loopt. Bewust buiten @layer, zodat dit boven utilities als px-2 wint.
+ * De kleur in de svg is --muted-foreground (een data-URL kan geen
+ * CSS-variabelen lezen).
+ */
+select:not([multiple]):not([size]) {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b6659' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px 16px;
+  padding-right: 34px;
+  padding-inline-end: 34px;
+  text-overflow: ellipsis;
+}
+
+/* Keuzelijst op een donkere achtergrond (scanner): wit pijltje. */
+select.select-on-dark:not([multiple]):not([size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ffffff' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+}
+
 /* Kopteksten in de huisstijlletter (DIN), zie --font-heading hierboven. */
 h1,
 h2,
