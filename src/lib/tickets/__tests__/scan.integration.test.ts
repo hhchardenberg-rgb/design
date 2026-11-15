@@ -141,17 +141,17 @@ test("ticket voor een ander vak dan de ingang wordt geweigerd", { skip }, async 
 });
 
 test("Fullhouse-codes: geldig, dubbel, ongeldig, onbekend en wedstrijd zonder koppeling", { skip }, async () => {
-  const a = await doScan(scanner(), fhEventId, "FH-TEST-0001");
+  const a = await doScan(scanner(), fhEventId, "FH-TEST-0005");
   assert.equal(a.result, "VALID");
   assert.equal(a.source, "FULLHOUSE");
-  assert.equal((await doScan(scanner(), fhEventId, "FH-TEST-0001")).result, "WARNING");
+  assert.equal((await doScan(scanner(), fhEventId, "FH-TEST-0005")).result, "WARNING");
   assert.deepEqual((await doScan(scanner(), fhEventId, "FH-TEST-INVALID")).reason, "CANCELLED");
   assert.deepEqual((await doScan(scanner(), fhEventId, "ONBEKEND-123")).reason, "NOT_FOUND");
   assert.deepEqual((await doScan(scanner(), noFhEventId, "FH-TEST-0002")).reason, "WRONG_EVENT");
   const cached = await db.ticketExternalTicket.findMany({ where: { eventExtId: "mock-event-1" } });
   assert.ok(cached.length >= 1);
   assert.ok(cached.every((c) => c.codeHash.length === 64), "alleen een hash van de barcode wordt bewaard");
-  assert.ok(!JSON.stringify(cached).includes("FH-TEST-0001"));
+  assert.ok(!JSON.stringify(cached).includes("FH-TEST-0005"));
 });
 
 test("offline-lijst en terugmelden: scans komen één keer binnen en de server beoordeelt opnieuw", { skip }, async () => {
@@ -256,7 +256,9 @@ test("seizoenspassen: overzicht, verlengen (idempotent) en overdragen maakt de o
   await sp.transferTicket(admin, card.id, { holder: { firstName: "Bram", lastName: "Jansen", email: "b@test.nl" }, reason: "pas overgenomen" });
   const res = await doScan(supervisor, eventId, card.code);
   assert.equal(res.result, "INVALID");
-  assert.equal(res.reason, "NOT_FOUND");
+  assert.equal(res.reason, "OUTDATED");
+  assert.equal(res.overridable, false);
+  assert.ok(!res.label?.includes("B."), "geen initialen van de nieuwe houder op de oude QR");
   assert.equal((await db.ticket.findUniqueOrThrow({ where: { id: card.id } })).firstName, "Bram");
   const audit = await db.ticketAuditEvent.findFirst({ where: { ticketId: card.id, action: "ticket.transferred" } });
   assert.ok(audit && !JSON.stringify(audit).includes("Jansen"), "geen namen in het auditlog");
@@ -320,4 +322,104 @@ test("actiecode: inwisselen maakt tickets, respecteert maximum en één per e-ma
   for (let i = 0; i < 16; i++) await pr.claimPromo({ code: "BESTAATNIET", firstName: "A", lastName: "B", email: `x${i}@test.nl` }, "9.9.9.9").catch(() => {});
   await assert.rejects(() => pr.claimPromo({ code, firstName: "Z", lastName: "Z", email: "z@test.nl" }, "9.9.9.9"), /Te veel pogingen/);
   await assert.rejects(() => pr.savePromo(admin, { name: "Dubbel", code, typeId: typeSingle, eventIds: [eventId], maxClaims: 1 }), /bestaat al/);
+});
+
+test("uitslag noemt het vak, en bij een verkeerd vak voor welk vak het ticket wel is", { skip }, async () => {
+  const entr = await db.ticketEntrance.create({ data: { name: "Ingang B2", zoneId: zoneB } });
+  const t = await issue(typeSingle, [eventId]);
+  const wrong = await doScan(scanner(), eventId, t.code, { entranceId: entr.id });
+  assert.equal(wrong.reason, "WRONG_ZONE");
+  assert.match(wrong.detail ?? "", /Tribune A/);
+  const ok = await doScan(scanner(), eventId, t.code);
+  assert.equal(ok.zone, "Tribune A");
+});
+
+test("verkeerde wedstrijd: de uitslag noemt voor welke wedstrijd het ticket wel geldt", { skip }, async () => {
+  const t = await issue(typeSingle, [eventId]);
+  const r = await doScan(scanner(), noFhEventId, t.code);
+  assert.equal(r.reason, "WRONG_EVENT");
+  assert.match(r.detail ?? "", /HHC – Test \(\d{2}\/\d{2}\/\d{4}\)/);
+});
+
+test("herintrede toont wanneer het ticket eerder binnenkwam", { skip }, async () => {
+  const t = await issue(typeSeason, []);
+  const first = await doScan(scanner(), eventId, t.code);
+  const again = await doScan(scanner(), eventId, t.code);
+  assert.equal(again.reentry, true);
+  assert.equal(again.previous?.at, first.at);
+});
+
+test("ticketnummer typen: alleen een supervisor, en het wordt als zodanig gemarkeerd", { skip }, async () => {
+  const t = await issue(typeSingle, [eventId]);
+  const pid = t.code.split(".")[1];
+  const typed = pid.toLowerCase().replace(/(.{4})(?=.)/g, "$1-");
+  await assert.rejects(doScan(scanner(), eventId, typed), /supervisor/i);
+  const r = await doScan(supervisor, eventId, typed);
+  assert.equal(r.result, "VALID");
+  assert.equal(r.byNumber, true);
+  const row = await db.ticketScan.findUniqueOrThrow({ where: { id: r.scanId } });
+  assert.match(row.note ?? "", /ticketnummer/);
+  // Een onbekend nummer valt terug op een gewone (Fullhouse-)controle in plaats van een foutmelding.
+  assert.equal((await doScan(scanner(), fhEventId, "ZZZZ-ZZZZ-ZZZZ-ZZZZ")).reason, "NOT_FOUND");
+});
+
+test("Fullhouse onbereikbaar: eigen reden, en een supervisor mag met reden toelaten", { skip }, async () => {
+  const r = await doScan(scanner(), fhEventId, "FH-TEST-UNREACHABLE");
+  assert.deepEqual([r.result, r.reason], ["INVALID", "PROVIDER_DOWN"]);
+  assert.equal(r.overridable, false);
+  const s = await doScan(supervisor, fhEventId, "FH-TEST-UNREACHABLE");
+  assert.equal(s.overridable, true);
+  const over = await doScan(supervisor, fhEventId, "FH-TEST-UNREACHABLE", { override: { reason: "Storing bij controle" } });
+  assert.equal(over.result, "VALID");
+});
+
+test("ongedaan maken: ticket telt weer als ongebruikt, met reden in het logboek", { skip }, async () => {
+  const sc = await db.ticketScanner.create({ data: { name: "Poort 1", loginCode: `T${Date.now() % 100000}`, pinHash: "x" } });
+  const other = await db.ticketScanner.create({ data: { name: "Poort 2", loginCode: `U${Date.now() % 100000}`, pinHash: "x" } });
+  const me = scanner({ scannerId: sc.id, name: "Poort 1" });
+  const t = await issue(typeSingle, [eventId]);
+  const first = await doScan(me, eventId, t.code);
+  assert.equal(first.result, "VALID");
+  await assert.rejects(scan.voidScan(scanner({ scannerId: other.id }), { scanId: first.scanId, reason: "niet van mij" }), /eigen scan/);
+  await assert.rejects(scan.voidScan(me, { scanId: first.scanId, reason: "x" }));
+  await scan.voidScan(me, { scanId: first.scanId, reason: "Bezoeker ging niet naar binnen" });
+  await assert.rejects(scan.voidScan(supervisor, { scanId: first.scanId, reason: "nog eens" }), /al ongedaan/);
+  const row = await db.ticketScan.findUniqueOrThrow({ where: { id: first.scanId } });
+  assert.equal(row.result, "VOIDED");
+  assert.equal(row.voidedBy, "Poort 1");
+  assert.equal((await doScan(me, eventId, t.code)).result, "VALID", "na ongedaan maken weer geldig");
+  const audit = await db.ticketAuditEvent.findFirst({ where: { action: "scan.void", ticketId: t.id } });
+  assert.equal(audit?.reason, "Bezoeker ging niet naar binnen");
+  // Een oude eigen scan mag alleen een supervisor terugdraaien.
+  const t2 = await issue(typeSingle, [eventId]);
+  const old = await doScan(me, eventId, t2.code);
+  await db.ticketScan.update({ where: { id: old.scanId }, data: { receivedAt: new Date(Date.now() - 30 * 60_000) } });
+  await assert.rejects(scan.voidScan(me, { scanId: old.scanId, reason: "te laat" }), /10 minuten/);
+  await scan.voidScan(supervisor, { scanId: old.scanId, reason: "Verkeerd ticket gescand" });
+  const h = await scan.scanHistory({ eventId, result: "VOIDED" });
+  assert.ok(h.rows.some((x) => /Ongedaan gemaakt door Supervisor/.test(x.note ?? "")));
+});
+
+test("terugmelden: blijvende fouten worden gemeld in plaats van eindeloos opnieuw geprobeerd", { skip }, async () => {
+  const t = await issue(typeSingle, [eventId]);
+  const pid = t.code.split(".")[1];
+  const r = await scan.syncScans(scanner(), { scans: [{ eventId, code: pid, clientId: cid(), scannedAt: new Date().toISOString() }] });
+  assert.equal(r.results.length, 0);
+  assert.equal(r.rejected.length, 1);
+  assert.match(r.rejected[0].error, /supervisor/);
+});
+
+test("vaste testcodes: werken altijd, slaan niets op en tellen nergens mee", { skip }, async () => {
+  const before = await db.ticketScan.count();
+  const ok1 = await doScan(scanner(), eventId, "FH-TEST-0001");
+  const ok2 = await doScan(scanner(), noFhEventId, "fh-test-0001");
+  assert.deepEqual([ok1.result, ok1.test, ok2.result], ["VALID", true, "VALID"], "ook bij elke wedstrijd en steeds opnieuw groen");
+  const down = await doScan(scanner(), eventId, "FH-TEST-DOWN");
+  assert.deepEqual([down.result, down.reason, down.overridable, down.test], ["INVALID", "PROVIDER_DOWN", false, true]);
+  assert.equal((await doScan(supervisor, eventId, "FH-TEST-DOWN")).overridable, true);
+  await assert.rejects(doScan(scanner(), eventId, "FH-TEST-DOWN", { override: { reason: "geen recht" } }), /supervisor/);
+  const over = await doScan(supervisor, eventId, "FH-TEST-DOWN", { override: { reason: "Storing bij controle" } });
+  assert.deepEqual([over.result, over.overridden], ["VALID", true]);
+  assert.equal(await db.ticketScan.count(), before, "geen scanregels");
+  assert.ok((await db.ticketAuditEvent.count({ where: { action: "scan.test" } })) >= 4);
 });

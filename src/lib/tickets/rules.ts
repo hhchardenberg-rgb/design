@@ -82,7 +82,9 @@ export type ScanReason =
   | "WRONG_EVENT"
   | "EVENT_NOT_ACTIVE"
   | "WRONG_ZONE"
-  | "ALREADY_USED";
+  | "ALREADY_USED"
+  | "OUTDATED"
+  | "PROVIDER_DOWN";
 
 export const SCAN_REASON_LABELS: Record<ScanReason, string> = {
   NOT_FOUND: "Ticket bestaat niet",
@@ -91,9 +93,11 @@ export const SCAN_REASON_LABELS: Record<ScanReason, string> = {
   EXPIRED: "Ticket is verlopen",
   NOT_YET_VALID: "Ticket is nog niet geldig",
   WRONG_EVENT: "Ticket hoort bij een andere wedstrijd",
-  EVENT_NOT_ACTIVE: "Deze wedstrijd is afgelast (of de offline-lijst is verlopen)",
+  EVENT_NOT_ACTIVE: "Deze wedstrijd is afgelast",
   WRONG_ZONE: "Ticket hoort bij een ander vak dan deze ingang",
   ALREADY_USED: "Ticket is al gebruikt",
+  OUTDATED: "Oude versie van dit ticket: er is een nieuwer ticket verstuurd",
+  PROVIDER_DOWN: "Fullhouse is niet bereikbaar: ticket kon niet worden gecontroleerd",
 };
 
 export type ScanOutcome =
@@ -101,7 +105,7 @@ export type ScanOutcome =
   | { result: "VALID"; reentry: true }
   /** Tweede scan: altijd een waarschuwing, nooit stil geldig. Alleen een supervisor-override kan doorlaten. */
   | { result: "WARNING"; reason: "ALREADY_USED" }
-  | { result: "INVALID"; reason: Exclude<ScanReason, "ALREADY_USED"> };
+  | { result: "INVALID"; reason: Exclude<ScanReason, "ALREADY_USED" | "OUTDATED" | "PROVIDER_DOWN"> };
 
 /** Valt deze wedstrijd binnen de geldigheid van het ticket (los van status en gebruik)? */
 export function coversEvent(t: RuleTicket, e: RuleEvent): boolean {

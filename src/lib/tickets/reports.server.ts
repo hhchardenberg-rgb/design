@@ -86,7 +86,7 @@ async function scanRows(eventId: string): Promise<Cell[][]> {
   const entrances = new Map((await prisma.ticketEntrance.findMany({ select: { id: true, name: true } })).map((e) => [e.id, e.name]));
   return [
     ["Tijd", "Uitslag", "Reden", "Ticket (initialen en type)", "Bron", "Ingang", "Scanner", "Offline", "Override door", "Override reden", "Notitie"],
-    ...rows.map((r) => [formatDayTime(r.scannedAt), r.result === "VALID" ? "Geldig" : r.result === "WARNING" ? "Waarschuwing" : "Afgewezen", r.reason ? SCAN_REASON_LABELS[r.reason as ScanReason] : "", r.holderLabel ?? "", r.source === "HHC" ? "HHC" : "Fullhouse", (r.entranceId && entrances.get(r.entranceId)) || "", r.scanner?.name ?? "", r.offline ? "ja" : "", r.overrideBy ?? "", r.overrideReason ?? "", r.note ?? ""] as Cell[]),
+    ...rows.map((r) => [formatDayTime(r.scannedAt), r.result === "VALID" ? "Geldig" : r.result === "WARNING" ? "Waarschuwing" : r.result === "VOIDED" ? "Ongedaan gemaakt" : "Afgewezen", r.reason ? SCAN_REASON_LABELS[r.reason as ScanReason] : "", r.holderLabel ?? "", r.source === "HHC" ? "HHC" : "Fullhouse", (r.entranceId && entrances.get(r.entranceId)) || "", r.scanner?.name ?? "", r.offline ? "ja" : "", r.overrideBy ?? "", r.overrideReason ?? "", r.note ?? ""] as Cell[]),
   ];
 }
 

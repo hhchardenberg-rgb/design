@@ -3,13 +3,15 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
-import { ticketAuditTx } from "./audit.server";
+import { ticketAudit, ticketAuditTx } from "./audit.server";
 import { initialsOf } from "./issue";
 import { ticketProvider } from "./fullhouse";
 import { FullhouseError } from "./fullhouse/types";
 import { coversEvent, evaluateScan, SCAN_REASON_LABELS, type RuleEvent, type RuleTicket, type ScanReason, type TicketStatus, type ValidityMode } from "./rules";
 import type { ScanActor } from "./scanner-auth.server";
-import { detectSource, parseQrCode } from "./token";
+import { formatDay } from "@/lib/date-format";
+import { detectSource, parseQrCode, qrCodeFor } from "./token";
+import { isTestCode, TEST_CODES, TEST_DETAIL, TEST_LABEL } from "./offline-check";
 
 // De scanlogica op de server. De server is de enige die beslist: het apparaat krijgt een
 // uitslag terug. Elke poging (ook een mislukte) wordt vastgelegd. Dubbel scannen wordt
@@ -44,17 +46,33 @@ export interface ScanResponse {
   previous: { at: string; where: string | null } | null;
   /** Een supervisor mag deze uitslag met reden overrulen. */
   overridable: boolean;
+  /** Vak van het ticket (HHC-vak of Fullhouse-gebied), als dat bekend is. */
+  zone: string | null;
+  /** Extra uitleg voor de steward, bijvoorbeeld voor welke wedstrijd of welk vak het ticket wel geldt. */
+  detail: string | null;
+  /** De scan is ingevoerd op ticketnummer in plaats van met de QR-code. */
+  byNumber: boolean;
+  /** Een vaste testcode: niets opgeslagen, telt nergens mee. */
+  test?: boolean;
   at: string;
 }
 
-const NOT_OVERRIDABLE: ScanReason[] = ["NOT_FOUND", "CANCELLED", "EVENT_NOT_ACTIVE"];
+/** Een getypt ticketnummer (XXXX-XXXX-XXXX-XXXX, streepjes en spaties mogen) als ticketkenmerk, anders null. */
+export function ticketNumberFrom(code: string): string | null {
+  const n = code.replace(/[\s-]/g, "").toUpperCase();
+  return /^[0-9A-HJKMNP-TV-Z]{16}$/.test(n) ? n : null;
+}
+
+const NOT_OVERRIDABLE: ScanReason[] = ["NOT_FOUND", "CANCELLED", "EVENT_NOT_ACTIVE", "OUTDATED"];
+type Extras = { zone?: string | null; detail?: string | null; byNumber?: boolean };
 export const codeHash = (code: string) => createHash("sha256").update(code.trim()).digest("hex");
 
-const rowToResponse = async (row: { id: string; clientId: string; result: string; reason: string | null; reentry: boolean; overrideById: string | null; source: string; holderLabel: string | null; scannedAt: Date; eventId: string; ticketId: string | null; codeHash: string | null }, actor: ScanActor | null): Promise<ScanResponse> => {
+const rowToResponse = async (row: { id: string; clientId: string; result: string; reason: string | null; reentry: boolean; overrideById: string | null; source: string; holderLabel: string | null; scannedAt: Date; eventId: string; ticketId: string | null; codeHash: string | null }, actor: ScanActor | null, extras: Extras = {}): Promise<ScanResponse> => {
   let previous: ScanResponse["previous"] = null;
-  if (row.result === "WARNING") {
+  // Bij "al gebruikt" en bij herintrede: wanneer en waar dit ticket eerder binnenkwam.
+  if (row.result === "WARNING" || row.reentry) {
     const prev = await prisma.ticketScan.findFirst({
-      where: { eventId: row.eventId, result: "VALID", ...(row.ticketId ? { ticketId: row.ticketId } : { codeHash: row.codeHash }) },
+      where: { eventId: row.eventId, result: "VALID", id: { not: row.id }, ...(row.ticketId ? { ticketId: row.ticketId } : { codeHash: row.codeHash }) },
       orderBy: { scannedAt: "desc" },
       include: { scanner: { select: { name: true } } },
     });
@@ -77,6 +95,9 @@ const rowToResponse = async (row: { id: string; clientId: string; result: string
     label: row.holderLabel,
     previous,
     overridable: !!actor?.canOverride && row.result !== "VALID" && !!reason && !NOT_OVERRIDABLE.includes(reason),
+    zone: extras.zone ?? null,
+    detail: extras.detail ?? null,
+    byNumber: !!extras.byNumber,
     at: row.scannedAt.toISOString(),
   };
 };
@@ -123,10 +144,56 @@ async function resolveEvent(input: ScanInput) {
   return first;
 }
 
+/**
+ * Een getypt ticketnummer van een bestaand HHC-ticket wordt omgezet naar de actuele QR-code van dat ticket.
+ * Alleen een supervisor mag dat: een nummer staat leesbaar op het ticket en controleert de QR-versie niet.
+ * Bestaat er geen HHC-ticket met dat nummer, dan blijft de code ongewijzigd (bijvoorbeeld een Fullhouse-barcode).
+ */
+async function resolveTicketNumber(actor: ScanActor, input: ScanInput): Promise<{ input: ScanInput; byNumber: boolean }> {
+  if (parseQrCode(input.code)) return { input, byNumber: false };
+  const number = ticketNumberFrom(input.code);
+  if (!number) return { input, byNumber: false };
+  const t = await prisma.ticket.findUnique({ where: { publicId: number }, select: { publicId: true, qrVersion: true } });
+  if (!t) return { input, byNumber: false };
+  if (!actor.canOverride) throw new ApiError(403, "Inchecken op ticketnummer kan alleen een supervisor. Scan de QR-code of roep een supervisor.");
+  const note = ["Ingevoerd op ticketnummer", input.note].filter(Boolean).join(" · ");
+  return { input: { ...input, code: qrCodeFor(t.publicId, t.qrVersion), note }, byNumber: true };
+}
+
+/** Een vaste testcode: alleen een uitslag en een auditregel, geen scan, geen telling, geen echt ticket. */
+async function testScan(actor: ScanActor, input: ScanInput): Promise<ScanResponse> {
+  const code = input.code.trim().toUpperCase() as keyof typeof TEST_CODES;
+  const down = TEST_CODES[code] === "PROVIDER_DOWN";
+  if (input.override && !actor.canOverride) throw new ApiError(403, "Alleen een supervisor mag een scan overrulen.");
+  const admitted = !down || !!input.override;
+  await ticketAudit({ action: "scan.test", actor: { id: actor.userId ?? actor.scannerId, name: actor.name }, eventId: input.eventId, scannerId: actor.scannerId, reason: input.override?.reason ?? null, summary: `Testcode ${code} gescand`, meta: { code, result: admitted ? "VALID" : "INVALID" } });
+  return {
+    scanId: `test-${input.clientId}`,
+    clientId: input.clientId,
+    result: admitted ? "VALID" : "INVALID",
+    reason: admitted ? null : "PROVIDER_DOWN",
+    reasonLabel: admitted ? null : SCAN_REASON_LABELS.PROVIDER_DOWN,
+    reentry: false,
+    overridden: down && !!input.override,
+    source: "FULLHOUSE",
+    eventId: input.eventId,
+    label: TEST_LABEL,
+    previous: null,
+    overridable: down && !input.override && actor.canOverride,
+    zone: null,
+    detail: TEST_DETAIL,
+    byNumber: false,
+    test: true,
+    at: new Date().toISOString(),
+  };
+}
+
 export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanResponse> {
-  const input = scanInputSchema.parse(raw);
-  const existing = await prisma.ticketScan.findUnique({ where: { clientId: input.clientId } });
+  const parsed = scanInputSchema.parse(raw);
+  if (isTestCode(parsed.code)) return testScan(actor, parsed);
+  const existing = await prisma.ticketScan.findUnique({ where: { clientId: parsed.clientId } });
   if (existing) return rowToResponse(existing, actor);
+  const { input, byNumber } = await resolveTicketNumber(actor, parsed);
 
   const event = await resolveEvent(input);
   if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
@@ -140,18 +207,22 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
   const ruleEvent = toRuleEvent(event);
   const base = { clientId: input.clientId, scannedAt, eventId: event.id, source, scannerId: actor.scannerId, userId: actor.userId, entranceId: entrance?.id ?? null, offline: !!input.offline, note: input.note ?? null };
 
-  type Decision = { result: "VALID" | "WARNING" | "INVALID"; reason: ScanReason | null; reentry: boolean; ticketId: string | null; codeHash: string | null; holderLabel: string | null };
+  type Decision = { result: "VALID" | "WARNING" | "INVALID"; reason: ScanReason | null; reentry: boolean; ticketId: string | null; codeHash: string | null; holderLabel: string | null; zone?: string | null; detail?: string | null };
   let lockKey: string;
   let decide: (tx: Prisma.TransactionClient) => Promise<Decision>;
 
   if (source === "HHC") {
     const ref = parseQrCode(input.code);
     const ticket = ref
-      ? await prisma.ticket.findUnique({ where: { publicId: ref.publicId }, include: { type: { select: { name: true } }, links: { select: { eventId: true } } } })
+      ? await prisma.ticket.findUnique({ where: { publicId: ref.publicId }, include: { type: { select: { name: true } }, zone: { select: { name: true } }, links: { select: { eventId: true } } } })
       : null;
-    const valid = !!ticket && ticket.qrVersion === ref!.version && !ticket.anonymizedAt;
+    const known = !!ticket && !ticket.anonymizedAt;
+    const valid = known && ticket!.qrVersion === ref!.version;
     lockKey = valid ? `t:${ticket!.id}:${event.id}` : `x:${input.clientId}`;
     decide = async (tx) => {
+      // Een oudere versie van een bestaand ticket (na opnieuw versturen of overdragen): duidelijk benoemen, niet "bestaat niet".
+      // Zonder initialen: na een overdracht zijn dat die van de nieuwe houder.
+      if (known && !valid) return { result: "INVALID", reason: "OUTDATED", reentry: false, ticketId: ticket!.id, codeHash: null, holderLabel: ticket!.type.name };
       if (!valid || !ticket) return { result: "INVALID", reason: "NOT_FOUND", reentry: false, ticketId: null, codeHash: null, holderLabel: null };
       const rt: RuleTicket = {
         status: ticket.status as TicketStatus,
@@ -168,17 +239,25 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
       const prior = await tx.ticketScan.count({ where: { ticketId: ticket.id, eventId: event.id, result: "VALID" } });
       const out = evaluateScan(rt, ruleEvent, prior, scannedAt, entrance?.zoneId ?? null);
       const label = `${initialsOf(ticket.firstName, ticket.lastName)} · ${ticket.type.name}`;
-      return { result: out.result, reason: "reason" in out ? out.reason : null, reentry: out.result === "VALID" && out.reentry, ticketId: ticket.id, codeHash: null, holderLabel: label };
+      const reason = "reason" in out ? out.reason : null;
+      let detail: string | null = null;
+      if (reason === "WRONG_ZONE" && ticket.zone) detail = `Dit ticket is voor vak ${ticket.zone.name}.`;
+      if (reason === "WRONG_EVENT" && rt.eventIds.length) {
+        const evs = await tx.ticketEvent.findMany({ where: { id: { in: rt.eventIds } }, orderBy: { startsAt: "asc" }, select: { title: true, startsAt: true }, take: 3 });
+        if (evs.length) detail = `Geldig voor: ${evs.map((e) => `${e.title} (${formatDay(e.startsAt)})`).join(", ")}.`;
+      }
+      return { result: out.result, reason, reentry: out.result === "VALID" && out.reentry, ticketId: ticket.id, codeHash: null, holderLabel: label, zone: ticket.zone?.name ?? null, detail };
     };
   } else {
     const hash = codeHash(input.code);
     lockKey = `f:${hash}:${event.id}`;
     const ext = event.externalId ? await externalTicket(event.externalId, input.code, hash) : { found: null as null, unreachable: false };
     decide = async (tx) => {
-      const mk = (result: Decision["result"], reason: ScanReason | null, label: string | null = null): Decision => ({ result, reason, reentry: false, ticketId: null, codeHash: hash, holderLabel: label });
-      if (!event.externalId) return mk("INVALID", "WRONG_EVENT");
-      if (!ext.found) return mk("INVALID", "NOT_FOUND", ext.unreachable ? "Fullhouse niet bereikbaar" : null);
       const f = ext.found;
+      const mk = (result: Decision["result"], reason: ScanReason | null, label: string | null = null): Decision => ({ result, reason, reentry: false, ticketId: null, codeHash: hash, holderLabel: label, zone: f?.area ?? null });
+      if (!event.externalId) return mk("INVALID", "WRONG_EVENT");
+      // Fullhouse onbereikbaar is iets anders dan "bestaat niet": een supervisor mag dan met reden toelaten.
+      if (!f) return mk("INVALID", ext.unreachable ? "PROVIDER_DOWN" : "NOT_FOUND");
       const label = [f.holderLabel, f.ticketName].filter(Boolean).join(" · ") || null;
       if (f.eventExtId !== event.externalId) return mk("INVALID", "WRONG_EVENT", label);
       if (event.status === "CANCELLED") return mk("INVALID", "EVENT_NOT_ACTIVE", label);
@@ -203,11 +282,11 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
         if (overrideData) {
           await ticketAuditTx(tx, { action: "scan.override", actor: { id: actor.userId ?? actor.scannerId, name: actor.name }, ticketId: d.ticketId, eventId: event.id, scannerId: actor.scannerId, entrance: entrance?.name, reason: overrideData.overrideReason, meta: { reason: d.reason, source } });
         }
-        return created;
+        return { created, extras: { zone: d.zone, detail: d.detail, byNumber } };
       },
       { timeout: 15_000, maxWait: 10_000 },
     );
-    return rowToResponse(row, actor);
+    return rowToResponse(row.created, actor, row.extras);
   } catch (error) {
     // Dezelfde scan twee keer tegelijk binnengekomen: geef de bestaande uitslag terug.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -223,12 +302,13 @@ interface ExternalHit {
   status: string;
   ticketName: string | null;
   holderLabel: string | null;
+  area: string | null;
 }
 
 /** Fullhouse-ticket uit de lokale kopie, anders realtime bij Fullhouse (alleen lezen) en daarna bewaard. */
 async function externalTicket(eventExtId: string, code: string, hash: string): Promise<{ found: ExternalHit | null; unreachable: boolean }> {
   const cached = await prisma.ticketExternalTicket.findFirst({ where: { codeHash: hash, eventExtId } });
-  if (cached) return { found: { eventExtId: cached.eventExtId, status: cached.status, ticketName: cached.ticketName, holderLabel: cached.holderLabel }, unreachable: false };
+  if (cached) return { found: { eventExtId: cached.eventExtId, status: cached.status, ticketName: cached.ticketName, holderLabel: cached.holderLabel, area: cached.area }, unreachable: false };
   try {
     const t = await ticketProvider().lookupBarcode(code.trim(), eventExtId);
     if (!t) return { found: null, unreachable: false };
@@ -238,7 +318,7 @@ async function externalTicket(eventExtId: string, code: string, hash: string): P
       create: { eventExtId: t.eventId, externalId: t.externalId, codeHash: hash, status: String(t.status), ticketName: t.ticketName, area: t.area, holderLabel: holder },
       update: { codeHash: hash, status: String(t.status), ticketName: t.ticketName, area: t.area, holderLabel: holder },
     });
-    return { found: { eventExtId: t.eventId, status: String(t.status), ticketName: t.ticketName, holderLabel: holder }, unreachable: false };
+    return { found: { eventExtId: t.eventId, status: String(t.status), ticketName: t.ticketName, holderLabel: holder, area: t.area ?? null }, unreachable: false };
   } catch (error) {
     if (error instanceof FullhouseError) return { found: null, unreachable: true };
     throw error;
@@ -250,6 +330,33 @@ export function initialsFromFullName(name: string): string {
   if (parts.length === 0) return "";
   if (parts.length === 1) return `${parts[0][0].toUpperCase()}.`;
   return `${parts[0][0].toUpperCase()}. ${parts.slice(1).join(" ")}`;
+}
+
+// ── Ongedaan maken ──
+
+const UNDO_OWN_MINUTES = 10;
+export const voidInputSchema = z.object({ scanId: z.string().min(1).max(40), reason: z.string().trim().min(3).max(300) });
+
+/**
+ * Een geldige scan ongedaan maken, bijvoorbeeld als iemand na "GELDIG" toch niet naar binnen ging of
+ * het verkeerde ticket werd gescand. Het ticket telt daarna weer als ongebruikt. De scan blijft bewaard
+ * (uitslag VOIDED) met wie, wanneer en waarom, en komt in het auditlog. Een supervisor mag elke scan
+ * ongedaan maken; een gewone scanner alleen zijn eigen scan van de laatste 10 minuten.
+ */
+export async function voidScan(actor: ScanActor, raw: unknown) {
+  const input = voidInputSchema.parse(raw);
+  const row = await prisma.ticketScan.findUnique({ where: { id: input.scanId } });
+  if (!row) throw new ApiError(404, "Scan niet gevonden.");
+  if (row.result !== "VALID") throw new ApiError(400, row.result === "VOIDED" ? "Deze scan is al ongedaan gemaakt." : "Alleen een geldige scan kan ongedaan worden gemaakt.");
+  const own = (actor.scannerId && row.scannerId === actor.scannerId) || (actor.userId && row.userId === actor.userId);
+  const recent = Date.now() - row.receivedAt.getTime() <= UNDO_OWN_MINUTES * 60_000;
+  if (!actor.canOverride && !(own && recent)) throw new ApiError(403, `Je kunt alleen je eigen scan van de laatste ${UNDO_OWN_MINUTES} minuten ongedaan maken. Vraag een supervisor.`);
+  await prisma.$transaction(async (tx) => {
+    const n = await tx.ticketScan.updateMany({ where: { id: row.id, result: "VALID" }, data: { result: "VOIDED", voidedAt: new Date(), voidedBy: actor.name, voidReason: input.reason } });
+    if (n.count === 0) throw new ApiError(409, "Deze scan is net al gewijzigd.");
+    await ticketAuditTx(tx, { action: "scan.void", actor: { id: actor.userId ?? actor.scannerId, name: actor.name }, ticketId: row.ticketId, eventId: row.eventId, scannerId: actor.scannerId, reason: input.reason, meta: { scanId: row.id, source: row.source, label: row.holderLabel } });
+  });
+  return { ok: true, scanId: row.id };
 }
 
 // ── Context, offline-cache en synchronisatie ──
@@ -329,19 +436,25 @@ export async function offlineCache(eventId: string) {
 export async function syncScans(actor: ScanActor, raw: unknown) {
   const list = z.array(scanInputSchema).max(200).parse((raw as { scans?: unknown })?.scans);
   list.sort((a, b) => (a.scannedAt ?? "").localeCompare(b.scannedAt ?? ""));
-  const results: { clientId: string; result: ScanResponse["result"]; reason: ScanReason | null }[] = [];
+  const results: { clientId: string; result: ScanResponse["result"]; reason: ScanReason | null; reasonLabel: string | null; label: string | null }[] = [];
+  const rejected: { clientId: string; error: string }[] = [];
   for (const s of list) {
     try {
       const r = await processScan(actor, { ...s, offline: true });
-      results.push({ clientId: s.clientId, result: r.result, reason: r.reason });
-    } catch {
-      // Een enkele fout (bv. verwijderde wedstrijd) mag de rest niet tegenhouden; het apparaat probeert hem later opnieuw.
+      results.push({ clientId: s.clientId, result: r.result, reason: r.reason, reasonLabel: r.reasonLabel, label: r.label });
+    } catch (error) {
+      // Een blijvende fout (wedstrijd verwijderd, geen recht): niet eindeloos opnieuw proberen, maar melden.
+      // Andere fouten (database even weg) mag het apparaat later opnieuw proberen.
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 401 && error.status !== 429) rejected.push({ clientId: s.clientId, error: error.message });
     }
   }
-  return { results };
+  return { results, rejected };
 }
 
 // ── Aantallen en historie ──
+
+const noteWithVoid = (r: { note: string | null; voidedBy: string | null; voidReason: string | null }) =>
+  [r.note, r.voidReason ? `Ongedaan gemaakt door ${r.voidedBy ?? "onbekend"}: ${r.voidReason}` : null].filter(Boolean).join(" · ") || null;
 
 export async function scanStats(eventId: string) {
   const [event, byResult, bySource, entrances, admitted, recent] = await Promise.all([
@@ -363,7 +476,7 @@ export async function scanStats(eventId: string) {
     inside: admitted.length,
     bySource: bySource.map((s) => ({ source: s.source, count: s._count._all })),
     byEntrance: entrances.map((e) => ({ name: (e.entranceId && names.get(e.entranceId)) || "Zonder ingang", count: e._count._all })),
-    recent: recent.map((r) => ({ id: r.id, at: r.scannedAt, result: r.result, reason: r.reason ? SCAN_REASON_LABELS[r.reason as ScanReason] : null, label: r.holderLabel, source: r.source, scanner: r.scanner?.name ?? null, entrance: (r.entranceId && names.get(r.entranceId)) || null, overridden: !!r.overrideById, offline: r.offline, note: r.note })),
+    recent: recent.map((r) => ({ id: r.id, at: r.scannedAt, result: r.result, reason: r.reason ? SCAN_REASON_LABELS[r.reason as ScanReason] : null, label: r.holderLabel, source: r.source, scanner: r.scanner?.name ?? null, entrance: (r.entranceId && names.get(r.entranceId)) || null, overridden: !!r.overrideById, offline: r.offline, note: noteWithVoid(r) })),
   };
 }
 
@@ -378,6 +491,6 @@ export async function scanHistory(opts: { eventId?: string; result?: string; pag
   return {
     total,
     page,
-    rows: rows.map((r) => ({ id: r.id, at: r.scannedAt, eventId: r.eventId, result: r.result, reason: r.reason ? SCAN_REASON_LABELS[r.reason as ScanReason] : null, label: r.holderLabel, source: r.source, scanner: r.scanner?.name ?? null, entrance: (r.entranceId && names.get(r.entranceId)) || null, overridden: !!r.overrideById, overrideReason: r.overrideReason, offline: r.offline, note: r.note, ticketId: r.ticketId })),
+    rows: rows.map((r) => ({ id: r.id, at: r.scannedAt, eventId: r.eventId, result: r.result, reason: r.reason ? SCAN_REASON_LABELS[r.reason as ScanReason] : null, label: r.holderLabel, source: r.source, scanner: r.scanner?.name ?? null, entrance: (r.entranceId && names.get(r.entranceId)) || null, overridden: !!r.overrideById, overrideReason: r.overrideReason, offline: r.offline, note: noteWithVoid(r), ticketId: r.ticketId })),
   };
 }

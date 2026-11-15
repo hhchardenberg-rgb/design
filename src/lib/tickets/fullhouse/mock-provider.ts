@@ -1,8 +1,8 @@
-import type { FullhouseHolderTicket, FullhouseSearchKind, FullhouseSearchResult, FullhouseEvent, FullhouseScanResult, FullhouseTicket, OfflineScan, TicketPage, TicketProvider } from "./types";
+import { FullhouseError, type FullhouseHolderTicket, type FullhouseSearchKind, type FullhouseSearchResult, type FullhouseEvent, type FullhouseScanResult, type FullhouseTicket, type OfflineScan, type TicketPage, type TicketProvider } from "./types";
 
 // Testprovider: voorspelbare voorbeelddata, geen netwerk. Standaard in ontwikkeling en
 // previews. Barcodes: FH-TEST-0001 t/m FH-TEST-0050 zijn geldig, FH-TEST-INVALID is
-// ongeldig, al het andere bestaat niet.
+// ongeldig, FH-TEST-UNREACHABLE doet alsof Fullhouse onbereikbaar is (FH-TEST-0001 en FH-TEST-DOWN zijn vaste testcodes, zie offline-check.ts), al het andere bestaat niet.
 
 const EVENT: FullhouseEvent = {
   externalId: "mock-event-1",
@@ -70,6 +70,7 @@ export function createMockProvider(): TicketProvider {
       return { tickets: all.slice(skip, skip + top), total: all.length };
     },
     async lookupBarcode(barcode) {
+      if (barcode === "FH-TEST-UNREACHABLE") throw new FullhouseError("Fullhouse is niet bereikbaar.", "network");
       return TICKETS.find((t) => t.barcode === barcode) ?? null;
     },
     async scanBarcode(barcode): Promise<FullhouseScanResult> {

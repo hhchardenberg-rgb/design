@@ -10,8 +10,8 @@ import { scanHistory, scanStats } from "@/lib/tickets/scan.server";
 export const metadata: Metadata = { title: "Scanhistorie – HHC Tickets" };
 export const dynamic = "force-dynamic";
 
-const RESULT = { VALID: "Geldig", WARNING: "Waarschuwing", INVALID: "Afgewezen" } as const;
-const TONE = { VALID: "text-success", WARNING: "text-amber-600", INVALID: "text-destructive" } as const;
+const RESULT = { VALID: "Geldig", WARNING: "Waarschuwing", INVALID: "Afgewezen", VOIDED: "Ongedaan gemaakt" } as const;
+const TONE = { VALID: "text-success", WARNING: "text-amber-600", INVALID: "text-destructive", VOIDED: "text-muted-foreground line-through" } as const;
 
 export default async function ScansPage({ searchParams }: { searchParams: Promise<{ wedstrijd?: string; uitslag?: string; pagina?: string }> }) {
   const a = await ticketsPageAccess("scan:history");
