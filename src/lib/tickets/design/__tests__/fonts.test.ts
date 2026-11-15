@@ -41,7 +41,7 @@ test("de A4-pdf sluit FF DIN en Inter in", async () => {
   const view = buildView(
     {
       sample: true, kind: "match", firstName: "Jan", lastName: "de Vries", company: null, typeName: "Vrijkaart", typeColor: null,
-      ticketNumber: "ABCD-EFGH", qrCode: "HHC-VOORBEELD-GEEN-TOEGANG", seasonName: "2026/2027", validityText: null,
+      ticketNumber: "ABCD-EFGH", qrCode: "HHC-VOORBEELD-GEEN-TOEGANG", seasonName: "2026/2027", validityText: "Geldig voor deze wedstrijd",
       event: { title: "HHC – Voorbeeld", opponent: "Voorbeeld", isHome: true, competition: null, startsAt: "2026-11-21T13:30:00Z", location: null, status: "ACTIVE", opponentLogoUrl: null },
       events: [], zoneName: null, entranceName: null, notices: [], statusLabel: "geldig", usable: true,
     },
