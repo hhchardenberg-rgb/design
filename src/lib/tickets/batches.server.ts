@@ -4,6 +4,7 @@ import { ticketAuditTx } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
 import { batchReviewSchema, issueSchema } from "./schemas";
 import { createTickets, prepareIssue } from "./tickets.server";
+import { stampDesignSafe } from "./design/context.server";
 
 // Bulkuitgiftes boven de drempel: aanvragen, goedkeuren (door iemand anders) of afwijzen.
 
@@ -52,9 +53,10 @@ export async function reviewBatch(actor: TicketsActor, id: string, raw: unknown)
       // De tickets staan op naam van de aanvrager; de goedkeuring staat in het auditlog.
       const ids = await createTickets(tx, requester, prepared, { batchId: id });
       await tx.$executeRaw`UPDATE "tickets_batches" SET "payload" = NULL WHERE "id" = ${id}`;
-      return ids.length;
+      return ids;
     },
     { timeout: 60_000, maxWait: 15_000 },
   );
-  return { status: "ISSUED", count };
+  await stampDesignSafe(count);
+  return { status: "ISSUED", count: count.length };
 }

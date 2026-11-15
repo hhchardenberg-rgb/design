@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Pencil, Plus, RotateCcw } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, RotateCcw, Palette } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox, Input, Label, Select } from "@/components/ui/input";
@@ -432,6 +432,9 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
                           <Pencil className="h-4 w-4" />
                         </Button>
                       )}
+                      <Link href={`/tickets/ontwerp?scope=event:${e.id}`} className="inline-flex items-center rounded p-2 text-muted-foreground hover:text-foreground" aria-label={`Ticketontwerp voor ${e.title}`} title="Ticketontwerp voor dit duel">
+                        <Palette className="h-4 w-4" />
+                      </Link>
                       {canManage && e.status !== "CLOSED" && <ChangeEvent event={e} canMail={canMail} onDone={() => void load()} />}
                       {canDelete && <RemoveEvent event={e} onDone={() => void load()} />}
                     </>

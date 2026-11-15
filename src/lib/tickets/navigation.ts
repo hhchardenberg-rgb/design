@@ -37,6 +37,7 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
     items: [
       { href: "/tickets/wedstrijden", label: "Wedstrijden", requires: "events:read" },
       { href: "/tickets/tickettypes", label: "Tickettypes, vakken en seizoenen", requires: "types:read" },
+      { href: "/tickets/ontwerp", label: "Ticketontwerp en standaarden", requires: "design:read" },
     ],
   },
   {

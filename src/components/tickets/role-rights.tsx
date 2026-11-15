@@ -4,7 +4,7 @@ import { Checkbox, Label } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ALL_TICKET_PERMISSIONS, TICKET_PERMISSIONS, TICKET_ROLE_TEMPLATES, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
 
-const GROUPS = ["Overzicht", "Tickets", "Scannen", "Inrichting", "Rapportage", "Beheer"] as const;
+const GROUPS = ["Overzicht", "Tickets", "Scannen", "Inrichting", "Ontwerp", "Rapportage", "Beheer"] as const;
 
 /**
  * Het blok "HHC Tickets" in de rolbewerker: geen toegang, of toegang met bevoegdheden.

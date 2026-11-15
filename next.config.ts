@@ -57,6 +57,12 @@ const nextConfig: NextConfig = {
       "node_modules/@prisma/client/runtime/*.wasm-base64.mjs",
     ],
   },
+  // De ticket-pdf leest de lettertypen en het logo van schijf (public/), dus die
+  // moeten in de functiebundels van de ticketpagina en de ontwerp-API mee.
+  outputFileTracingIncludes: {
+    "/t/**": ["./public/fonts/ff-din/*.ttf", "./public/fonts/inter/*.ttf", "./public/branding/hhc-logo.png"],
+    "/api/tickets/**": ["./public/fonts/ff-din/*.ttf", "./public/fonts/inter/*.ttf", "./public/branding/hhc-logo.png"],
+  },
   // Voorkomt dat Next.js automatisch AGENTS.md/CLAUDE.md-bestanden genereert.
   agentRules: false,
   // Het rechtenbeheer van Commerciële Zaken is samengevoegd met het gebruikersbeheer.

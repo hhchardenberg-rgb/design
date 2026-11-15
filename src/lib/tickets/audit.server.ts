@@ -48,6 +48,14 @@ export const TICKET_AUDIT_ACTIONS = {
   "export.created": "Export gemaakt",
   "sync.completed": "Synchronisatie uitgevoerd",
   "sync.failed": "Synchronisatie mislukt",
+  "design.published": "Ticketontwerp gepubliceerd",
+  "design.restored": "Eerdere ontwerpversie teruggezet als concept",
+  "design.discarded": "Ontwerpconcept verworpen",
+  "design.copied": "Ontwerpinstellingen overgenomen",
+  "design.set_saved": "Ontwerpset opgeslagen",
+  "design.asset_saved": "Afbeelding voor tickets opgeslagen",
+  "design.reapplied": "Bestaande tickets opnieuw vormgegeven",
+  "ticket.redesigned": "Ticket opnieuw vormgegeven (QR en rechten ongewijzigd)",
 } as const;
 export type TicketAuditAction = keyof typeof TICKET_AUDIT_ACTIONS;
 

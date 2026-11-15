@@ -6,6 +6,7 @@ import type { CommercialTicketBridge, TicketIssueRequest, TicketIssueResult } fr
 import { holderSchema, issueSchema } from "./schemas";
 import { getTicketSettings } from "./settings.server";
 import { createTickets, prepareIssue } from "./tickets.server";
+import { stampDesignSafe } from "./design/context.server";
 
 // Koppeling met Commerciële Zaken: tickets uitgeven voor een sponsor of relatie en het gebruik
 // per bedrijf opvragen. Dezelfde regels als in het scherm (rechten, controle van type en
@@ -47,6 +48,7 @@ export async function issueFromCommercial(actor: TicketsActor, requests: TicketI
           await ticketAuditTx(tx, { action: "ticket.created", actor: actorOf(actor), summary: "Tickets uitgegeven vanuit Commerciële Zaken", meta: { count: created.length, origin: first.originSystem } });
           return created;
         });
+        await stampDesignSafe(ids);
         group.forEach((g, i) => results.set(ref(g), { externalRef: g.externalRef, ticketId: ids[i], status: "ISSUED" }));
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
