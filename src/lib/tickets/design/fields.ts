@@ -123,9 +123,9 @@ export const FONT_OPTIONS = [
   { value: "inter", label: "Inter" },
 ];
 export const WEIGHT_OPTIONS = [
-  { value: "medium", label: "Normaal" },
-  { value: "bold", label: "Vet" },
-  { value: "black", label: "Extra vet" },
+  { value: "medium", label: "Medium (normaal)" },
+  { value: "bold", label: "Bold (vet)" },
+  { value: "black", label: "Black (extra vet)" },
 ];
 const SPACING = [
   { value: "compact", label: "Compact" },

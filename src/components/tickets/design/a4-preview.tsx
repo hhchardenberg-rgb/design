@@ -3,21 +3,15 @@
 
 import "./ticket-fonts.css";
 import { useMemo } from "react";
+import { preload } from "react-dom";
 import type { A4Box, A4Layout, FontKey } from "@/lib/tickets/design/a4-layout";
 import { qrMatrix, qrPath } from "@/lib/tickets/design/qr-matrix";
+import { TICKET_FONTS } from "@/lib/tickets/design/fonts";
 
 // Tekent de door de server berekende A4-indeling als svg: dezelfde posities, regels en
 // lettertypen als in de pdf. Alleen voor het voorbeeld in de editor.
 
-const FONT: Record<FontKey, { family: string; weight: number }> = {
-  "din-medium": { family: "TicketDIN", weight: 500 },
-  "din-bold": { family: "TicketDIN", weight: 700 },
-  "din-black": { family: "TicketDIN", weight: 900 },
-  "inter-400": { family: "TicketInter", weight: 400 },
-  "inter-600": { family: "TicketInter", weight: 600 },
-  "inter-700": { family: "TicketInter", weight: 700 },
-  "inter-800": { family: "TicketInter", weight: 800 },
-};
+const FONT: Record<FontKey, { family: string; weight: number }> = TICKET_FONTS;
 
 function Qr({ b }: { b: Extract<A4Box, { t: "qr" }> }) {
   const m = useMemo(() => qrMatrix(b.code), [b.code]);
@@ -29,6 +23,11 @@ function Qr({ b }: { b: Extract<A4Box, { t: "qr" }> }) {
 }
 
 export function A4Preview({ layout, grayscale, className }: { layout: A4Layout; grayscale?: boolean; className?: string }) {
+  // De posities zijn met de echte lettertypen berekend; laad ze meteen, anders loopt tekst even uit het vak.
+  for (const k of new Set(layout.boxes.flatMap((b) => (b.t === "text" ? [b.font] : [])))) {
+    const href = TICKET_FONTS[k].web;
+    preload(href, { as: "font", type: href.endsWith(".woff2") ? "font/woff2" : "font/otf", crossOrigin: "anonymous" });
+  }
   return (
     <svg viewBox={`0 0 ${layout.width} ${layout.height}`} className={className} role="img" aria-label="Voorbeeld van het A4-ticket" style={{ background: "#fff", width: "100%", height: "auto", filter: grayscale ? "grayscale(1)" : undefined, boxShadow: "0 1px 4px rgba(0,0,0,.15)" }}>
       {layout.boxes.map((b, i) => {

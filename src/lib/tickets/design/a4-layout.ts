@@ -9,6 +9,7 @@
 import type { AssetRef, TicketView, ViewBlock } from "./view";
 import type { DesignIssue } from "./validate";
 import { qrMatrix } from "./qr-matrix";
+import { bodyBoldFontKey, bodyFontKey, headingFontKey } from "./fonts";
 
 export const PT_PER_MM = 72 / 25.4;
 export const A4_W = 595.28;
@@ -43,13 +44,9 @@ export interface A4Layout {
 
 const mm = (n: number) => n * PT_PER_MM;
 
-function headingKey(v: TicketView): FontKey {
-  const w = v.style.headingWeight;
-  if (v.style.headingFont === "din") return w === "medium" ? "din-medium" : w === "bold" ? "din-bold" : "din-black";
-  return w === "medium" ? "inter-600" : w === "bold" ? "inter-700" : "inter-800";
-}
-const bodyKey = (v: TicketView): FontKey => (v.style.bodyFont === "din" ? "din-medium" : "inter-400");
-const bodyBoldKey = (v: TicketView): FontKey => (v.style.bodyFont === "din" ? "din-bold" : "inter-700");
+const headingKey = (v: TicketView): FontKey => headingFontKey(v.style.headingFont, v.style.headingWeight);
+const bodyKey = (v: TicketView): FontKey => bodyFontKey(v.style.bodyFont);
+const bodyBoldKey = (v: TicketView): FontKey => bodyBoldFontKey(v.style.bodyFont);
 
 /** Tint van een kleur (mengen met wit). */
 export function tint(hex: string, amount: number): string {

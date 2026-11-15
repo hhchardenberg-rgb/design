@@ -145,7 +145,6 @@ export function IssueForm({ canMultiple, initialTypeId }: { canMultiple: boolean
               </div>
             </div>
           ))}
-          <p className="text-xs text-muted-foreground">Een pasfoto toevoegen kan vanaf fase 2, samen met de ticketpagina.</p>
         </CardContent>
       </Card>
 
