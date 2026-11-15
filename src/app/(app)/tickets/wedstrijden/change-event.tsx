@@ -17,9 +17,8 @@ interface Result {
 }
 
 /** Afgelasten of verplaatsen in één klik: wedstrijd aanpassen, tickets laten meelopen en houders mailen. */
-export function ChangeEvent({ event, canMail, onDone }: { event: { id: string; title: string; startsAt: string; status: string; source: string }; canMail: boolean; onDone: () => void }) {
+export function ChangeEvent({ event, canMail, onDone, onClose }: { event: { id: string; title: string; startsAt: string; status: string; source: string }; canMail: boolean; onDone: () => void; onClose: () => void }) {
   const toast = useStableToast();
-  const [open, setOpen] = useState(false);
   const [action, setAction] = useState<"MOVE" | "CANCEL">("MOVE");
   const [startsAt, setStartsAt] = useState(toLocalInput(event.startsAt));
   const [message, setMessage] = useState("");
@@ -44,8 +43,8 @@ export function ChangeEvent({ event, canMail, onDone }: { event: { id: string; t
     try {
       const r = await api<Result>(`/api/tickets/events/${event.id}/change`, { body: body(false) });
       toast.success(`${action === "MOVE" ? "Verplaatst" : "Afgelast"}.${mail ? ` ${r.sent ?? 0} berichten verstuurd${r.failed ? `, ${r.failed} mislukt` : ""}.` : ""}`);
-      setOpen(false);
       setPreview(null);
+      onClose();
       onDone();
     } catch (e) {
       toast.error(errorText(e));
@@ -56,12 +55,8 @@ export function ChangeEvent({ event, canMail, onDone }: { event: { id: string; t
 
   if (event.status === "CANCELLED" && action === "CANCEL") setAction("MOVE");
   return (
-    <div className="w-full">
-      <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>
-        Afgelasten of verplaatsen
-      </Button>
-      {open && (
-        <div className="mt-3 space-y-3 rounded-md border border-border p-3">
+        <div className="space-y-3 rounded-md border border-border p-3">
+          <p className="font-medium">Afgelasten of verplaatsen</p>
           <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2">
               <input type="radio" checked={action === "MOVE"} onChange={() => { setAction("MOVE"); setPreview(null); }} /> Verplaatsen naar een nieuwe datum
@@ -101,9 +96,10 @@ export function ChangeEvent({ event, canMail, onDone }: { event: { id: string; t
             <Button size="sm" disabled={busy || !preview} onClick={() => void confirm()}>
               {busy ? "Bezig…" : action === "MOVE" ? "Verplaatsen" : "Afgelasten"}
             </Button>
+            <Button size="sm" variant="ghost" onClick={onClose}>
+              Annuleren
+            </Button>
           </div>
         </div>
-      )}
-    </div>
   );
 }
