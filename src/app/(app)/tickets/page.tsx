@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Clock, QrCode, ScanLine, ShieldAlert, Ticket, Users } from "lucide-react";
+import { Activity, CalendarDays, ChartColumn, Clock, Layers, ListChecks, Plus, QrCode, ScanLine, ShieldAlert, Ticket, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NoAccess } from "@/components/commercial/no-access";
 import { formatDayTime } from "@/lib/date-format";
 import { dashboardData } from "@/lib/tickets/dashboard.server";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
-import { TICKETS_NAV, TICKETS_ROADMAP } from "@/lib/tickets/navigation";
 import { TICKET_CATEGORIES, EVENT_STATUS_LABELS, type EventStatus, type TicketCategory } from "@/lib/tickets/rules";
+import type { TicketPermission } from "@/lib/tickets/permissions";
 
 export const metadata: Metadata = { title: "HHC Tickets" };
 export const dynamic = "force-dynamic";
@@ -30,6 +30,17 @@ function Stat({ label, value, icon: Icon, hint }: { label: string; value: string
   );
 }
 
+// De belangrijkste acties, als compacte rij knoppen bovenaan. De rest staat in het menu.
+const QUICK_ACTIONS: { href: string; label: string; icon: typeof Ticket; requires: TicketPermission; primary?: boolean }[] = [
+  { href: "/tickets/uitgeven", label: "Ticket uitgeven", icon: Plus, requires: "tickets:issue", primary: true },
+  { href: "/tickets/bulk", label: "Bulkuitgifte", icon: Layers, requires: "tickets:bulk" },
+  { href: "/tickets/overzicht", label: "Ticketoverzicht", icon: ListChecks, requires: "tickets:read" },
+  { href: "/scan", label: "Scanner", icon: ScanLine, requires: "scan:scan" },
+  { href: "/tickets/wedstrijddag", label: "Wedstrijddag live", icon: Activity, requires: "scan:history" },
+  { href: "/tickets/wedstrijden", label: "Wedstrijden", icon: CalendarDays, requires: "events:read" },
+  { href: "/tickets/rapportages", label: "Rapportages", icon: ChartColumn, requires: "reports:read" },
+];
+
 export default async function TicketsDashboard() {
   const a = await ticketsPageAccess("dashboard:read");
   if (!a.allowed) {
@@ -37,11 +48,22 @@ export default async function TicketsDashboard() {
     return <NoAccess what="het dashboard van HHC Tickets" />;
   }
   const d = await dashboardData();
+  const quickActions = QUICK_ACTIONS.filter((q) => a.can(q.requires));
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">HHC Tickets</h1>
         <p className="mt-1 text-sm text-muted-foreground">Eigen tickets van HHC Hardenberg, naast de betaalde tickets van Fullhouse.</p>
+        {quickActions.length > 0 && (
+          <nav aria-label="Snelle acties" className="mt-4 flex flex-wrap gap-2">
+            {quickActions.map(({ href, label, icon: Icon, primary }) => (
+              <Link key={href} href={href} className={buttonVariants({ variant: primary ? "primary" : "outline", size: "sm" })}>
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </Link>
+            ))}
+          </nav>
+        )}
       </div>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -162,50 +184,6 @@ export default async function TicketsDashboard() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Snel naar</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {TICKETS_NAV.map((g) => {
-            const items = g.items.filter((i) => a.can(i.requires));
-            if (!items.length) return null;
-            return (
-              <div key={g.id}>
-                <p className="text-sm font-semibold">{g.label}</p>
-                <ul className="mt-1 space-y-0.5 text-sm">
-                  {items.map((i) => (
-                    <li key={i.href}>
-                      <Link href={i.href} className="text-hhc-orange-dark hover:underline">
-                        {i.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Nog niet gebouwd</CardTitle>
-          <CardDescription>Alles hierboven werkt. Dit staat nog op de lijst.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          {TICKETS_ROADMAP.map((r) => (
-            <div key={r.title}>
-              <p className="text-sm font-semibold">{r.title}</p>
-              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                {r.items.map((i) => (
-                  <li key={i}>{i}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
     </div>
   );
 }
