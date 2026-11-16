@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDayTime } from "@/lib/date-format";
 import { sendBackupFailedEmail } from "@/lib/mail";
 import { audit } from "@/lib/audit";
+import type { BackupCheckReport } from "./check";
 import { encryptBackup, ENCRYPTION_OVERHEAD, fingerprintHex, parseKey } from "./crypto";
 import { dumpDatabase, type Sql } from "./db";
 import { selectExpired } from "./retention";
@@ -207,18 +208,27 @@ async function notifyAdmins(when: Date, message: string) {
   }
 }
 
+/** Laatste controle, voor het beheerscherm. */
+export async function lastBackupCheck(): Promise<BackupCheckReport | null> {
+  const event = await prisma.auditEvent.findFirst({ where: { action: "backup.check" }, orderBy: { at: "desc" }, select: { meta: true } });
+  const report = (event?.meta as { report?: BackupCheckReport } | null)?.report;
+  return report && Array.isArray(report.items) ? report : null;
+}
+
 /** Overzicht voor het beheerscherm. */
 export async function backupOverview() {
   const config = backupConfig();
-  const [runs, lastOk] = await Promise.all([
+  const [runs, lastOk, lastCheck] = await Promise.all([
     prisma.backupRun.findMany({ orderBy: { startedAt: "desc" }, take: 60 }),
     prisma.backupRun.findFirst({ where: { status: "OK" }, orderBy: { startedAt: "desc" } }),
+    lastBackupCheck(),
   ]);
   const hoursSinceOk = lastOk ? (Date.now() - lastOk.startedAt.getTime()) / 3_600_000 : null;
   return {
     config,
     lastOkAt: lastOk?.startedAt ?? null,
     stale: hoursSinceOk === null || hoursSinceOk > STALE_AFTER_HOURS,
+    lastCheck,
     runs: runs.map((r) => ({
       id: r.id,
       trigger: r.trigger,

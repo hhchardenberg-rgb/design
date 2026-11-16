@@ -8,6 +8,7 @@ gekopieerd. Beheer en historie: **Beheer > Back-ups** (alleen hoofdadmin). Code:
 
 | Variabele | Waarde |
 |---|---|
+| `NEON_API_KEY` | Optioneel, alleen Production. Neon API-sleutel voor de wekelijkse controle van de Neon-herstelpunten. |
 | `BACKUP_ENCRYPTION_KEY` | `openssl rand -base64 32`. **Bewaar deze ook in de wachtwoordkluis**: zonder sleutel is geen enkele back-up terug te zetten. |
 | `DATA_ENCRYPTION_KEY` | `openssl rand -base64 32`, op Production **en** Preview. Versleutelt telefoonnummers, notities en sponsorbestanden in de database en opslag. **Ook in de wachtwoordkluis**: zonder deze sleutel zijn die velden en bestanden na een herstel onleesbaar. Nooit wijzigen zolang er versleutelde gegevens zijn. |
 | `BACKUP_S3_BUCKET` | naam van de bucket (bv. `hhc-hub-backups`) |
@@ -60,16 +61,47 @@ Een leesbare kopie (bijvoorbeeld voor een inzageverzoek) maak je met
 `npm run backup -- decrypt back-up.hhcbak uit.ndjson`. Dat bestand is onversleuteld: daarna veilig verwijderen.
 
 **Eerste verdedigingslinie:** Neon bewaart zelf een tijdlijn waarmee je de database naar een
-eerder moment kunt terugzetten (Neon Console > Branches > Restore). Dat is het snelst voor "gisteren
-is er iets misgegaan". De back-ups hier zijn de tweede, onafhankelijke kopie.
+eerder moment kunt terugzetten (Neon Console > Branches > Restore). Op het gratis plan is dat alleen de
+**laatste 6 uur**: het snelst voor "er ging net iets mis". Voor alles wat langer geleden is, zijn de
+back-ups hier de (onafhankelijke) kopie.
 
 ## Aparte database voor previews
 
-Previews gebruiken nu dezelfde database als productie. Zet in Vercel > Storage > (Neon-database) >
-Settings de optie **"Create database branch for deployment" → Preview** aan. Elke preview krijgt dan een
-eigen Neon-branch (kopie van productie op dat moment), zodat testen en `prisma db push` in een preview de
-echte gegevens niet meer raken. De app schrijft in previews sowieso niets versleuteld en verstuurt geen
-echte mail (zet eventueel `PREVIEW_MAIL_TO` om testmails naar één adres te laten gaan).
+Elke preview krijgt een eigen Neon-branch `preview/<git-branch>` (kopie van productie op dat moment),
+zodat testen en `prisma db push` in een preview de echte gegevens niet raken. De app schrijft in previews
+niets versleuteld en verstuurt geen echte mail (zet eventueel `PREVIEW_MAIL_TO` om testmails naar één
+adres te laten gaan).
+
+Het gratis Neon-plan staat ongeveer 10 branches tegelijk toe. Zit dat vol, dan faalt een nieuwe preview
+binnen een seconde met **"Resource provisioning failed"**. Daarom ruimt de GitHub Action
+**Neon-opruiming** (`.github/workflows/neon-opruiming.yml`, script `scripts/neon-opruiming.mjs`) de
+kopieën op:
+
+- direct wanneer een pull request gesloten of gemerged wordt (de kopie van die branch);
+- elke nacht om 03:17 UTC als vangnet (o.a. voor Dependabot, die geen geheimen krijgt);
+- met de hand via GitHub > Actions > Neon-opruiming > Run workflow (standaard een proefrun).
+
+Nooit verwijderd: de hoofdbranch, beschermde branches, branches die niet met `preview/` beginnen (zoals
+een proefherstel), de preview van een open pull request en een preview jonger dan 24 uur zonder pull
+request. Nodig: het repository-geheim `NEON_API_KEY` (GitHub > Settings > Secrets and variables >
+Actions); een ander Neon-project kan via de variabele `NEON_PROJECT_ID`.
+
+## Wekelijkse controle
+
+Elke maandag om 06:00 UTC (07:00 of 08:00 Nederlandse tijd) controleert de Hub de back-ups
+(`/api/cron/backup-check`) en mailt de uitkomst naar de hoofdadmins. Ook te starten en te bekijken via
+**Beheer > Back-ups > Nu controleren**. De controle:
+
+- kijkt of de instellingen kloppen en de laatste back-up niet ouder is dan 36 uur;
+- noemt de nachten van de afgelopen week zonder geslaagde back-up;
+- downloadt de nieuwste back-up, ontsleutelt hem en leest alle rijen (een proefopening, zonder iets
+  terug te zetten) en vergelijkt het aantal rijen met wat er bij het maken is vastgelegd;
+- meldt bewaarde back-ups die met een andere sleutel zijn gemaakt;
+- telt hoeveel back-ups er bewaard zijn en vanaf welke datum;
+- controleert bij Neon (als `NEON_API_KEY` ook in Vercel staat) of de hoofddatabase in orde is, hoeveel
+  uur er terug te gaan is en of er nog ruimte is voor previews.
+
+De uitkomst staat ook in de audit-log (actie "Back-upcontrole uitgevoerd").
 
 ## Herstel oefenen
 

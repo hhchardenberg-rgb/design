@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { unsubscribeParams } from "@/lib/commercial/mail-security";
 import { renderContractNotice, renderMailing, type ContractNotice } from "@/lib/commercial/mail-render";
 import { formatDay } from "@/lib/date-format";
+import { CHECK_STATUS_LABEL, type BackupCheckReport } from "@/lib/backup/check";
 import { renderWelcomeMail } from "@/lib/welcome-mail-render";
 
 // Zelfde manier van URL-opbouw als src/lib/webauthn/rp.ts: afgeleid van
@@ -209,6 +210,38 @@ export async function sendBackupFailedEmail(to: string, name: string, info: { wh
       <p>De back-up van ${escapeHtml(info.when)} is mislukt. De gegevens zelf zijn niet aangetast, maar er is van vandaag geen nieuwe kopie.</p>
       <p>Foutmelding: <code>${escapeHtml(info.error)}</code></p>
       <p><a href="${APP_URL}/admin/backups">Open Back-ups in de Hub</a> om het opnieuw te proberen.</p>
+    `,
+  });
+  if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
+}
+
+/** Wekelijkse back-upcontrole naar de hoofdadmins: of de back-ups en herstelpunten in orde zijn. */
+export async function sendBackupCheckEmail(to: string, name: string, report: BackupCheckReport): Promise<void> {
+  const resend = getClient();
+  const color: Record<string, string> = { ok: "#15803d", info: "#6b7280", warn: "#b45309", fail: "#b91c1c" };
+  const mark: Record<string, string> = { ok: "✓", info: "i", warn: "!", fail: "✗" };
+  const rows = report.items
+    .map(
+      (i) =>
+        `<tr><td style="padding:4px 8px 4px 0;vertical-align:top;color:${color[i.status]};font-weight:700">${mark[i.status]}</td>` +
+        `<td style="padding:4px 0;vertical-align:top"><strong>${escapeHtml(i.label)}</strong><br>${escapeHtml(i.detail)}</td></tr>`,
+    )
+    .join("");
+  const intro =
+    report.status === "ok"
+      ? "De wekelijkse controle is klaar: de back-ups en herstelpunten zijn in orde."
+      : report.status === "warn"
+        ? "De wekelijkse controle is klaar. Er is een back-up, maar iets vraagt aandacht."
+        : "De wekelijkse controle is klaar en er is iets mis: kijk zo snel mogelijk wat er aan de hand is.";
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Back-upcontrole: ${CHECK_STATUS_LABEL[report.status].toLowerCase()} — HHC Hardenberg Hub`,
+    html: `
+      <p>Hoi ${escapeHtml(name)},</p>
+      <p>${intro}</p>
+      <table style="border-collapse:collapse;font-size:14px">${rows}</table>
+      <p><a href="${APP_URL}/admin/backups">Open Back-ups in de Hub</a></p>
     `,
   });
   if (error) throw new Error(`Resend weigerde de e-mail (${error.name}): ${error.message}`);
