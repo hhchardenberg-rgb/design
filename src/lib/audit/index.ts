@@ -28,6 +28,7 @@ export const AUDIT_ACTIONS = {
   "backup.run": "Back-up gemaakt",
   "backup.failed": "Back-up mislukt",
   "backup.download": "Back-up gedownload",
+  "backup.check": "Back-upcontrole uitgevoerd",
   "data.export": "Gegevens geëxporteerd",
   "file.download": "Sponsorbestand gedownload",
   "commercial.company_deleted": "Sponsordossier verwijderd (gesloten archief)",

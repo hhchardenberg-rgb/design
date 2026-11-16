@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Download, Loader2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Info, Loader2, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/toast";
 import { formatDayTime } from "@/lib/date-format";
+import { CHECK_STATUS_LABEL, type BackupCheckReport, type CheckStatus } from "@/lib/backup/check";
 
 interface Run {
   id: string;
@@ -31,7 +32,15 @@ interface Overview {
   config: { target: "s3" | "blob" | null; targetLabel: string | null; encryption: boolean; keyId: string | null; mirrorsFiles: boolean; problems: string[] };
   lastOkAt: string | null;
   stale: boolean;
+  lastCheck: BackupCheckReport | null;
   runs: Run[];
+}
+
+function StatusIcon({ status }: { status: CheckStatus }) {
+  if (status === "ok") return <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />;
+  if (status === "warn") return <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-hhc-orange-dark" />;
+  if (status === "fail") return <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />;
+  return <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />;
 }
 
 function size(bytes: number | null): string {
@@ -52,6 +61,7 @@ export function BackupsPanel() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const apply = useCallback((r: { data?: Overview; error?: string }) => {
     setError(r.error ?? null);
@@ -80,7 +90,21 @@ export function BackupsPanel() {
     }
   }
 
+  async function checkNow() {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/admin/backups/check", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) toast.success(`Controle klaar: ${CHECK_STATUS_LABEL[(body as BackupCheckReport).status].toLowerCase()}.`);
+      else toast.error(typeof body.error === "string" ? body.error : "Controle mislukt.");
+    } finally {
+      setChecking(false);
+      load();
+    }
+  }
+
   const config = data?.config;
+  const check = data?.lastCheck ?? null;
   const ready = !!config && config.problems.length === 0;
 
   return (
@@ -148,6 +172,44 @@ export function BackupsPanel() {
               ))}
             </ul>
           </CardContent>
+        </Card>
+      ) : null}
+
+      {data ? (
+        <Card>
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                {check ? <StatusIcon status={check.status} /> : null}
+                Wekelijkse controle{check ? `: ${CHECK_STATUS_LABEL[check.status].toLowerCase()}` : ""}
+              </CardTitle>
+              <CardDescription>
+                {check
+                  ? `Laatst gecontroleerd op ${formatDayTime(check.at)}. `
+                  : "Nog niet uitgevoerd. "}
+                Elke maandagochtend wordt de nieuwste back-up op proef geopend en krijgt de hoofdadmin de uitkomst per mail.
+              </CardDescription>
+            </div>
+            <Button variant="outline" onClick={checkNow} disabled={checking}>
+              {checking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {checking ? "Bezig…" : "Nu controleren"}
+            </Button>
+          </CardHeader>
+          {check ? (
+            <CardContent>
+              <ul className="flex flex-col gap-3 text-sm">
+                {check.items.map((i) => (
+                  <li key={i.key} className="flex gap-2">
+                    <StatusIcon status={i.status} />
+                    <div>
+                      <p className="font-medium">{i.label}</p>
+                      <p className="text-muted-foreground">{i.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          ) : null}
         </Card>
       ) : null}
 
