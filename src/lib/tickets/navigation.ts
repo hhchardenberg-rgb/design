@@ -1,7 +1,6 @@
 import type { TicketPermission } from "./permissions";
 
-// Navigatie binnen HHC Tickets. Alleen schermen die er echt zijn staan in het menu; wat in
-// een volgende fase komt, staat op het dashboard onder "Wat komt er nog".
+// Navigatie binnen HHC Tickets. Alleen schermen die er echt zijn staan in het menu.
 
 export interface TicketsNavItem {
   href: string;
@@ -61,12 +60,6 @@ export const TICKETS_NAV: TicketsNavGroup[] = [
       { href: "/tickets/auditlog", label: "Auditlog", requires: "audit:read" },
     ],
   },
-];
-
-/** Wat nog niet gebouwd is, voor het dashboard. */
-export const TICKETS_ROADMAP: { title: string; items: string[] }[] = [
-  { title: "Wallet", items: ["Apple Wallet en Google Wallet (wachten op de accounts van HHC)", "Automatische walletupdates bij wijzigingen"] },
-  { title: "Uitbreiding", items: ["Geplande rapportagemails", "Scherm voor Commerciële Zaken om tickets uit te geven (de koppeling zelf staat klaar)", "Schrijven naar Fullhouse (bewust uit: de Hub leest alleen)"] },
 ];
 
 export function visibleTicketsNav(can: (p: TicketPermission) => boolean): TicketsNavGroup[] {
