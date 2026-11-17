@@ -50,7 +50,7 @@ Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja
 1. Maak onder **Scanners en ingangen** een of meer ingangen (optioneel gekoppeld aan een vak) en scanners. De PIN (6 cijfers) wordt één keer getoond. Na vijf foute pogingen is een scanner 15 minuten geblokkeerd; een nieuwe PIN, uitschakelen of rechten wijzigen maakt lopende sessies direct ongeldig.
 2. Op de telefoon: open `/scan`, log in met de scannercode en PIN en kies de wedstrijd en ingang. Voor het beginscherm: "Zet op beginscherm".
 3. Beheerders met het recht Tickets scannen loggen in op de Hub en openen `/scan`; zij zien ook de aantallen (binnen, waarschuwingen) als ze scanhistorie mogen zien. Een supervisor (scanner met supervisor-vinkje of Hub-recht "Scan overrulen") kan een geweigerde of dubbele scan met reden toch toelaten. Dat staat in het auditlog.
-4. Scans zonder verbinding: laad vóór de wedstrijd, met verbinding, de offline-lijst ("Laden" in de scanner). Zonder bereik controleert de scanner alleen tickets uit die lijst en meldt alles later terug; de server beoordeelt elke scan dan opnieuw. De lijst is alleen op de dag van de wedstrijd beschikbaar en bevat geen volledige namen.
+4. Scans zonder verbinding: laad vóór de wedstrijd, met verbinding, de offline-lijst ("Laden" in de scanner). Zonder bereik controleert de scanner alleen tickets uit die lijst en meldt alles later terug; de server beoordeelt elke scan dan opnieuw. De lijst is te laden voor elk gekozen duel dat niet is afgelast (ook concept, afgesloten of ruim van tevoren; dat is bewust, zodat je 's ochtends of de avond ervoor kunt laden) en bevat geen volledige namen. Voor een afgelaste wedstrijd is geen lijst beschikbaar. De lijst is minstens 24 uur geldig vanaf het laden.
 5. Dubbel scannen: de tweede scan geeft altijd een waarschuwing met tijd en ingang van de eerste. Alleen interne seizoenskaarten mogen opnieuw naar binnen, en alleen bij wedstrijden waarvoor "herintrede toegestaan" aanstaat.
 6. Scanhistorie en aantallen staan onder **Scanhistorie**.
 
@@ -84,6 +84,14 @@ Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja
 - Nieuwe wedstrijden en wedstrijden uit Fullhouse beginnen op **Actief**. "Concept" is alleen een label (uitgeven en scannen werken ook bij Concept). Bij Wedstrijden zet je een concept met **Activeren** op Actief, of alles tegelijk met **Alle concepten activeren**. Fullhouse-wedstrijden hebben een potloodje voor status, seizoen, capaciteit en herintrede; titel en aftrap wijzig je in Fullhouse.
 - **Verwijderen of archiveren** (prullenbak) vraagt het recht "Wedstrijden verwijderen of archiveren" (`events:delete`, gevoelig) en het overtypen van de titel. Verwijderen kan alleen bij een HHC-wedstrijd zonder tickets, scans of verzonden mails. Anders kun je archiveren: de wedstrijd verdwijnt uit lijsten, scanner, dashboard en Fullhouse-synchronisatie, maar tickets, scans en rapportages blijven. Met nog geldige tickets kan archiveren pas als de wedstrijd gespeeld, afgesloten of afgelast is. Terugzetten via "Gearchiveerde wedstrijden tonen".
 - Seizoenen beheer je onder **Tickettypes, vakken en seizoenen** (kaart Seizoenen).
+
+## Restpunten uit de eindtest (17/11/2026)
+
+- **Capaciteit** van een wedstrijd wordt bij uitgifte bewust niet afgedwongen (gasten, seizoenspassen en niet-opkomst). Wel waarschuwt de uitgifte (scherm Tickets uitgeven, Bulkuitgifte; in de API `capacityWarnings` in het antwoord, ook bij goedkeuren van een bulkaanvraag) zodra het aantal nu geldige HHC-tickets plus geldige Fullhouse-kaarten voor die wedstrijd de ingestelde capaciteit overschrijdt. Zonder capaciteit of bij een afgelaste wedstrijd geen waarschuwing.
+- **Actiecodes**: aanmaken vraagt `tickets:bulk` en `tickets:issue`. Ligt het totaal (max inwisselingen x tickets per inwisseling) boven de goedkeuringsdrempel voor bulkuitgifte, dan wordt de actie inactief aangemaakt en kan alleen een ander persoon met `bulk:approve` haar aanzetten (vier ogen, vastgelegd in het auditlog; wijzigen van aantallen is niet mogelijk, dus de goedkeuring geldt voor precies dit totaal). Daarna werkt aan/uit zetten gewoon.
+- **Zoeken** in de zoektool negeert hoofdletters en accenten: "Muller" vindt "Müller" en andersom.
+- **Afgelasten en verplaatsen** mailt in delen en stopt netjes voor de maximale looptijd; blijft er een rest over, dan meldt het scherm hoeveel ontvangers nog open staan en verstuurt opnieuw uitvoeren alleen de rest.
+- **Scanner**: een supervisor kan bij "Laatste scans" ook scans van andere toestellen ongedaan maken (zelfde regels en reden als in de API).
 
 ## Soorten kaarten en toegangsvakken uit Fullhouse
 

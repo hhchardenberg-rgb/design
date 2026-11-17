@@ -24,7 +24,7 @@ interface Parsed {
   origin: "CSV" | "XLSX";
   threshold: number;
 }
-type Result = { pendingApproval: boolean; count: number };
+type Result = { pendingApproval: boolean; count: number; capacityWarnings?: string[] };
 
 export function BulkIssue() {
   const toast = useStableToast();
@@ -95,6 +95,11 @@ export function BulkIssue() {
                 <Link href="/tickets/overzicht" className="font-semibold text-hhc-orange-dark hover:underline">
                   Naar het overzicht
                 </Link>
+                {(result.capacityWarnings?.length ?? 0) > 0 && (
+                  <span className="mt-2 block font-medium text-amber-600" role="alert">
+                    {result.capacityWarnings!.join(" ")}
+                  </span>
+                )}
               </>
             )}
           </CardContent>

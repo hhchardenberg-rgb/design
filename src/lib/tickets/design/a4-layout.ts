@@ -103,6 +103,17 @@ function fitText(m: Measurer, text: string, font: FontKey, size: number, minSize
   return { lines: kept, size: minSize, fits: false };
 }
 
+/**
+ * Voor namen en kopjes die nooit afgekort mogen worden: eerst verkleinen (tot `minSize`) om in `preferLines`
+ * regels te passen, anders op de minimale grootte doorlopen over meer regels. Pas boven `maxLines` (een
+ * veiligheidsgrens voor absurde invoer) wordt afgekort.
+ */
+function fitFlow(m: Measurer, text: string, font: FontKey, size: number, minSize: number, maxWidth: number, preferLines: number, maxLines = 8): { lines: string[]; size: number; fits: boolean } {
+  const a = fitText(m, text, font, size, minSize, maxWidth, preferLines);
+  if (a.fits) return a;
+  return fitText(m, text, font, minSize, minSize, maxWidth, maxLines);
+}
+
 interface Options {
   dropHero: boolean;
   dropExtra: boolean;
@@ -162,7 +173,7 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
   if (footer) {
     const fs = 7.5 * Math.min(scale, 1.05);
     const termLines = footer.terms ? wrap(m, footer.terms, B, fs, cw) : [];
-    const meta = [`Ticketnummer ${footer.ticketNumber}`, footer.contact, footer.version, generatedAt ? `Aangemaakt op ${generatedAt}` : null].filter(Boolean).join("  ·  ");
+    const meta = [`${view.labels.ticketNumber} ${footer.ticketNumber}`, footer.contact, footer.version, generatedAt ? `${view.labels.createdAt} ${generatedAt}` : null].filter(Boolean).join("  ·  ");
     const metaLines = wrap(m, meta, B, fs * 0.95, cw);
     const lh = fs * 1.35;
     footerH = mm(3) + (termLines.length + metaLines.length) * lh + mm(1);
@@ -293,7 +304,7 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
       y += mm(1.5);
     }
     const size = (b.mode === "match" ? 28 : 30) * scale;
-    const t = fitText(m, b.title, H, size, 18, textW, 2);
+    const t = fitFlow(m, b.title, H, size, 18, textW, 2);
     if (!t.fits) issues.push({ level: "warning", message: "De kop is te lang en wordt afgekort.", format: "a4", field: "match.title" });
     const titleTop = y;
     for (const l of t.lines) {
@@ -302,7 +313,7 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
     }
     if (b.cancelled) {
       y += 13 * scale * 1.3;
-      boxes.push({ t: "text", x: textX, y, size: 13 * scale, font: BB, color: ink ? "#000000" : "#B91C1C", text: m.clean("Afgelast", BB) });
+      boxes.push({ t: "text", x: textX, y, size: 13 * scale, font: BB, color: ink ? "#000000" : "#B91C1C", text: m.clean(view.labels.cancelled, BB) });
     }
     y += mm(1.5);
     const ls = 12.5 * scale;
@@ -364,14 +375,14 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
       y += mm(1);
     }
     const ns = 20 * scale;
-    const n = fitText(m, b.name, H, ns, 14, w, 2);
+    const n = fitFlow(m, b.name, H, ns, 14, w, 2);
     for (const l of n.lines) {
       y += n.size * 1.1;
       boxes.push({ t: "text", x: x0, y, size: n.size, font: H, color: text, text: l });
     }
     if (b.company) {
       const cs = 11 * scale;
-      for (const l of wrap(m, b.company, B, cs, w).slice(0, 2)) {
+      for (const l of wrap(m, b.company, B, cs, w).slice(0, 5)) {
         y += cs * 1.3;
         boxes.push({ t: "text", x: x0, y, size: cs, font: B, color: muted, text: l });
       }
@@ -389,7 +400,7 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
       iy += 9 * scale * 1.2;
       boxes.push({ t: "text", x, y: iy, size: 9 * scale, font: BB, color: muted, text: m.clean(it.label.toUpperCase(), BB) });
       const vs = 14 * scale;
-      for (const l of wrap(m, it.value, H, vs, colW - mm(3)).slice(0, 2)) {
+      for (const l of wrap(m, it.value, H, vs, colW - mm(3)).slice(0, 5)) {
         iy += vs * 1.15;
         boxes.push({ t: "text", x, y: iy, size: vs, font: H, color: text, text: l });
       }
@@ -447,7 +458,7 @@ function layoutOnce(view: TicketView, m: Measurer, o: Options, generatedAt: stri
   function message(b: Extract<ViewBlock, { id: "message" }>, y0: number): number {
     const pad = mm(4);
     const size = 12 * scale;
-    const lines = wrap(m, b.text, BB, size, cw - 2 * pad).slice(0, 4);
+    const lines = wrap(m, b.text, BB, size, cw - 2 * pad).slice(0, 8);
     const h = lines.length * size * 1.35 + 2 * pad;
     const accent = b.tone === "accent" && !ink;
     boxes.push({ t: "rect", x: left, y: y0, w: cw, h, fill: accent ? s.accent : ink ? undefined : tint(s.text, 0.06), stroke: ink ? "#000000" : undefined, strokeWidth: ink ? 1 : undefined, radius });

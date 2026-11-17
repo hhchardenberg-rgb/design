@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- ticketafbeeldingen komen uit de eigen database en moeten exact (ook offline) getoond worden */
 
 import "./ticket-fonts.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { preload } from "react-dom";
 import { TICKET_FONTS, headingFontKey, ticketFontStack, webFontsFor } from "@/lib/tickets/design/fonts";
 import { qrMatrix, qrPath } from "@/lib/tickets/design/qr-matrix";
@@ -137,7 +137,7 @@ export function MobileTicket(props: {
             <div style={{ minWidth: 0, flex: b.homeLogo ? "1 1 auto" : undefined }}>
               {b.overline && <p style={{ ...body, color: s.accent === s.background ? s.text : s.accent, fontSize: `${0.75 * s.scale}rem`, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>{b.overline}</p>}
               <h1 style={{ ...heading, fontSize: `${1.65 * s.scale}rem`, margin: "0.15rem 0 0.35rem", overflowWrap: "anywhere", hyphens: "auto" }}>{b.title}</h1>
-              {b.cancelled && <p style={{ ...body, fontWeight: 700, color: "#B91C1C", margin: "0 0 0.25rem" }}>Afgelast</p>}
+              {b.cancelled && <p style={{ ...body, fontWeight: 700, color: "#B91C1C", margin: "0 0 0.25rem" }}>{view.labels.cancelled}</p>}
               {b.lines.map((l, i) => (
                 <p key={i} style={{ ...body, margin: 0, color: i < 2 ? s.text : s.muted, fontSize: `${(i < 2 ? 1.05 : 0.95) * s.scale}rem`, fontWeight: i < 2 ? 600 : 400, overflowWrap: "anywhere" }}>{l}</p>
               ))}
@@ -154,11 +154,20 @@ export function MobileTicket(props: {
           </div>,
         );
       case "qr":
+        if (b.withheld && view.inactive) {
+          return wrapBlock(
+            "qr",
+            <div role="group" aria-labelledby="ticket-inactive-title" data-testid="ticket-inactive" style={{ border: `2px solid #B91C1C`, borderRadius: Math.min(s.radius, 14), padding: "1rem", background: "#FEF2F2", color: "#7F1D1D", textAlign: align }}>
+              <h2 id="ticket-inactive-title" style={{ ...heading, fontSize: `${1.2 * s.scale}rem`, margin: 0 }}>{view.inactive.title}</h2>
+              <p style={{ ...body, margin: "0.5rem 0 0", fontSize: `${1 * s.scale}rem` }}>{view.inactive.body}</p>
+            </div>,
+          );
+        }
         return wrapBlock(
           "qr",
           <div style={{ textAlign: "center" }}>
             <div style={{ width: `${view.qrSizeMobile}%`, maxWidth: "22rem", margin: "0 auto", background: "#FFFFFF", padding: "0.4rem", borderRadius: Math.min(s.radius, 14), border: `2px solid ${s.border ? s.accent : "#E7E5E4"}` }}>
-              <QrSvg code={b.code} label={b.sample ? `QR-code (voorbeeld, geeft geen toegang)` : "QR-code van je ticket"} />
+              <QrSvg code={b.code} label={b.sample ? view.labels.qrSampleAria : view.labels.qrAria} />
             </div>
             {b.caption && <p style={{ ...body, color: s.muted, fontSize: `${0.85 * s.scale}rem`, margin: "0.5rem 0 0" }}>{b.caption}</p>}
             <div style={{ display: "grid", gap: "0.5rem", marginTop: "0.75rem" }}>
@@ -210,7 +219,7 @@ export function MobileTicket(props: {
             ))}
           </div>
         );
-        const title = b.title ?? "Praktische informatie";
+        const title = b.title ?? view.labels.practical;
         return wrapBlock(
           "info",
           b.collapsed ? (
@@ -235,7 +244,7 @@ export function MobileTicket(props: {
         const h = b.size === "s" ? "1.75rem" : b.size === "l" ? "3.25rem" : "2.4rem";
         return wrapBlock(
           "sponsors",
-          <section aria-label={b.title ?? "Sponsoren"} style={{ borderTop: `1px solid ${s.muted}33`, paddingTop: "0.75rem" }}>
+          <section aria-label={b.title ?? view.labels.sponsorsAria} style={{ borderTop: `1px solid ${s.muted}33`, paddingTop: "0.75rem" }}>
             {b.title && <p style={{ ...body, color: s.muted, fontSize: `${0.75 * s.scale}rem`, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 0.6rem", textAlign: b.align }}>{b.title}</p>}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem 1.4rem", alignItems: "center", justifyContent: b.align === "center" ? "center" : "flex-start" }}>
               {b.logos.map((l) => (
@@ -259,7 +268,7 @@ export function MobileTicket(props: {
           <footer style={{ ...body, borderTop: `2px solid ${s.accent}`, paddingTop: "0.75rem", color: s.muted, fontSize: `${0.75 * s.scale}rem` }}>
             {b.terms && <p style={{ margin: 0 }}>{b.terms}</p>}
             <p style={{ margin: "0.4rem 0 0", color: s.text, fontWeight: 600 }}>
-              {L.ticketNumber} {b.ticketNumber}
+              {view.labels.ticketNumber} {b.ticketNumber}
             </p>
             {(b.contact || b.version) && <p style={{ margin: "0.2rem 0 0" }}>{[b.contact, b.version].filter(Boolean).join(" · ")}</p>}
           </footer>,
@@ -269,7 +278,7 @@ export function MobileTicket(props: {
 
   return (
     <div style={{ background: s.page, padding: "0.75rem 0.5rem 2rem", minHeight: "100%", fontFamily: body.fontFamily }}>
-      <article aria-label="Ticket" style={{ maxWidth: "28rem", margin: "0 auto", background: s.background, color: s.text, borderRadius: s.radius, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.12)", border: s.border ? `1px solid ${s.muted}44` : undefined, ...body }}>
+      <article aria-label={view.labels.ticketAria} style={{ maxWidth: "28rem", margin: "0 auto", background: s.background, color: s.text, borderRadius: s.radius, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.12)", border: s.border ? `1px solid ${s.muted}44` : undefined, ...body }}>
         {view.notices.map((n, i) => (
           <p key={i} role="status" style={{ margin: 0, background: "#FEF3C7", color: "#78350F", fontSize: "0.9rem", padding: "0.75rem 1.15rem", fontWeight: 600 }}>
             {n}
@@ -277,21 +286,21 @@ export function MobileTicket(props: {
         ))}
         {!view.usable && (
           <p role="alert" style={{ margin: 0, background: "#FEE2E2", color: "#7F1D1D", fontSize: "0.95rem", padding: "0.75rem 1.15rem", fontWeight: 700 }}>
-            {L.status}: {view.statusLabel}
+            {view.labels.status}: {view.statusLabel}
           </p>
         )}
         <div style={{ display: "grid", gap, paddingBottom: "1.25rem" }}>{blocks}</div>
       </article>
-      {offline && <OfflineSave labels={L} fonts={webFontsFor(s)} />}
-      {!view.sample && <p style={{ ...body, maxWidth: "28rem", margin: "0.75rem auto 0", textAlign: "center", fontSize: "0.8rem", color: "#57534E" }}>{L.personalNote}</p>}
-      {qrOpen && qr && <QrDialog code={qr.code} sample={qr.sample} title={match?.title ?? ""} name={holder?.name ?? ""} type={type?.label ?? ""} labels={L} heading={heading} body={body} onClose={() => setQrOpen(false)} />}
+      {offline && view.usable && <OfflineSave labels={L} fonts={webFontsFor(s)} />}
+      {!view.sample && view.usable && <p style={{ ...body, maxWidth: "28rem", margin: "0.75rem auto 0", textAlign: "center", fontSize: "0.8rem", color: "#57534E" }}>{L.personalNote}</p>}
+      {qrOpen && qr && <QrDialog code={qr.code} title={match?.title ?? ""} name={holder?.name ?? ""} type={type?.label ?? ""} labels={L} qrAria={qr.sample ? view.labels.qrSampleAria : view.labels.qrAria} heading={heading} body={body} onClose={() => setQrOpen(false)} />}
     </div>
   );
 }
 
 type FontStyle = { fontFamily: string; fontWeight?: number; lineHeight: number };
 
-function QrDialog({ code, sample, title, name, type, labels, heading, body, onClose }: { code: string; sample: boolean; title: string; name: string; type: string; labels: MobileLabels; heading: FontStyle; body: FontStyle; onClose: () => void }) {
+function QrDialog({ code, title, name, type, labels, qrAria, heading, body, onClose }: { code: string; title: string; name: string; type: string; labels: MobileLabels; qrAria: string; heading: FontStyle; body: FontStyle; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const onKey = useCallback(
     (e: KeyboardEvent) => {
@@ -324,7 +333,7 @@ function QrDialog({ code, sample, title, name, type, labels, heading, body, onCl
     <div role="dialog" aria-modal="true" aria-label={labels.qrDialog} style={{ position: "fixed", inset: 0, zIndex: 50, background: "#FFFFFF", color: "#000000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "1rem", gap: "0.75rem", overflowY: "auto", fontFamily: body.fontFamily }}>
       <p style={{ ...heading, margin: 0, fontSize: "1.15rem", textAlign: "center", overflowWrap: "anywhere" }}>{title}</p>
       <div style={{ width: "min(92vw, calc(100vh - 14rem), 30rem)" }}>
-        <QrSvg code={code} label={sample ? "QR-code (voorbeeld, geeft geen toegang)" : "QR-code van je ticket"} />
+        <QrSvg code={code} label={qrAria} />
       </div>
       <p style={{ ...heading, margin: 0, fontSize: "1.35rem", textAlign: "center", overflowWrap: "anywhere" }}>{name}</p>
       <p style={{ margin: 0, fontWeight: 600, textAlign: "center" }}>{type}</p>
@@ -336,9 +345,13 @@ function QrDialog({ code, sample, title, name, type, labels, heading, body, onCl
   );
 }
 
+const noSubscribe = () => () => {};
+
 /** Offline bewaren: de service worker bewaart de pagina en de pdf; tonen kan zonder internet, de geldigheid bepaalt de scanner. */
 function OfflineSave({ labels, fonts }: { labels: MobileLabels; fonts: string[] }) {
-  const [state, setState] = useState<"idle" | "saved" | "unsupported">(() => (typeof navigator !== "undefined" && !("serviceWorker" in navigator) ? "unsupported" : "idle"));
+  // Begint altijd als "idle" (ook op de server), anders verschilt de serverhtml van de eerste clientweergave (hydratiefout).
+  const [state, setState] = useState<"idle" | "saved" | "unsupported">("idle");
+  const swSupported = useSyncExternalStore(noSubscribe, () => "serviceWorker" in navigator, () => true);
   const [isOffline, setIsOffline] = useState(false);
   useEffect(() => {
     const sync = () => setIsOffline(!navigator.onLine);
@@ -355,7 +368,10 @@ function OfflineSave({ labels, fonts }: { labels: MobileLabels; fonts: string[] 
     try {
       const reg = await navigator.serviceWorker.ready;
       // Ook de lettertypen, zodat het opgeslagen ticket zonder internet in de huisstijl blijft.
-      const urls = [location.pathname + location.search, ...[...document.querySelectorAll("a[href*='/pdf']")].map((a) => (a as HTMLAnchorElement).pathname), ...fonts];
+      // Plus de scripts, stijlen en afbeeldingen die deze pagina al heeft geladen: die zijn bij het eerste bezoek
+      // opgehaald voordat de service worker actief was en staan dus nog niet in de cache.
+      const loaded = performance.getEntriesByType("resource").map((e) => new URL(e.name)).filter((u) => u.origin === location.origin && /^\/(_next\/static|fonts|branding|api\/public\/ticket-assets)\//.test(u.pathname)).map((u) => u.pathname + u.search);
+      const urls = [...new Set([location.pathname + location.search, ...[...document.querySelectorAll("a[href*='/pdf']")].map((a) => (a as HTMLAnchorElement).pathname), ...fonts, ...loaded])];
       reg.active?.postMessage({ type: "save", urls });
       const cache = await caches.open("hhc-ticket-v2");
       await Promise.all(urls.map((u) => fetch(u, { cache: "no-store" }).then((r) => (r.ok ? cache.put(u, r) : undefined)).catch(() => undefined)));
@@ -367,7 +383,7 @@ function OfflineSave({ labels, fonts }: { labels: MobileLabels; fonts: string[] 
   return (
     <div style={{ maxWidth: "28rem", margin: "0.75rem auto 0", display: "grid", gap: "0.4rem", padding: "0 0.25rem" }}>
       {isOffline && <p role="status" style={{ margin: 0, background: "#FEF3C7", color: "#78350F", padding: "0.6rem 0.8rem", borderRadius: 10, fontSize: "0.9rem" }}>{labels.offlineValidity}</p>}
-      {state !== "unsupported" && (
+      {state !== "unsupported" && swSupported && (
         <button type="button" onClick={save} disabled={state === "saved"} style={{ minHeight: "3rem", borderRadius: 12, border: "2px solid #44403C", background: "#FFFFFF", color: "#1C1917", fontFamily: "inherit", fontWeight: 700, fontSize: "1rem", cursor: "pointer" }}>
           {state === "saved" ? labels.savedOffline : labels.saveOffline}
         </button>

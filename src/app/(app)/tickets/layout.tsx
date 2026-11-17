@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ShieldOff } from "lucide-react";
 import { auth } from "@/lib/auth";
+import { MFA_SETUP_PATH } from "@/lib/auth-policy";
 import { Card, CardContent } from "@/components/ui/card";
 import { CommercialSidebar } from "@/components/commercial/commercial-sidebar";
 import { isTicketsEnabled } from "@/lib/tickets/flag";
@@ -15,6 +16,9 @@ export default async function TicketsLayout({ children }: { children: React.Reac
   if (!isTicketsEnabled()) notFound();
   const session = await auth();
   if (!session?.user) notFound();
+  // De routebewaking leest de tweestapsplicht uit het sessiecookie; dat kan nog van vóór de plicht zijn
+  // (rol net uitgebreid, of HHC Tickets net aangezet). auth() leest hem hier vers uit de database.
+  if (session.user.mfaSetupRequired) redirect(`${MFA_SETUP_PATH}?verplicht=1`);
   const access = await loadTicketsAccess(session.user.id);
   if (!access.hasAccess) {
     return (

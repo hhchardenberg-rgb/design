@@ -4,12 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { ticketAudit, ticketAuditData, ticketAuditTx } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
+import { likeLiteral } from "./like";
 import { initialsOf, needsApproval, resolveValidity, type ResolvedValidity } from "./issue";
 import { canTransition, displayStatus, type TicketStatus } from "./rules";
 import { issueSchema, reissueSchema, statusChangeSchema, type HolderInput, type IssueInput } from "./schemas";
 import { getTicketSettings } from "./settings.server";
 import { newPublicId } from "./token";
 import type { Locale } from "./i18n";
+import { capacityWarnings } from "./capacity.server";
 import { stampDesignSafe } from "./design/context.server";
 
 // Interne HHC-tickets: uitgeven, overzicht, status en opnieuw uitgeven.
@@ -151,7 +153,7 @@ export async function issueTickets(actor: TicketsActor, raw: unknown, origin: "M
     { timeout: 60_000, maxWait: 15_000 },
   );
   await stampDesignSafe(ids);
-  return { pendingApproval: false, ticketIds: ids, count: ids.length };
+  return { pendingApproval: false, ticketIds: ids, count: ids.length, capacityWarnings: await capacityWarnings(prepared.validity.eventIds) };
 }
 
 // --- Overzicht ------------------------------------------------------------------------
@@ -177,7 +179,8 @@ export async function listTickets(actor: TicketsActor, query: TicketListQuery) {
   if (query.status === "EXPIRED") Object.assign(where, { status: "ACTIVE", validUntil: { lt: now } });
   else if (query.status === "ACTIVE") Object.assign(where, { status: "ACTIVE", OR: [{ validUntil: null }, { validUntil: { gte: now } }] });
   else if (query.status === "BLOCKED" || query.status === "CANCELLED") where.status = query.status;
-  const q = query.q?.trim();
+  const raw = query.q?.trim();
+  const q = raw ? likeLiteral(raw) : "";
   if (q) {
     // Zoeken op naam/e-mail/bedrijf alleen voor wie contactgegevens mag zien; anders alleen op ticketkenmerk.
     where.AND = personal

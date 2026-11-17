@@ -60,9 +60,13 @@ export function parseMembers(text: string): { members: { firstName: string; last
     if (parts.length < 2) return void errors.push({ line: i + 1, message: "Vul voor- en achternaam in." });
     const seats = seatsRaw ? Number(seatsRaw) : 1;
     if (!Number.isInteger(seats) || seats < 1 || seats > 50) return void errors.push({ line: i + 1, message: "Het aantal moet een getal van 1 tot 50 zijn." });
-    const parsed = holderSchema.safeParse({ firstName: parts[0], lastName: parts.slice(1).join(" "), email });
-    if (!parsed.success) return void errors.push({ line: i + 1, message: parsed.error.issues[0]?.message ?? "Ongeldige regel." });
-    members.push({ firstName: parsed.data.firstName, lastName: parsed.data.lastName, email: parsed.data.email, company: company || null, seats });
+    const parsed = holderSchema.safeParse({ firstName: parts[0], lastName: parts.slice(1).join(" "), email, company });
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const message = issue?.path[0] === "company" ? "De bedrijfsnaam is te lang (maximaal 120 tekens)." : issue?.path[0] === "firstName" || issue?.path[0] === "lastName" ? "De naam is te lang." : (issue?.message ?? "Ongeldige regel.");
+      return void errors.push({ line: i + 1, message });
+    }
+    members.push({ firstName: parsed.data.firstName, lastName: parsed.data.lastName, email: parsed.data.email, company: parsed.data.company, seats });
   });
   return { members, errors };
 }

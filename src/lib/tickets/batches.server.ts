@@ -3,6 +3,7 @@ import { ApiError } from "@/lib/api-guards";
 import { ticketAuditTx } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
 import { batchReviewSchema, issueSchema } from "./schemas";
+import { capacityWarnings } from "./capacity.server";
 import { createTickets, prepareIssue } from "./tickets.server";
 import { stampDesignSafe } from "./design/context.server";
 
@@ -58,5 +59,5 @@ export async function reviewBatch(actor: TicketsActor, id: string, raw: unknown)
     { timeout: 60_000, maxWait: 15_000 },
   );
   await stampDesignSafe(count);
-  return { status: "ISSUED", count: count.length };
+  return { status: "ISSUED", count: count.length, capacityWarnings: await capacityWarnings(prepared.validity.eventIds) };
 }

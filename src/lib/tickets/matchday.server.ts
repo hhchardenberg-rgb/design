@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { ticketAudit } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
+import { likeLiteral } from "./like";
 import { processScan } from "./scan.server";
 import type { ScanActor } from "./scanner-auth.server";
 import { qrCodeFor } from "./token";
@@ -221,14 +222,15 @@ export async function manualSearch(actor: TicketsActor, q: string) {
   const term = q.trim();
   if (term.length < 2) return { rows: [] };
   const personal = actor.access.can("tickets:personal");
+  const like = likeLiteral(term);
   const rows = await prisma.ticket.findMany({
     where: {
       source: "HHC",
       status: "ACTIVE",
       anonymizedAt: null,
       OR: personal
-        ? [{ publicId: { startsWith: term.toUpperCase() } }, { firstName: { contains: term, mode: "insensitive" } }, { lastName: { contains: term, mode: "insensitive" } }, { email: { contains: term, mode: "insensitive" } }]
-        : [{ publicId: { startsWith: term.toUpperCase() } }],
+        ? [{ publicId: { startsWith: like.toUpperCase() } }, { firstName: { contains: like, mode: "insensitive" } }, { lastName: { contains: like, mode: "insensitive" } }, { email: { contains: like, mode: "insensitive" } }]
+        : [{ publicId: { startsWith: like.toUpperCase() } }],
     },
     take: 10,
     orderBy: { createdAt: "desc" },

@@ -8,7 +8,8 @@ export function detectDelimiter(text: string): "," | ";" | "\t" {
   return best;
 }
 
-export function parseCsv(input: string, delimiter?: string): string[][] {
+/** `keepEmpty`: lege regels laten staan, zodat regelnummers overeenkomen met het bestand. */
+export function parseCsv(input: string, delimiter?: string, opts: { keepEmpty?: boolean } = {}): string[][] {
   const text = input.replace(/^﻿/, "");
   const d = delimiter ?? detectDelimiter(text);
   const rows: string[][] = [];
@@ -40,7 +41,7 @@ export function parseCsv(input: string, delimiter?: string): string[][] {
     row.push(cell);
     rows.push(row);
   }
-  return rows.filter((r) => r.some((c) => c.trim() !== ""));
+  return opts.keepEmpty ? rows : rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 
 /** Voor toekomstige exports: voorkomt dat spreadsheetprogramma's een cel als formule uitvoeren. */

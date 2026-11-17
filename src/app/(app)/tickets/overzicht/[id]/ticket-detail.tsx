@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label, Textarea } from "@/components/ui/input";
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { formatDay, formatDayTime } from "@/lib/date-format";
+import { textsFor } from "@/lib/tickets/i18n";
 import { TICKET_CATEGORIES, TICKET_STATUS_LABELS, VALIDITY_MODES, type TicketCategory, type TicketStatus, type ValidityMode } from "@/lib/tickets/rules";
 import { api, errorText, TicketStatusBadge } from "@/components/tickets/parts";
 import { Transfer } from "../../seizoenspassen/[id]/pass-detail";
@@ -77,22 +78,29 @@ export function TicketDetail({ id, canBlock, canResend, canAnonymize, canTransfe
   }, [load]);
 
   async function deliver(kind: "mail" | "copy" | "whatsapp") {
+    // De popup moet synchroon in de klik geopend worden: iOS Safari blokkeert een window.open na een await.
+    const popup = kind === "whatsapp" ? window.open("about:blank", "_blank") : null;
     setBusy(true);
     try {
       if (kind === "mail") {
         await api(`/api/tickets/tickets/${id}/send`, { body: {} });
         toast.success("Ticket verstuurd.");
       } else {
-        const { url } = await api<{ url: string }>(`/api/tickets/tickets/${id}/link`, { body: { channel: kind === "copy" ? "LINK_COPY" : "WHATSAPP" } });
+        const { url, locale } = await api<{ url: string; locale?: string }>(`/api/tickets/tickets/${id}/link`, { body: { channel: kind === "copy" ? "LINK_COPY" : "WHATSAPP" } });
         if (kind === "copy") {
           await navigator.clipboard.writeText(url);
           toast.success("Persoonlijke link gekopieerd.");
         } else {
-          window.open(`https://wa.me/?text=${encodeURIComponent(`Je ticket voor HHC Hardenberg: ${url}`)}`, "_blank", "noopener");
+          const wa = `https://wa.me/?text=${encodeURIComponent(`${textsFor(locale).v.whatsappIntro} ${url}`)}`;
+          if (popup) {
+            popup.opener = null;
+            popup.location.href = wa;
+          } else window.location.href = wa;
         }
       }
       await load();
     } catch (e) {
+      popup?.close();
       toast.error(errorText(e));
     } finally {
       setBusy(false);

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { ticketAudit } from "../audit.server";
 import { need, type TicketsActor } from "../authz.server";
+import { likeLiteral } from "../like";
 import type { TicketCategory } from "../rules";
 import { ticketProvider } from "./index";
 import type { FullhouseEvent } from "./types";
@@ -138,11 +139,11 @@ function guessCategory(name: string): TicketCategory {
 
 async function createHhcFor(item: { kind: string; name: string; categoryRef: string | null }): Promise<string> {
   if (item.kind === "ZONE") {
-    const existing = await prisma.ticketZone.findFirst({ where: { name: { equals: item.name, mode: "insensitive" } }, select: { id: true } });
+    const existing = await prisma.ticketZone.findFirst({ where: { name: { equals: likeLiteral(item.name), mode: "insensitive" } }, select: { id: true } });
     if (existing) return existing.id;
     return (await prisma.ticketZone.create({ data: { name: item.name.slice(0, 80), description: "Overgenomen uit Fullhouse" } })).id;
   }
-  const existing = await prisma.ticketType.findFirst({ where: { name: { equals: item.name, mode: "insensitive" } }, select: { id: true } });
+  const existing = await prisma.ticketType.findFirst({ where: { name: { equals: likeLiteral(item.name), mode: "insensitive" } }, select: { id: true } });
   if (existing) return existing.id;
   // Vak van de kaartsoort: de Fullhouse-categorie, als die al aan een HHC-vak gekoppeld is.
   const zoneItem = item.categoryRef ? await prisma.ticketFullhouseItem.findUnique({ where: { kind_nameKey: { kind: "ZONE", nameKey: nameKey(item.categoryRef) } }, select: { zoneId: true } }) : null;

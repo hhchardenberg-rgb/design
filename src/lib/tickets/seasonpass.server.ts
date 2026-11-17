@@ -4,7 +4,7 @@ import { ticketAuditTx } from "./audit.server";
 import { need, type TicketsActor } from "./authz.server";
 import { initialsOf } from "./issue";
 import { coversEvent, type RuleEvent, type RuleTicket, type TicketStatus, type ValidityMode } from "./rules";
-import { holderSchema } from "./schemas";
+import { holderSchema, issueSchema } from "./schemas";
 import { issueTickets } from "./tickets.server";
 import { z } from "zod";
 
@@ -145,6 +145,12 @@ export async function renewSeasonPasses(actor: TicketsActor, raw: unknown) {
   });
   const existing = await prisma.ticket.findMany({ where: { isSeasonCard: true, source: "HHC", anonymizedAt: null, seasonId: to.id, status: { not: "CANCELLED" } }, select: { typeId: true, firstName: true, lastName: true, email: true } });
   const have = new Set(existing.map((t) => `${t.typeId}|${norm(t)}`));
+  // Ook houders die al in een (verlengings)aanvraag voor dit seizoen zitten die nog op goedkeuring wacht.
+  const pendingBatches = await prisma.ticketBatch.findMany({ where: { status: "PENDING_APPROVAL" }, select: { payload: true } });
+  for (const b of pendingBatches) {
+    const p = issueSchema.safeParse(b.payload);
+    if (p.success && p.data.seasonId === to.id) for (const h of p.data.holders) have.add(`${p.data.typeId}|${norm(h)}`);
+  }
 
   const groups = new Map<string, typeof old>();
   let skipped = 0;
@@ -195,7 +201,7 @@ export async function transferTicket(actor: TicketsActor, id: string, raw: unkno
     if (t.status !== "ACTIVE") throw new ApiError(400, "Alleen actieve tickets kunnen worden overgedragen.");
     const row = await tx.ticket.update({
       where: { id },
-      data: { firstName: h.firstName, lastName: h.lastName, email: h.email, phone: h.phone, company: h.company, relation: h.relation, qrVersion: { increment: 1 }, linkVersion: { increment: 1 } },
+      data: { firstName: h.firstName, lastName: h.lastName, email: h.email, phone: h.phone, company: h.company, relation: h.relation, note: h.note, photoKey: null, qrVersion: { increment: 1 }, linkVersion: { increment: 1 } },
       select: { qrVersion: true, linkVersion: true },
     });
     await ticketAuditTx(tx, { action: "ticket.transferred", actor: actorOf(actor), ticketId: id, reason: input.reason, summary: "Ticket overgedragen aan een andere houder", meta: { qrVersion: row.qrVersion } });

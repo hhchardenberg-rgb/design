@@ -14,6 +14,7 @@ interface Result {
   fullhouse: boolean;
   sent?: number;
   failed?: number;
+  remaining?: number;
 }
 
 /** Afgelasten of verplaatsen in één klik: wedstrijd aanpassen, tickets laten meelopen en houders mailen. */
@@ -53,7 +54,6 @@ export function ChangeEvent({ event, canMail, onDone, onClose }: { event: { id: 
     }
   }
 
-  if (event.status === "CANCELLED" && action === "CANCEL") setAction("MOVE");
   return (
         <div className="space-y-3 rounded-md border border-border p-3">
           <p className="font-medium">Afgelasten of verplaatsen</p>
@@ -61,11 +61,9 @@ export function ChangeEvent({ event, canMail, onDone, onClose }: { event: { id: 
             <label className="flex items-center gap-2">
               <input type="radio" checked={action === "MOVE"} onChange={() => { setAction("MOVE"); setPreview(null); }} /> Verplaatsen naar een nieuwe datum
             </label>
-            {event.status !== "CANCELLED" && (
-              <label className="flex items-center gap-2">
-                <input type="radio" checked={action === "CANCEL"} onChange={() => { setAction("CANCEL"); setPreview(null); }} /> Afgelasten (nog geen nieuwe datum)
-              </label>
-            )}
+            <label className="flex items-center gap-2">
+              <input type="radio" checked={action === "CANCEL"} onChange={() => { setAction("CANCEL"); setPreview(null); }} /> {event.status === "CANCELLED" ? "Afgelasten opnieuw uitvoeren (alleen openstaande berichten)" : "Afgelasten (nog geen nieuwe datum)"}
+            </label>
           </div>
           {action === "MOVE" && (
             <div>

@@ -5,7 +5,7 @@ import sharp from "sharp";
 import { PDFDocument, degrees, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { TICKET_FONTS } from "./fonts";
 import { layoutA4, A4_H, A4_W, type A4Box, type A4Layout, type FontKey, type Measurer } from "./a4-layout";
-import { qrMatrix } from "./qr-matrix";
+import { qrMatrix, qrPath } from "./qr-matrix";
 import type { AssetRef, TicketView } from "./view";
 
 // A4-pdf van een ticket: echte vectortekst met ingebedde lettertypen (FF DIN en Inter), de
@@ -144,8 +144,9 @@ export async function renderPdf(layouts: A4Layout[], loadAsset: AssetLoader, met
       }
       case "qr": {
         const q = qrMatrix(b.code);
-        const unit = b.size / q.size;
-        for (const [x, y, w] of q.runs) page.drawRectangle({ x: b.x + x * unit, y: Y(b.y + (y + 1) * unit), width: w * unit + 0.02, height: unit + 0.02, color: rgb(0, 0, 0) });
+        // Eén pad voor de hele code: losse rechthoeken per rij geven bij het renderen witte haarlijnen
+        // tussen de rijen (anti-aliasing), waardoor sommige scanners de code slechter lezen.
+        page.drawSvgPath(qrPath(q), { x: b.x, y: Y(b.y), scale: b.size / q.size, color: rgb(0, 0, 0), borderWidth: 0 });
         return;
       }
     }

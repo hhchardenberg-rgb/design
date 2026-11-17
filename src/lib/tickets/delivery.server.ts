@@ -145,7 +145,7 @@ export async function shareLink(actor: TicketsActor, id: string, channel: "LINK_
   if (t.anonymizedAt || t.status !== "ACTIVE") throw new ApiError(400, "Van dit ticket kan geen link worden gedeeld.");
   await prisma.ticketDelivery.create({ data: { ticketId: id, channel, status: "SENT", byId: actor.id, byName: actor.name } });
   await ticketAudit({ action: "ticket.link_shared", actor: actorOf(actor), ticketId: id, meta: { channel } });
-  return { url: ticketLink(t.publicId, t.linkVersion) };
+  return { url: ticketLink(t.publicId, t.linkVersion), locale: asLocale(t.locale) };
 }
 
 export async function deliveriesFor(id: string) {

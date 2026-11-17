@@ -29,7 +29,9 @@ export async function issueFromCommercial(actor: TicketsActor, requests: TicketI
   });
   for (const e of existing) results.set(`${e.originSystem}\u0000${e.externalRef}`, { externalRef: e.externalRef!, ticketId: e.id, status: "ALREADY_ISSUED" });
 
-  const fresh = requests.filter((r) => !results.has(ref(r)));
+  // Dezelfde referentie twee keer in één aanvraag: één ticket, beide regels krijgen hetzelfde antwoord.
+  const seen = new Set<string>();
+  const fresh = requests.filter((r) => !results.has(ref(r)) && !seen.has(ref(r)) && !!seen.add(ref(r)));
   if (fresh.length > settings.bulkApprovalThreshold) {
     for (const r of fresh) results.set(ref(r), { externalRef: r.externalRef, ticketId: null, status: "PENDING_APPROVAL", message: `Meer dan ${settings.bulkApprovalThreshold} tickets in één keer: vraag dit aan via Bulkuitgifte, zodat iemand anders het goedkeurt.` });
   } else {
@@ -52,8 +54,14 @@ export async function issueFromCommercial(actor: TicketsActor, requests: TicketI
         group.forEach((g, i) => results.set(ref(g), { externalRef: g.externalRef, ticketId: ids[i], status: "ISSUED" }));
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-          // Een gelijktijdige aanvraag was ons voor: dat telt als al uitgegeven.
-          for (const g of group) results.set(ref(g), { externalRef: g.externalRef, ticketId: null, status: "ALREADY_ISSUED" });
+          // Een gelijktijdige aanvraag was ons voor. Alleen wat nu echt bestaat telt als al uitgegeven;
+          // de rest van de groep is teruggedraaid en moet opnieuw worden aangevraagd.
+          const found = await prisma.ticket.findMany({ where: { OR: group.map((g) => ({ originSystem: g.originSystem, externalRef: g.externalRef })) }, select: { id: true, originSystem: true, externalRef: true } });
+          const byRef = new Map(found.map((f) => [`${f.originSystem}\u0000${f.externalRef}`, f.id]));
+          for (const g of group) {
+            const id = byRef.get(ref(g));
+            results.set(ref(g), id ? { externalRef: g.externalRef, ticketId: id, status: "ALREADY_ISSUED" } : { externalRef: g.externalRef, ticketId: null, status: "REJECTED", message: "Een gelijktijdige aanvraag liep in de weg. Probeer het opnieuw." });
+          }
           continue;
         }
         const message = error instanceof Error ? error.message : "Uitgeven mislukt.";

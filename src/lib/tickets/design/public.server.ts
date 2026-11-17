@@ -22,11 +22,11 @@ export function pdfFileName(t: { publicId: string }, count = 1) {
 }
 
 /** Eén of meer tickets als A4-pdf: ieder ticket een eigen pagina en eigen ticketidentiteit. */
-export async function ticketsPdf(tickets: TicketForDesign[]): Promise<Uint8Array> {
+export async function ticketsPdf(tickets: TicketForDesign[], locale?: unknown): Promise<Uint8Array> {
   const generatedAt = formatDayTime(new Date());
   const layouts = [];
   for (const t of tickets) {
-    const { view } = await ticketView(t, "a4");
+    const { view } = await ticketView(t, "a4", undefined, locale);
     layouts.push(await layoutForView(view, generatedAt));
   }
   return renderPdf(layouts, loadAssetBytes, { title: tickets.length > 1 ? "Tickets HHC Hardenberg" : "Ticket HHC Hardenberg" });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiErrorResponse } from "@/lib/api-guards";
+import { ApiError, apiErrorResponse } from "@/lib/api-guards";
+import { isTicketsEnabled } from "@/lib/tickets/flag";
 import { clientIpFrom } from "@/lib/login-rate-limit";
 import { scannerLogin } from "@/lib/tickets/scanner-auth.server";
 
@@ -10,6 +11,7 @@ const schema = z.object({ code: z.string().min(3).max(12), pin: z.string().regex
 
 export async function POST(req: Request) {
   try {
+    if (!isTicketsEnabled()) throw new ApiError(404, "Niet gevonden.");
     const body = schema.parse(await req.json());
     return NextResponse.json(await scannerLogin(body.code, body.pin, clientIpFrom(req)), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

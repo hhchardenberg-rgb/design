@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { ticketAudit } from "./audit.server";
@@ -8,12 +8,14 @@ import { ticketProvider } from "./fullhouse";
 import { FullhouseError, type FullhouseHolderTicket, type FullhouseSearchResult } from "./fullhouse/types";
 import { hitLimit } from "./public-limit.server";
 import { SCAN_REASON_LABELS, type ScanReason } from "./rules";
+import { FOLD_SQL, foldText, likeLiteral } from "./like";
 import { codeHash, initialsFromFullName } from "./scan.server";
 import {
   detectKind,
   fullhouseSupportStatus,
   groupByCustomer,
   hhcPublicIdFrom,
+  isHhcPublicId,
   hhcSupportStatus,
   maskBarcode,
   maskEmail,
@@ -35,7 +37,11 @@ import {
 //    Scanhistorie van Fullhouse-tickets komt uit de eigen scanner (via een hash van de barcode).
 
 export const supportSearchSchema = z.object({
-  q: z.string().trim().min(1, "Vul een zoekterm in.").max(120, "Zoekterm is te lang."),
+  // Stuurtekens (zoals een nul-teken uit een geplakte tekst) weglaten: Postgres weigert ze.
+  q: z
+    .string()
+    .transform((s) => s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ""))
+    .pipe(z.string().trim().min(1, "Vul een zoekterm in.").max(120, "Zoekterm is te lang.")),
   kind: z.enum(["auto", "name", "email", "ticket", "order"]).default("auto"),
 });
 
@@ -124,22 +130,46 @@ const strip = (s: ScanOut & { ticketId: string | null; codeHash: string | null }
 // ── HHC ──
 
 function hhcWhere(kind: ResolvedKind, q: string): Prisma.TicketWhereInput {
-  if (kind === "email") return { email: { equals: q, mode: "insensitive" } };
+  if (kind === "email") return { email: { equals: likeLiteral(q), mode: "insensitive" } };
   if (kind === "ticket") {
     const id = hhcPublicIdFrom(q);
-    return { OR: [id.length === 16 ? { publicId: id } : { publicId: { startsWith: id } }, { externalRef: q }] };
+    return { OR: [id.length === 16 ? { publicId: id } : { publicId: { startsWith: likeLiteral(id) } }, { externalRef: q }] };
   }
   if (kind === "order") return { OR: [{ externalRef: q }, { batchId: q }] };
-  // Naam: elk woord moet in voornaam, achternaam of bedrijf voorkomen.
-  const words = q.split(/\s+/).filter(Boolean).slice(0, 4);
-  return { AND: words.map((w) => ({ OR: [{ firstName: { contains: w, mode: "insensitive" as const } }, { lastName: { contains: w, mode: "insensitive" as const } }, { company: { contains: w, mode: "insensitive" as const } }] })) };
+  // Naam: elk woord moet in voornaam, achternaam of bedrijf voorkomen (zie nameIds: ook zonder accenten).
+  const words = q.split(/\s+/).filter(Boolean).slice(0, 4).map(likeLiteral);
+  const byName: Prisma.TicketWhereInput = { AND: words.map((w) => ({ OR: [{ firstName: { contains: w, mode: "insensitive" as const } }, { lastName: { contains: w, mode: "insensitive" as const } }, { company: { contains: w, mode: "insensitive" as const } }] })) };
+  // Een ticketkenmerk zonder cijfers ziet er voor "Automatisch" uit als een naam; zoek dan ook op kenmerk.
+  const asId = q.trim().toUpperCase();
+  return isHhcPublicId(asId) ? { OR: [byName, { publicId: asId }] } : byName;
+}
+
+/**
+ * Zoeken op naam zonder letop-voor-accenten: "Muller" vindt "Müller" en andersom. Postgres-`unaccent` is een extensie
+ * die we niet eisen; daarom vouwen we kolom (translate + lower) en zoekterm (foldText) op dezelfde manier en laten
+ * de database de kandidaten kiezen (begrensd op MAX_HHC + 1, dus niet zwaarder dan de gewone zoekopdracht).
+ */
+async function nameIds(q: string): Promise<string[]> {
+  const words = q.split(/\s+/).filter(Boolean).slice(0, 4).map((w) => `%${likeLiteral(foldText(w))}%`);
+  if (!words.length) return [];
+  const folded = Prisma.sql`lower(translate("firstName" || ' ' || "lastName" || ' ' || coalesce("company", ''), ${FOLD_SQL.from}, ${FOLD_SQL.to}))`;
+  const conds = Prisma.join(words.map((w) => Prisma.sql`${folded} LIKE ${w} ESCAPE '\\'`), " AND ");
+  const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT "id" FROM "tickets_tickets" WHERE "source" = 'HHC' AND ${conds} ORDER BY "createdAt" DESC LIMIT ${MAX_HHC + 1}`);
+  return rows.map((r) => r.id);
 }
 
 async function searchHhc(actor: TicketsActor, kind: ResolvedKind, q: string) {
   const personal = actor.access.can("tickets:personal");
   const canResend = actor.access.can("tickets:resend");
+  let where = hhcWhere(kind, q);
+  if (kind === "name") {
+    // Eerst op naam zonder accenten; de gewone voorwaarde blijft staan voor kenmerk-achtige termen.
+    const ids = await nameIds(q);
+    const asId = q.trim().toUpperCase();
+    where = isHhcPublicId(asId) ? { OR: [{ id: { in: ids } }, { publicId: asId }] } : { id: { in: ids } };
+  }
   const rows = await prisma.ticket.findMany({
-    where: { source: "HHC", ...hhcWhere(kind, q) },
+    where: { source: "HHC", ...where },
     orderBy: { createdAt: "desc" },
     take: MAX_HHC + 1,
     include: {
