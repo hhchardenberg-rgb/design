@@ -63,10 +63,12 @@ export function toLocalInput(iso: string | Date | null | undefined): string {
 export function fromLocalInput(local: string): string {
   if (!local) return "";
   const guess = new Date(`${local}:00Z`);
-  // Verschil tussen UTC en Amsterdam op dat moment.
-  const asAms = new Date(toLocalInput(guess) + ":00Z");
-  const offset = asAms.getTime() - guess.getTime();
-  return new Date(guess.getTime() - offset).toISOString();
+  // Verschil tussen UTC en Amsterdam op een tijdstip.
+  const offsetAt = (d: Date) => new Date(toLocalInput(d) + ":00Z").getTime() - d.getTime();
+  // Twee keer: de eerste schatting kan aan de andere kant van de omschakeling naar zomer-/wintertijd liggen
+  // (bijv. 01:30 op de dag van de omschakeling kwam anders een uur verkeerd uit).
+  const first = new Date(guess.getTime() - offsetAt(guess));
+  return new Date(guess.getTime() - offsetAt(first)).toISOString();
 }
 
 export const isoDay = (v: string | Date | null | undefined) => (v ? new Date(v).toISOString().slice(0, 10) : "");

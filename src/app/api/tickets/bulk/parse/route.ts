@@ -1,6 +1,6 @@
 import { ApiError } from "@/lib/api-guards";
 import { handleTickets } from "@/lib/tickets/api";
-import { parseBulkCsv, parseBulkRows } from "@/lib/tickets/bulk";
+import { decodeBulkText, parseBulkCsv, parseBulkRows } from "@/lib/tickets/bulk";
 import { getTicketSettings } from "@/lib/tickets/settings.server";
 import { readFirstSheet } from "@/lib/tickets/xlsx-read";
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         throw new ApiError(400, e instanceof Error ? e.message : "Het Excel-bestand kon niet worden gelezen.");
       }
     } else if (name.endsWith(".csv") || name.endsWith(".txt")) {
-      result = parseBulkCsv(await file.text());
+      result = parseBulkCsv(decodeBulkText(await file.arrayBuffer()));
     } else {
       throw new ApiError(400, "Alleen .csv en .xlsx worden ondersteund. Sla een .xls eerst op als .xlsx.");
     }

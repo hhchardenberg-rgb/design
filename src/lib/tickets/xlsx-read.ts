@@ -10,6 +10,7 @@ const decode = (s: string) =>
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCodePoint(parseInt(n, 16)))
     .replace(/&amp;/g, "&");
 
 function textOf(xml: string): string {
@@ -43,10 +44,14 @@ export async function readFirstSheet(data: ArrayBuffer | Uint8Array, maxRows = 5
   const shared = [...sharedXml.matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => textOf(m[1]));
 
   const rows: string[][] = [];
-  for (const rowMatch of sheet.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
+  // Ook lege rijen (<row r="3"/>) en overgeslagen rijnummers tellen mee, zodat regelnummers in
+  // foutmeldingen overeenkomen met Excel.
+  for (const rowMatch of sheet.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+    const rowNo = Number(/\br="(\d+)"/.exec(rowMatch[1])?.[1]);
+    if (Number.isInteger(rowNo) && rowNo > 0) while (rows.length < Math.min(rowNo - 1, maxRows)) rows.push([]);
     if (rows.length >= maxRows) break;
     const row: string[] = [];
-    for (const c of rowMatch[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    for (const c of (rowMatch[2] ?? "").matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
       const attrs = c[1];
       const inner = c[2] ?? "";
       const ref = /\br="([A-Z]+\d+)"/.exec(attrs)?.[1];

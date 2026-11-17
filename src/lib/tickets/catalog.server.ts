@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { ticketAudit } from "./audit.server";
 import type { TicketsActor } from "./authz.server";
-import { defaultEndsAt } from "./rules";
+import { computeValidUntil, defaultEndsAt, type ValidityMode } from "./rules";
 import { eventSchema, fullhouseEventSchema, removeEventSchema, seasonSchema, typeSchema, zoneSchema } from "./schemas";
 
 // Inrichting van HHC Tickets: seizoenen, vakken, wedstrijden en tickettypes.
@@ -28,7 +28,17 @@ export async function saveSeason(actor: TicketsActor, id: string | null, raw: un
   const input = seasonSchema.parse(raw);
   const data = { name: input.name, startsOn: asDay(input.startsOn), endsOn: asDay(input.endsOn) };
   try {
-    const row = id ? await prisma.ticketSeason.update({ where: { id }, data }) : await prisma.ticketSeason.create({ data });
+    const row = id
+      ? await prisma.$transaction(async (tx) => {
+          const updated = await tx.ticketSeason.update({ where: { id }, data });
+          // Seizoenskaarten gelden van begin tot einde van het seizoen: een gecorrigeerde datum loopt mee.
+          await tx.ticket.updateMany({
+            where: { seasonId: id, validityMode: "SEASON" },
+            data: { validFrom: updated.startsOn, validUntil: computeValidUntil("SEASON", { events: [], seasonEndsOn: updated.endsOn }) },
+          });
+          return updated;
+        })
+      : await prisma.ticketSeason.create({ data });
     await ticketAudit({ action: "season.saved", actor: actorOf(actor), meta: { seasonId: row.id } });
     return row;
   } catch (e) {
@@ -69,11 +79,25 @@ async function checkSeason(seasonId: string | null) {
   if (seasonId && !(await prisma.ticketSeason.findUnique({ where: { id: seasonId }, select: { id: true } }))) throw new ApiError(400, "Het gekozen seizoen bestaat niet (meer).");
 }
 
+/** Kalenderdag in Nederlandse tijd (een aftrap om 00:30 op 1 juli valt op 1 juli, niet op 30 juni UTC). */
+const amsterdamDay = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+
 /** Seizoen waarin een datum valt, als er precies één is. */
 async function seasonForDate(d: Date): Promise<string | null> {
-  const day = asDay(d.toISOString().slice(0, 10));
+  const day = asDay(amsterdamDay(d));
   const rows = await prisma.ticketSeason.findMany({ where: { startsOn: { lte: day }, endsOn: { gte: day } }, select: { id: true } });
   return rows.length === 1 ? rows[0].id : null;
+}
+
+/** Vervaldatum van gekoppelde tickets (één of meer wedstrijden) opnieuw bepalen na een gewijzigd einde. */
+export async function syncLinkedValidity(tx: Prisma.TransactionClient, eventId: string) {
+  const linked = await tx.ticket.findMany({
+    where: { validityMode: { in: ["SINGLE", "MULTI"] }, links: { some: { eventId } } },
+    select: { id: true, validityMode: true, links: { select: { event: { select: { endsAt: true } } } } },
+  });
+  for (const t of linked) {
+    await tx.ticket.update({ where: { id: t.id }, data: { validUntil: computeValidUntil(t.validityMode as ValidityMode, { events: t.links.map((l) => l.event) }) } });
+  }
 }
 
 export async function saveEvent(actor: TicketsActor, id: string | null, raw: unknown) {
@@ -100,7 +124,12 @@ export async function saveEvent(actor: TicketsActor, id: string | null, raw: unk
     if (!before) throw new ApiError(404, "Wedstrijd niet gevonden.");
     if (before.source === "FULLHOUSE") throw new ApiError(400, "Een Fullhouse-evenement wijzig je in Fullhouse; hier kun je alleen de status, het seizoen, de capaciteit en herintrede instellen.");
     if (before.archivedAt) throw new ApiError(400, "Deze wedstrijd is gearchiveerd. Zet hem eerst terug.");
-    const row = await prisma.ticketEvent.update({ where: { id }, data });
+    const row = await prisma.$transaction(async (tx) => {
+      const updated = await tx.ticketEvent.update({ where: { id }, data });
+      // Tickets voor één of meer wedstrijden vervallen na het einde van hun laatste wedstrijd: dat einde loopt mee.
+      if (updated.endsAt.getTime() !== before.endsAt.getTime()) await syncLinkedValidity(tx, id);
+      return updated;
+    });
     await ticketAudit({ action: "event.updated", actor: actorOf(actor), eventId: id, oldStatus: before.status, newStatus: row.status });
     return row;
   }

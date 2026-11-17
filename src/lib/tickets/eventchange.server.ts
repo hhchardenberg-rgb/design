@@ -8,14 +8,14 @@ import { need, type TicketsActor } from "./authz.server";
 import { fillTemplate } from "./delivery";
 import { asLocale, templateKeyFor, textsFor } from "./i18n";
 import { loadTemplate, ticketLink } from "./delivery.server";
-import { computeValidUntil, type ValidityMode } from "./rules";
 import { coveringTickets } from "./scan.server";
+import { syncLinkedValidity } from "./catalog.server";
 
 // Afgelasten of verplaatsen in één klik: de wedstrijd wordt aangepast, de geldigheid van de tickets
 // loopt mee en alle houders met een e-mailadres krijgen bericht. Tickets blijven geldig voor de nieuwe datum.
 
 const actorOf = (a: TicketsActor) => ({ id: a.id, name: a.name });
-const defaultEnd = (start: Date) => new Date(start.getTime() + 3 * 3600_000);
+
 
 const changeSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("MOVE"), startsAt: z.string().refine((v) => !Number.isNaN(new Date(v).getTime()), "Kies een geldige nieuwe datum en tijd."), endsAt: z.string().nullish(), message: z.string().trim().max(500).nullish(), sendMail: z.boolean().default(true), dryRun: z.boolean().default(false) }),
@@ -45,7 +45,7 @@ export async function changeEvent(actor: TicketsActor, eventId: string, raw: unk
 
   const oldStart = event.startsAt;
   const newStart = input.action === "MOVE" ? new Date(input.startsAt) : event.startsAt;
-  const newEnd = input.action === "MOVE" ? (input.endsAt ? new Date(input.endsAt) : defaultEnd(newStart)) : event.endsAt;
+  const newEnd = input.action === "MOVE" ? (input.endsAt ? new Date(input.endsAt) : new Date(newStart.getTime() + (event.endsAt.getTime() - event.startsAt.getTime()))) : event.endsAt;
   if (input.action === "MOVE" && newEnd <= newStart) throw new ApiError(400, "Het einde moet na de aftrap liggen.");
 
   // Wie krijgt bericht: HHC-tickets die voor deze wedstrijd gelden (ook seizoenspassen), actief en met e-mailadres.
@@ -64,14 +64,8 @@ export async function changeEvent(actor: TicketsActor, eventId: string, raw: unk
   // 1. De wedstrijd en de geldigheid van de tickets bijwerken (één transactie).
   await prisma.$transaction(async (tx) => {
     await tx.ticketEvent.update({ where: { id: eventId }, data: input.action === "MOVE" ? { startsAt: newStart, endsAt: newEnd, status: event.status === "CANCELLED" || event.status === "CLOSED" ? "ACTIVE" : event.status } : { status: "CANCELLED" } });
-    if (input.action === "MOVE") {
-      // Tickets voor één of meer wedstrijden vervallen na het einde van hun laatste wedstrijd: dat einde loopt mee.
-      const linked = await tx.ticket.findMany({ where: { validityMode: { in: ["SINGLE", "MULTI"] }, links: { some: { eventId } } }, select: { id: true, validityMode: true, links: { select: { event: { select: { id: true, endsAt: true } } } } } });
-      for (const t of linked) {
-        const validUntil = computeValidUntil(t.validityMode as ValidityMode, { events: t.links.map((l) => ({ endsAt: l.event.id === eventId ? newEnd : l.event.endsAt })) });
-        await tx.ticket.update({ where: { id: t.id }, data: { validUntil } });
-      }
-    }
+    // Tickets voor één of meer wedstrijden vervallen na het einde van hun laatste wedstrijd: dat einde loopt mee.
+    if (input.action === "MOVE") await syncLinkedValidity(tx, eventId);
   });
   await ticketAudit({ action: input.action === "MOVE" ? "event.moved" : "event.cancelled", actor: actorOf(actor), eventId, oldStatus: event.status, newStatus: input.action === "MOVE" ? event.status : "CANCELLED", summary: input.action === "MOVE" ? `Wedstrijd verplaatst naar ${formatDayTime(newStart)}` : "Wedstrijd afgelast", meta: { recipients: recipients.length } });
 
