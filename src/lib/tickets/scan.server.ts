@@ -388,10 +388,14 @@ export async function scanContext(actor: ScanActor) {
 type EventRow = Parameters<typeof toRuleEvent>[0];
 
 /** Actieve HHC-tickets die voor deze wedstrijd gelden (status, vervaldatum en geldigheidsregels). */
-export async function coveringTickets(event: EventRow) {
+/**
+ * Tickets die voor deze wedstrijd gelden. Standaard alleen tickets die nu nog geldig zijn (scannen);
+ * `includeExpired` telt ook tickets mee die inmiddels verlopen zijn (rapportages van gespeelde wedstrijden).
+ */
+export async function coveringTickets(event: EventRow, opts: { includeExpired?: boolean } = {}) {
   const ruleEvent = toRuleEvent(event);
   const tickets = await prisma.ticket.findMany({
-    where: { status: "ACTIVE", anonymizedAt: null, OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] },
+    where: { status: "ACTIVE", anonymizedAt: null, ...(opts.includeExpired ? {} : { OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] }) },
     select: { id: true, publicId: true, qrVersion: true, firstName: true, lastName: true, category: true, validityMode: true, validFrom: true, validUntil: true, seasonId: true, competitions: true, homeOnly: true, isSeasonCard: true, zoneId: true, type: { select: { name: true } }, links: { select: { eventId: true } } },
   });
   return tickets.filter((t) =>

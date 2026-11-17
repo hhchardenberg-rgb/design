@@ -8,12 +8,14 @@ import { ticketProvider } from "./fullhouse";
 import { FullhouseError, type FullhouseHolderTicket, type FullhouseSearchResult } from "./fullhouse/types";
 import { hitLimit } from "./public-limit.server";
 import { SCAN_REASON_LABELS, type ScanReason } from "./rules";
+import { likeLiteral } from "./like";
 import { codeHash, initialsFromFullName } from "./scan.server";
 import {
   detectKind,
   fullhouseSupportStatus,
   groupByCustomer,
   hhcPublicIdFrom,
+  isHhcPublicId,
   hhcSupportStatus,
   maskBarcode,
   maskEmail,
@@ -35,7 +37,11 @@ import {
 //    Scanhistorie van Fullhouse-tickets komt uit de eigen scanner (via een hash van de barcode).
 
 export const supportSearchSchema = z.object({
-  q: z.string().trim().min(1, "Vul een zoekterm in.").max(120, "Zoekterm is te lang."),
+  // Stuurtekens (zoals een nul-teken uit een geplakte tekst) weglaten: Postgres weigert ze.
+  q: z
+    .string()
+    .transform((s) => s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ""))
+    .pipe(z.string().trim().min(1, "Vul een zoekterm in.").max(120, "Zoekterm is te lang.")),
   kind: z.enum(["auto", "name", "email", "ticket", "order"]).default("auto"),
 });
 
@@ -124,15 +130,18 @@ const strip = (s: ScanOut & { ticketId: string | null; codeHash: string | null }
 // ── HHC ──
 
 function hhcWhere(kind: ResolvedKind, q: string): Prisma.TicketWhereInput {
-  if (kind === "email") return { email: { equals: q, mode: "insensitive" } };
+  if (kind === "email") return { email: { equals: likeLiteral(q), mode: "insensitive" } };
   if (kind === "ticket") {
     const id = hhcPublicIdFrom(q);
-    return { OR: [id.length === 16 ? { publicId: id } : { publicId: { startsWith: id } }, { externalRef: q }] };
+    return { OR: [id.length === 16 ? { publicId: id } : { publicId: { startsWith: likeLiteral(id) } }, { externalRef: q }] };
   }
   if (kind === "order") return { OR: [{ externalRef: q }, { batchId: q }] };
   // Naam: elk woord moet in voornaam, achternaam of bedrijf voorkomen.
-  const words = q.split(/\s+/).filter(Boolean).slice(0, 4);
-  return { AND: words.map((w) => ({ OR: [{ firstName: { contains: w, mode: "insensitive" as const } }, { lastName: { contains: w, mode: "insensitive" as const } }, { company: { contains: w, mode: "insensitive" as const } }] })) };
+  const words = q.split(/\s+/).filter(Boolean).slice(0, 4).map(likeLiteral);
+  const byName: Prisma.TicketWhereInput = { AND: words.map((w) => ({ OR: [{ firstName: { contains: w, mode: "insensitive" as const } }, { lastName: { contains: w, mode: "insensitive" as const } }, { company: { contains: w, mode: "insensitive" as const } }] })) };
+  // Een ticketkenmerk zonder cijfers ziet er voor "Automatisch" uit als een naam; zoek dan ook op kenmerk.
+  const asId = q.trim().toUpperCase();
+  return isHhcPublicId(asId) ? { OR: [byName, { publicId: asId }] } : byName;
 }
 
 async function searchHhc(actor: TicketsActor, kind: ResolvedKind, q: string) {

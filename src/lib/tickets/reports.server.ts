@@ -20,7 +20,7 @@ export async function eventReport(actor: TicketsActor, eventId: string) {
   const event = await prisma.ticketEvent.findUnique({ where: { id: eventId } });
   if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
   const [covering, scans, extValid] = await Promise.all([
-    coveringTickets(event),
+    coveringTickets(event, { includeExpired: true }),
     prisma.ticketScan.findMany({ where: { eventId }, select: { ticketId: true, codeHash: true, source: true, result: true, reentry: true, offline: true, overrideById: true, scannedAt: true, entranceId: true } }),
     event.externalId ? prisma.ticketExternalTicket.count({ where: { eventExtId: event.externalId, status: "VALID" } }) : 0,
   ]);
@@ -66,7 +66,7 @@ async function ticketRows(actor: TicketsActor, eventId?: string): Promise<Cell[]
   if (eventId) {
     const event = await prisma.ticketEvent.findUnique({ where: { id: eventId } });
     if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
-    ids = (await coveringTickets(event)).map((t) => t.id);
+    ids = (await coveringTickets(event, { includeExpired: true })).map((t) => t.id);
   }
   const tickets = await prisma.ticket.findMany({ where: ids ? { id: { in: ids } } : {}, orderBy: { createdAt: "desc" }, take: 20_000, include: { type: { select: { name: true } }, links: { select: { eventId: true } } } });
   const head: Cell[] = ["Ticket-ID", "Type", "Categorie", "Status", "Geldig vanaf", "Geldig t/m", "Aantal wedstrijden", "Uitgegeven op", "Uitgegeven door", "Bron"];

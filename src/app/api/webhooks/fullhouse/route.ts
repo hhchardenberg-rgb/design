@@ -25,6 +25,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Ongeldige inhoud." }, { status: 400 });
   }
+  if (!event || typeof event !== "object") return NextResponse.json({ error: "Ongeldige inhoud." }, { status: 400 });
   const type = typeof event.type === "string" ? event.type.slice(0, 60) : "onbekend";
   const eventExtId = typeof event.data?.eventId === "string" ? event.data.eventId : typeof event.eventId === "string" ? event.eventId : null;
   const known = eventExtId ? await prisma.ticketEvent.findUnique({ where: { externalId: eventExtId }, select: { externalId: true } }) : null;

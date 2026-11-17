@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/prisma";
 import { deliverTicketMail } from "./delivery.server";
+import { likeLiteral } from "./like";
 import { hitLimit } from "./public-limit.server";
 
 // Ticket zelf opnieuw opvragen ("ik ben mijn ticket kwijt"). Het ticket gaat alleen naar het adres dat al bij
@@ -18,7 +19,7 @@ export async function requestTicketResend(raw: unknown, ip: string) {
   if (await hitLimit("resend-email", email, 3, 3600_000)) throw new ApiError(429, "Voor dit e-mailadres is zojuist al een aanvraag gedaan. Probeer het over een uur opnieuw.");
   const now = new Date();
   const tickets = await prisma.ticket.findMany({
-    where: { email: { equals: email, mode: "insensitive" }, source: "HHC", status: "ACTIVE", anonymizedAt: null, OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
+    where: { email: { equals: likeLiteral(email), mode: "insensitive" }, source: "HHC", status: "ACTIVE", anonymizedAt: null, OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
     orderBy: { createdAt: "desc" },
     take: MAX_PER_REQUEST,
     select: { id: true },

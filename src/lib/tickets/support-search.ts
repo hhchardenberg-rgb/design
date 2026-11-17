@@ -19,6 +19,9 @@ const HHC_QR = /^HHC1\.([0-9ABCDEFGHJKMNPQRSTVWXYZ]{16})\.\d+\.[A-Za-z0-9_-]+$/i
 /** vivenu-id (MongoDB ObjectId): zo ziet een Fullhouse-ordernummer eruit. */
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 
+/** Ziet dit eruit als een volledig HHC-ticketkenmerk (16 tekens, hoofdletters)? */
+export const isHhcPublicId = (q: string) => HHC_PUBLIC_ID.test(q);
+
 /** Raadt wat er is ingetypt. Bij twijfel naam (daar zoeken beide bronnen op). */
 export function detectKind(raw: string): ResolvedKind {
   const q = raw.trim();
