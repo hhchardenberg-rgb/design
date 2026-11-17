@@ -2,12 +2,13 @@ import { createHash } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatDay, formatDayTime } from "@/lib/date-format";
+import { asLocale, textsFor, type Locale } from "../i18n";
 import { displayStatus, type TicketStatus } from "../rules";
 import { qrCodeFor } from "../token";
 import { BUILTIN_SETS } from "./builtin";
 import { kindOf, type Format, type TicketKind } from "./fields";
 import { chainFor, resolveAll, scopeKeyOf, stableStringify, type FullResolution, type LayerInput, type OverrideMap, type Resolved, type ScopeRef, type SetLayer } from "./resolve";
-import { buildView, formatTicketNumber, usedAssetIds, type AssetMap, type AssetRef, type TicketFacts, type TicketView } from "./view";
+import { buildView, formatTicketNumber, stripSeasonWord, usedAssetIds, type AssetMap, type AssetRef, type TicketFacts, type TicketView } from "./view";
 
 // Ticketontwerp, serverdeel: lagen laden, effectieve instellingen bepalen, ontwerpen vastleggen bij
 // uitgifte en de feitelijke ticketgegevens verzamelen. Eén plek, gebruikt door de editor, de
@@ -202,34 +203,38 @@ export const ticketInclude = {
 } satisfies Prisma.TicketInclude;
 export type TicketForDesign = Prisma.TicketGetPayload<{ include: typeof ticketInclude }>;
 
-function validityText(t: TicketForDesign): string {
-  const season = t.season?.name ?? t.links[0]?.event.season?.name ?? null;
-  if (t.validityMode === "SEASON") {
-    const where = t.homeOnly ? "alle thuiswedstrijden" : "alle wedstrijden";
-    const comp = t.competitions.length ? ` in ${t.competitions.join(", ")}` : "";
-    return `Geldig voor ${where} van HHC Hardenberg${comp}${season ? ` in seizoen ${season}` : ""}`;
-  }
-  if (t.validityMode === "RANGE") return `Geldig van ${formatDay(t.validFrom)} t/m ${formatDay(t.validUntil)}`;
-  if (t.links.length > 1) return `Geldig voor ${t.links.length} wedstrijden`;
-  if (t.links.length === 1) return `Geldig voor ${t.links[0].event.title}`;
-  return t.validUntil ? `Geldig t/m ${formatDay(t.validUntil)}` : "HHC Hardenberg";
+function validityText(t: TicketForDesign, locale: Locale): string {
+  const T = textsFor(locale).v;
+  const rawSeason = t.season?.name ?? t.links[0]?.event.season?.name ?? null;
+  // "Seizoen 2026/2027" niet laten volgen op het woord "seizoen" (dubbel woord).
+  const season = rawSeason ? stripSeasonWord(rawSeason) : null;
+  if (t.validityMode === "SEASON") return T.validSeason({ homeOnly: t.homeOnly, competitions: t.competitions, season });
+  if (t.validityMode === "RANGE") return T.validRange(formatDay(t.validFrom), formatDay(t.validUntil));
+  if (t.links.length > 1) return T.validMatches(t.links.length);
+  if (t.links.length === 1) return T.validMatch(t.links[0].event.title);
+  return t.validUntil ? T.validUntilDay(formatDay(t.validUntil)) : "HHC Hardenberg";
 }
 
-export async function factsOfTicket(t: TicketForDesign, db: Db = prisma): Promise<TicketFacts> {
+export async function factsOfTicket(t: TicketForDesign, db: Db = prisma, localeOverride?: unknown): Promise<TicketFacts> {
+  const locale = asLocale(localeOverride ?? t.locale);
+  const tx = textsFor(locale);
   const ctx = contextOfTicket(t);
   const ev = ctx.eventId ? t.links[0].event : null;
   const entrance = t.zoneId ? await db.ticketEntrance.findFirst({ where: { zoneId: t.zoneId, active: true }, orderBy: { createdAt: "asc" }, select: { name: true } }) : null;
   const notices: string[] = [];
-  if (ev?.status === "CANCELLED") notices.push("Deze wedstrijd is afgelast. Bewaar je ticket: je hoort van HHC Hardenberg wat er verder gebeurt.");
+  if (ev?.status === "CANCELLED") notices.push(tx.v.noticeCancelled);
   if (ev) {
-    const since = t.designAppliedAt ?? t.createdAt;
-    const moved = await db.ticketAuditEvent.findFirst({ where: { action: "event.moved", eventId: ev.id, at: { gt: since } }, orderBy: { at: "desc" }, select: { at: true } });
-    if (moved) notices.push(`Deze wedstrijd is verplaatst. De datum en tijd hier zijn actueel (${formatDayTime(ev.startsAt)}). Een eerder gedownloade of geprinte versie toont nog de oude datum: download zo nodig het A4-ticket opnieuw.`);
+    // Vergelijken met de uitgiftedatum, niet met designAppliedAt: opnieuw vormgeven verandert niets aan het feit
+    // dat een eerder gedownloade of geprinte versie nog de oude datum toont.
+    const moved = await db.ticketAuditEvent.findFirst({ where: { action: "event.moved", eventId: ev.id, at: { gt: t.createdAt } }, orderBy: { at: "desc" }, select: { at: true } });
+    if (moved) notices.push(tx.v.noticeMoved(formatDayTime(ev.startsAt)));
   }
   const status = displayStatus({ status: t.status as TicketStatus, validUntil: t.validUntil }, new Date());
-  const labels = { ACTIVE: "Actief", BLOCKED: "Geblokkeerd", CANCELLED: "Geannuleerd", EXPIRED: "Verlopen" } as const;
+  const statusText = tx.status[status as "ACTIVE" | "BLOCKED" | "CANCELLED" | "EXPIRED"];
   return {
     sample: false,
+    locale,
+    status: status as "ACTIVE" | "BLOCKED" | "CANCELLED" | "EXPIRED",
     kind: ctx.kind,
     firstName: t.firstName,
     lastName: t.lastName,
@@ -239,13 +244,13 @@ export async function factsOfTicket(t: TicketForDesign, db: Db = prisma): Promis
     ticketNumber: formatTicketNumber(t.publicId),
     qrCode: qrCodeFor(t.publicId, t.qrVersion),
     seasonName: t.season?.name ?? ev?.season?.name ?? null,
-    validityText: validityText(t),
+    validityText: validityText(t, locale),
     event: ev ? { title: ev.title, opponent: ev.opponent, isHome: ev.isHome, competition: ev.competition, startsAt: ev.startsAt, location: ev.location, status: ev.status, opponentLogoUrl: ev.match?.opponent.logoUrl ?? null } : null,
     events: ctx.kind !== "season" && t.links.length > 1 ? t.links.map((l) => ({ title: l.event.title, startsAt: l.event.startsAt })).sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()) : [],
     zoneName: t.zone?.name ?? null,
     entranceName: entrance?.name ?? null,
     notices,
-    statusLabel: labels[status],
+    statusLabel: statusText.charAt(0).toUpperCase() + statusText.slice(1),
     usable: status === "ACTIVE",
   };
 }
@@ -262,8 +267,8 @@ export async function snapshotOfTicket(t: TicketForDesign, db: Db = prisma): Pro
 }
 
 /** Weergave van een echt ticket in één formaat, altijd uit het vastgelegde ontwerp. */
-export async function ticketView(t: TicketForDesign, format: Format, db: Db = prisma): Promise<{ view: TicketView; snapshot: SnapshotContent; facts: TicketFacts }> {
-  const [snapshot, facts] = await Promise.all([snapshotOfTicket(t, db), factsOfTicket(t, db)]);
+export async function ticketView(t: TicketForDesign, format: Format, db: Db = prisma, locale?: unknown): Promise<{ view: TicketView; snapshot: SnapshotContent; facts: TicketFacts }> {
+  const [snapshot, facts] = await Promise.all([snapshotOfTicket(t, db), factsOfTicket(t, db, locale)]);
   return { view: buildView(facts, format === "mobile" ? snapshot.mobile : snapshot.a4, format, snapshot.assets), snapshot, facts };
 }
 
