@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- ticketafbeeldingen komen uit de eigen database en moeten exact (ook offline) getoond worden */
 
 import "./ticket-fonts.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { preload } from "react-dom";
 import { TICKET_FONTS, headingFontKey, ticketFontStack, webFontsFor } from "@/lib/tickets/design/fonts";
 import { qrMatrix, qrPath } from "@/lib/tickets/design/qr-matrix";
@@ -336,9 +336,13 @@ function QrDialog({ code, sample, title, name, type, labels, heading, body, onCl
   );
 }
 
+const noSubscribe = () => () => {};
+
 /** Offline bewaren: de service worker bewaart de pagina en de pdf; tonen kan zonder internet, de geldigheid bepaalt de scanner. */
 function OfflineSave({ labels, fonts }: { labels: MobileLabels; fonts: string[] }) {
-  const [state, setState] = useState<"idle" | "saved" | "unsupported">(() => (typeof navigator !== "undefined" && !("serviceWorker" in navigator) ? "unsupported" : "idle"));
+  // Begint altijd als "idle" (ook op de server), anders verschilt de serverhtml van de eerste clientweergave (hydratiefout).
+  const [state, setState] = useState<"idle" | "saved" | "unsupported">("idle");
+  const swSupported = useSyncExternalStore(noSubscribe, () => "serviceWorker" in navigator, () => true);
   const [isOffline, setIsOffline] = useState(false);
   useEffect(() => {
     const sync = () => setIsOffline(!navigator.onLine);
@@ -355,7 +359,10 @@ function OfflineSave({ labels, fonts }: { labels: MobileLabels; fonts: string[] 
     try {
       const reg = await navigator.serviceWorker.ready;
       // Ook de lettertypen, zodat het opgeslagen ticket zonder internet in de huisstijl blijft.
-      const urls = [location.pathname + location.search, ...[...document.querySelectorAll("a[href*='/pdf']")].map((a) => (a as HTMLAnchorElement).pathname), ...fonts];
+      // Plus de scripts, stijlen en afbeeldingen die deze pagina al heeft geladen: die zijn bij het eerste bezoek
+      // opgehaald voordat de service worker actief was en staan dus nog niet in de cache.
+      const loaded = performance.getEntriesByType("resource").map((e) => new URL(e.name)).filter((u) => u.origin === location.origin && /^\/(_next\/static|fonts|branding|api\/public\/ticket-assets)\//.test(u.pathname)).map((u) => u.pathname + u.search);
+      const urls = [...new Set([location.pathname + location.search, ...[...document.querySelectorAll("a[href*='/pdf']")].map((a) => (a as HTMLAnchorElement).pathname), ...fonts, ...loaded])];
       reg.active?.postMessage({ type: "save", urls });
       const cache = await caches.open("hhc-ticket-v2");
       await Promise.all(urls.map((u) => fetch(u, { cache: "no-store" }).then((r) => (r.ok ? cache.put(u, r) : undefined)).catch(() => undefined)));
@@ -367,7 +374,7 @@ function OfflineSave({ labels, fonts }: { labels: MobileLabels; fonts: string[] 
   return (
     <div style={{ maxWidth: "28rem", margin: "0.75rem auto 0", display: "grid", gap: "0.4rem", padding: "0 0.25rem" }}>
       {isOffline && <p role="status" style={{ margin: 0, background: "#FEF3C7", color: "#78350F", padding: "0.6rem 0.8rem", borderRadius: 10, fontSize: "0.9rem" }}>{labels.offlineValidity}</p>}
-      {state !== "unsupported" && (
+      {state !== "unsupported" && swSupported && (
         <button type="button" onClick={save} disabled={state === "saved"} style={{ minHeight: "3rem", borderRadius: 12, border: "2px solid #44403C", background: "#FFFFFF", color: "#1C1917", fontFamily: "inherit", fontWeight: 700, fontSize: "1rem", cursor: "pointer" }}>
           {state === "saved" ? labels.savedOffline : labels.saveOffline}
         </button>
