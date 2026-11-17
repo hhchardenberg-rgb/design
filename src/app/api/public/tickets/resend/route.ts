@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { ApiError, apiErrorResponse } from "@/lib/api-guards";
 import { clientIpFrom } from "@/lib/login-rate-limit";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     if (!isTicketsEnabled()) throw new ApiError(404, "Niet gevonden.");
-    return NextResponse.json(await requestTicketResend(await req.json().catch(() => ({})), clientIpFrom(req)));
+    return NextResponse.json(await requestTicketResend(await req.json().catch(() => ({})), clientIpFrom(req), (task) => after(task)));
   } catch (e) {
     if (e instanceof ZodError) return NextResponse.json({ error: e.issues[0]?.message || "Vul een geldig e-mailadres in." }, { status: 400 });
     return apiErrorResponse(e);

@@ -35,13 +35,19 @@ export function dedupeRecipients<T extends { email: string | null; id: string }>
   return out;
 }
 
-export async function changeEvent(actor: TicketsActor, eventId: string, raw: unknown) {
+/** De route heeft maxDuration 300 s; we stoppen ruim ervoor en melden hoeveel er nog open staan. */
+const MAIL_BUDGET_MS = 240_000;
+const MAIL_PAUSE_MS = 120;
+
+export async function changeEvent(actor: TicketsActor, eventId: string, raw: unknown, opts: { budgetMs?: number; pauseMs?: number } = {}) {
+  const startedAt = Date.now();
   need(actor, "events:manage");
   const input = changeSchema.parse(raw);
   if (input.sendMail && !input.dryRun) need(actor, "tickets:resend");
   const event = await prisma.ticketEvent.findUnique({ where: { id: eventId } });
   if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
-  if (event.status === "CANCELLED" && input.action === "CANCEL") throw new ApiError(400, "Deze wedstrijd is al afgelast.");
+  // Een tweede keer afgelasten is alleen bedoeld om de mails te hervatten die de eerste keer niet meer pasten of mislukten.
+  const resumeCancel = event.status === "CANCELLED" && input.action === "CANCEL";
 
   const oldStart = event.startsAt;
   const newStart = input.action === "MOVE" ? new Date(input.startsAt) : event.startsAt;
@@ -59,23 +65,30 @@ export async function changeEvent(actor: TicketsActor, eventId: string, raw: unk
   const recipients = dedupeRecipients(withMail).filter((t) => !done.has(t.id));
   const fullhouseTickets = event.externalId ? await prisma.ticketExternalTicket.count({ where: { eventExtId: event.externalId, status: "VALID" } }) : 0;
   const preview = { recipients: recipients.length, hhcTickets: ids.length, fullhouseTickets, fullhouse: event.source === "FULLHOUSE" };
+  if (resumeCancel && !(input.sendMail && recipients.length)) throw new ApiError(400, "Deze wedstrijd is al afgelast" + (input.sendMail ? " en alle berichten zijn al verstuurd." : "."));
   if (input.dryRun) return { dryRun: true as const, ...preview };
 
-  // 1. De wedstrijd en de geldigheid van de tickets bijwerken (één transactie).
-  await prisma.$transaction(async (tx) => {
-    await tx.ticketEvent.update({ where: { id: eventId }, data: input.action === "MOVE" ? { startsAt: newStart, endsAt: newEnd, status: event.status === "CANCELLED" || event.status === "CLOSED" ? "ACTIVE" : event.status } : { status: "CANCELLED" } });
-    // Tickets voor één of meer wedstrijden vervallen na het einde van hun laatste wedstrijd: dat einde loopt mee.
-    if (input.action === "MOVE") await syncLinkedValidity(tx, eventId);
-  });
-  await ticketAudit({ action: input.action === "MOVE" ? "event.moved" : "event.cancelled", actor: actorOf(actor), eventId, oldStatus: event.status, newStatus: input.action === "MOVE" ? event.status : "CANCELLED", summary: input.action === "MOVE" ? `Wedstrijd verplaatst naar ${formatDayTime(newStart)}` : "Wedstrijd afgelast", meta: { recipients: recipients.length } });
+  // 1. De wedstrijd en de geldigheid van de tickets bijwerken (één transactie). Bij hervatten staat dat al.
+  if (!resumeCancel) {
+    await prisma.$transaction(async (tx) => {
+      await tx.ticketEvent.update({ where: { id: eventId }, data: input.action === "MOVE" ? { startsAt: newStart, endsAt: newEnd, status: event.status === "CANCELLED" || event.status === "CLOSED" ? "ACTIVE" : event.status } : { status: "CANCELLED" } });
+      // Tickets voor één of meer wedstrijden vervallen na het einde van hun laatste wedstrijd: dat einde loopt mee.
+      if (input.action === "MOVE") await syncLinkedValidity(tx, eventId);
+    });
+    await ticketAudit({ action: input.action === "MOVE" ? "event.moved" : "event.cancelled", actor: actorOf(actor), eventId, oldStatus: event.status, newStatus: input.action === "MOVE" ? event.status : "CANCELLED", summary: input.action === "MOVE" ? `Wedstrijd verplaatst naar ${formatDayTime(newStart)}` : "Wedstrijd afgelast", meta: { recipients: recipients.length } });
+  }
 
   // 2. Bericht aan de houders. Elke verzending wordt vastgelegd, zodat opnieuw proberen niemand dubbel mailt.
   let sent = 0;
   let failed = 0;
+  let attempted = 0;
   if (input.sendMail && recipients.length) {
     const base = input.action === "MOVE" ? "event_moved" : "event_cancelled";
     const tpls = new Map<string, Awaited<ReturnType<typeof loadTemplate>>>();
     for (const t of recipients) {
+      // Netjes stoppen voor de maximale looptijd; opnieuw uitvoeren verstuurt alleen wat nog open staat.
+      if (Date.now() - startedAt > (opts.budgetMs ?? MAIL_BUDGET_MS)) break;
+      attempted++;
       const locale = asLocale(t.locale);
       const key = templateKeyFor(base, locale);
       if (!tpls.has(key)) tpls.set(key, await loadTemplate(key));
@@ -91,8 +104,9 @@ export async function changeEvent(actor: TicketsActor, eventId: string, raw: unk
         await prisma.ticketDelivery.create({ data: { ticketId: t.id, channel: "EMAIL", status: "FAILED", kind, eventId, error: (e instanceof Error ? e.message : "Onbekende fout").slice(0, 300), byId: actor.id, byName: actor.name } });
         failed++;
       }
-      await new Promise((r) => setTimeout(r, 120));
+      await new Promise((r) => setTimeout(r, opts.pauseMs ?? MAIL_PAUSE_MS));
     }
   }
-  return { dryRun: false as const, ...preview, sent, failed };
+  const remaining = input.sendMail ? recipients.length - attempted : 0;
+  return { dryRun: false as const, ...preview, sent, failed, remaining };
 }

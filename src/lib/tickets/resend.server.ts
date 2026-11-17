@@ -13,7 +13,11 @@ const schema = z.object({ email: z.string().trim().toLowerCase().email("Vul een 
 export const GENERIC_RESEND_MESSAGE = "Als er tickets op dit e-mailadres staan, sturen we ze opnieuw. Kijk ook even in je spam.";
 const MAX_PER_REQUEST = 10;
 
-export async function requestTicketResend(raw: unknown, ip: string) {
+/**
+ * `defer` laat het mailen na het antwoord gebeuren (in de route: next/server `after`), zodat de
+ * responstijd niet verraadt of er tickets op het adres staan. Zonder `defer` (tests) wordt gewacht.
+ */
+export async function requestTicketResend(raw: unknown, ip: string, defer?: (task: () => Promise<void>) => void) {
   const { email } = schema.parse(raw);
   if (await hitLimit("resend-ip", ip, 10, 3600_000)) throw new ApiError(429, "Te veel pogingen. Probeer het later opnieuw.");
   if (await hitLimit("resend-email", email, 3, 3600_000)) throw new ApiError(429, "Voor dit e-mailadres is zojuist al een aanvraag gedaan. Probeer het over een uur opnieuw.");
@@ -25,7 +29,11 @@ export async function requestTicketResend(raw: unknown, ip: string) {
     select: { id: true },
   });
   // Een mislukte mail (bijvoorbeeld op een preview zonder mailkoppeling) mag niets verraden over het adres.
-  for (const t of tickets) await deliverTicketMail(t.id, { id: null, name: "Ticket opnieuw opgevraagd" }).catch(() => {});
+  const task = async () => {
+    for (const t of tickets) await deliverTicketMail(t.id, { id: null, name: "Ticket opnieuw opgevraagd" }).catch(() => {});
+  };
+  if (defer) defer(task);
+  else await task();
   return { ok: true, message: GENERIC_RESEND_MESSAGE };
 }
 

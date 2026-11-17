@@ -2,7 +2,9 @@ import { randomBytes } from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
-import { ticketAudit } from "./audit.server";
+import { ticketAudit, ticketAuditTx } from "./audit.server";
+import { needsApproval } from "./issue";
+import { getTicketSettings } from "./settings.server";
 import { need, type TicketsActor } from "./authz.server";
 import { deliverTicketMail, ticketLink } from "./delivery.server";
 import { hitLimit, emailKey } from "./public-limit.server";
@@ -43,24 +45,51 @@ export async function listPromos(actor: TicketsActor) {
   return { promos: rows.map((p) => ({ id: p.id, code: p.code, name: p.name, type: p.type.name, active: p.active, claims: p._count.claims, maxClaims: p.maxClaims, ticketsPerClaim: p.ticketsPerClaim, maxPerEmail: p.maxPerEmail, claimUntil: p.claimUntil })) };
 }
 
+/**
+ * Een actie waarvan het totaal (max inwisselingen x tickets per inwisseling) boven de
+ * goedkeuringsdrempel voor bulkuitgifte ligt, is in feite een bulkuitgifte: ze wordt inactief
+ * aangemaakt en pas actief nadat iemand anders met 'bulk:approve' haar activeert (vier ogen).
+ */
+const promoTotal = (p: { maxClaims: number; ticketsPerClaim: number }) => p.maxClaims * p.ticketsPerClaim;
+
 export async function savePromo(actor: TicketsActor, raw: unknown) {
   need(actor, "tickets:bulk");
+  need(actor, "tickets:issue");
   const input = promoSchema.parse(raw);
   // Controleer type, wedstrijden en geldigheid nu al, zodat de code later niet alsnog faalt.
   await prepareIssue({ typeId: input.typeId, zoneId: input.zoneId, eventIds: input.eventIds, seasonId: input.seasonId, validFrom: null, validUntil: null, holders: [{ firstName: "Test", lastName: "Test", email: null, phone: null, company: null, relation: null, note: null }], batchName: null, locale: "nl" });
   const code = input.code ?? newPromoCode();
   if (!/^[A-Z0-9-]{4,30}$/.test(code)) throw new ApiError(400, "Een code bestaat uit 4 tot 30 letters, cijfers of streepjes.");
   if (await prisma.ticketPromo.findUnique({ where: { code }, select: { id: true } })) throw new ApiError(409, "Deze code bestaat al.");
-  const row = await prisma.ticketPromo.create({ data: { code, name: input.name, note: input.note, typeId: input.typeId, zoneId: input.zoneId, seasonId: input.seasonId, eventIds: input.eventIds, claimFrom: input.claimFrom, claimUntil: input.claimUntil, maxClaims: input.maxClaims, maxPerEmail: input.maxPerEmail, ticketsPerClaim: input.ticketsPerClaim, createdBy: actor.name } });
-  await ticketAudit({ action: "promo.saved", actor: actorOf(actor), summary: `Actiecode '${row.name}' aangemaakt`, meta: { promoId: row.id } });
-  return { id: row.id, code: row.code };
+  const settings = await getTicketSettings();
+  const pendingApproval = needsApproval(promoTotal(input), settings.bulkApprovalThreshold);
+  const row = await prisma.$transaction(async (tx) => {
+    const r = await tx.ticketPromo.create({ data: { code, name: input.name, note: input.note, typeId: input.typeId, zoneId: input.zoneId, seasonId: input.seasonId, eventIds: input.eventIds, claimFrom: input.claimFrom, claimUntil: input.claimUntil, maxClaims: input.maxClaims, maxPerEmail: input.maxPerEmail, ticketsPerClaim: input.ticketsPerClaim, createdBy: actor.name, active: !pendingApproval } });
+    // In dezelfde transactie: de maker moet vastliggen, anders is de vier-ogencontrole niet af te dwingen.
+    await ticketAuditTx(tx, { action: "promo.saved", actor: actorOf(actor), summary: pendingApproval ? `Actiecode '${r.name}' aangemaakt, wacht op goedkeuring (totaal ${promoTotal(input)} tickets)` : `Actiecode '${r.name}' aangemaakt`, meta: { promoId: r.id, createdById: actor.id, pendingApproval } });
+    return r;
+  });
+  return { id: row.id, code: row.code, pendingApproval, threshold: settings.bulkApprovalThreshold };
 }
 
 export async function setPromoActive(actor: TicketsActor, id: string, active: boolean) {
   need(actor, "tickets:bulk");
+  let approved = false;
+  if (active) {
+    const p = await prisma.ticketPromo.findUnique({ where: { id }, select: { id: true } });
+    if (!p) throw new ApiError(404, "Actie niet gevonden.");
+    const trail = await prisma.ticketAuditEvent.findMany({ where: { action: "promo.saved", meta: { path: ["promoId"], equals: id } }, orderBy: { at: "asc" }, select: { actorId: true, meta: true } });
+    const created = trail.find((e) => (e.meta as { pendingApproval?: boolean } | null)?.pendingApproval);
+    const done = trail.some((e) => (e.meta as { approved?: boolean } | null)?.approved);
+    if (created && !done) {
+      need(actor, "bulk:approve");
+      if (!created.actorId || created.actorId === actor.id) throw new ApiError(403, "Deze actie geeft meer tickets uit dan de goedkeuringsdrempel toestaat en moet door iemand anders worden goedgekeurd (vier ogen).");
+      approved = true;
+    }
+  }
   const r = await prisma.ticketPromo.updateMany({ where: { id }, data: { active } });
   if (r.count !== 1) throw new ApiError(404, "Actie niet gevonden.");
-  await ticketAudit({ action: "promo.saved", actor: actorOf(actor), summary: `Actiecode ${active ? "geactiveerd" : "uitgezet"}`, meta: { promoId: id } });
+  await ticketAudit({ action: "promo.saved", actor: actorOf(actor), summary: approved ? "Actiecode goedgekeurd en geactiveerd" : `Actiecode ${active ? "geactiveerd" : "uitgezet"}`, meta: { promoId: id, ...(approved ? { approved: true } : {}) } });
   return { ok: true };
 }
 

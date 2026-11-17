@@ -43,10 +43,10 @@ export function Promos() {
   async function create() {
     setBusy(true);
     try {
-      const r = await api<{ code: string }>("/api/tickets/promos", {
+      const r = await api<{ code: string; pendingApproval?: boolean; threshold?: number }>("/api/tickets/promos", {
         body: { name: f.name, note: f.note || null, code: f.code || null, typeId: settings.typeId, zoneId: settings.zoneId || null, seasonId: settings.seasonId || null, eventIds: settings.eventIds, claimUntil: f.claimUntil ? fromLocalInput(f.claimUntil) : null, maxClaims: Number(f.maxClaims), maxPerEmail: Number(f.maxPerEmail), ticketsPerClaim: Number(f.ticketsPerClaim) },
       });
-      toast.success(`Actie aangemaakt. Code: ${r.code}`);
+      toast.success(r.pendingApproval ? `Actie aangemaakt (code ${r.code}) maar nog niet actief: het totaal ligt boven de goedkeuringsdrempel van ${r.threshold}. Iemand anders met goedkeuringsrecht moet de actie aanzetten.` : `Actie aangemaakt. Code: ${r.code}`);
       setF({ name: "", note: "", code: "", maxClaims: "50", maxPerEmail: "1", ticketsPerClaim: "1", claimUntil: "" });
       await load();
     } catch (e) {

@@ -166,6 +166,8 @@ async function testScan(actor: ScanActor, input: ScanInput): Promise<ScanRespons
   const down = TEST_CODES[code] === "PROVIDER_DOWN";
   if (input.override && !actor.canOverride) throw new ApiError(403, "Alleen een supervisor mag een scan overrulen.");
   const admitted = !down || !!input.override;
+  // Een testcode voor een wedstrijd die niet bestaat geeft geen groen en laat geen auditregel met een onbestaand id achter.
+  if (!(await prisma.ticketEvent.findUnique({ where: { id: input.eventId }, select: { id: true } }))) throw new ApiError(404, "Wedstrijd niet gevonden.");
   await ticketAudit({ action: "scan.test", actor: { id: actor.userId ?? actor.scannerId, name: actor.name }, eventId: input.eventId, scannerId: actor.scannerId, reason: input.override?.reason ?? null, summary: `Testcode ${code} gescand`, meta: { code, result: admitted ? "VALID" : "INVALID" } });
   return {
     scanId: `test-${input.clientId}`,
@@ -252,10 +254,13 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
     const hash = codeHash(input.code);
     lockKey = `f:${hash}:${event.id}`;
     const ext = event.externalId ? await externalTicket(event.externalId, input.code, hash) : { found: null as null, unreachable: false };
+    // Duel zonder Fullhouse-koppeling: is dit toch een echte Fullhouse-kaart (lokaal bekend of bij Fullhouse, alleen lezen)?
+    const foreign = event.externalId ? false : !!(await prisma.ticketExternalTicket.findFirst({ where: { codeHash: hash }, select: { id: true } })) || !!(await ticketProvider().lookupBarcode(input.code.trim()).catch(() => null));
     decide = async (tx) => {
       const f = ext.found;
       const mk = (result: Decision["result"], reason: ScanReason | null, label: string | null = null): Decision => ({ result, reason, reentry: false, ticketId: null, codeHash: hash, holderLabel: label, zone: f?.area ?? null });
-      if (!event.externalId) return mk("INVALID", "WRONG_EVENT");
+      // Duel zonder Fullhouse-koppeling: een bekende Fullhouse-kaart is "andere wedstrijd", al het andere (onzin, onbekend) "bestaat niet".
+      if (!event.externalId) return foreign ? mk("INVALID", "WRONG_EVENT") : mk("INVALID", "NOT_FOUND");
       // Fullhouse onbereikbaar is iets anders dan "bestaat niet": een supervisor mag dan met reden toelaten.
       if (!f) {
         // Tijdens een storing wel kijken of deze barcode al (met overrule) is toegelaten: dan "al gebruikt", niet opnieuw "storing".
@@ -266,7 +271,7 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
       if (f.eventExtId !== event.externalId) return mk("INVALID", "WRONG_EVENT", label);
       if (event.status === "CANCELLED") return mk("INVALID", "EVENT_NOT_ACTIVE", label);
       // Alleen VALID geeft toegang (vivenu); al het andere wordt geweigerd.
-      if (f.status !== "VALID") return mk("INVALID", f.status === "INVALID" ? "CANCELLED" : "BLOCKED", label ? `${label} (${f.status})` : f.status);
+      if (f.status !== "VALID") return mk("INVALID", f.status === "INVALID" ? "CANCELLED" : "BLOCKED", label);
       const prior = await tx.ticketScan.count({ where: { codeHash: hash, eventId: event.id, result: "VALID" } });
       return prior > 0 ? mk("WARNING", "ALREADY_USED", label) : mk("VALID", null, label);
     };
@@ -361,6 +366,19 @@ export async function voidScan(actor: ScanActor, raw: unknown) {
     await ticketAuditTx(tx, { action: "scan.void", actor: { id: actor.userId ?? actor.scannerId, name: actor.name }, ticketId: row.ticketId, eventId: row.eventId, scannerId: actor.scannerId, reason: input.reason, meta: { scanId: row.id, source: row.source, label: row.holderLabel } });
   });
   return { ok: true, scanId: row.id };
+}
+
+/**
+ * Laatste geldige scans van alle toestellen voor de gekozen duels, zodat een supervisor in de scanner-app
+ * ook andermans scan kan terugdraaien (via voidScan, met dezelfde regels). Alleen voor supervisors;
+ * zonder persoonsgegevens: alleen het label van de scan (initialen en tickettype).
+ */
+export async function recentScansForSupervisor(actor: ScanActor, eventIds: string[]) {
+  if (!actor.canOverride) throw new ApiError(403, "Alleen een supervisor ziet de scans van andere toestellen.");
+  const ids = eventIds.filter((x) => x && x.length <= 40).slice(0, 10);
+  if (!ids.length) return { scans: [] };
+  const rows = await prisma.ticketScan.findMany({ where: { eventId: { in: ids }, result: "VALID" }, orderBy: { scannedAt: "desc" }, take: 15, include: { scanner: { select: { name: true } } } });
+  return { scans: rows.map((r) => ({ scanId: r.id, at: r.scannedAt.toISOString(), label: r.holderLabel, scanner: r.scanner?.name ?? null, mine: !!((actor.scannerId && r.scannerId === actor.scannerId) || (actor.userId && r.userId === actor.userId)), eventId: r.eventId })) };
 }
 
 // ── Context, offline-cache en synchronisatie ──

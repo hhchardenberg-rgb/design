@@ -214,6 +214,9 @@ export function ScannerApp() {
   const [torch, setTorch] = useState<{ available: boolean; on: boolean }>({ available: false, on: false });
   const [recent, setRecent] = useState<Recent[]>([]);
   const [undoFor, setUndoFor] = useState<Recent | null>(null);
+  // Supervisor: laatste scans van alle toestellen, om ook andermans scan terug te kunnen draaien.
+  const [allScans, setAllScans] = useState<{ scanId: string; at: string; label: string | null; scanner: string | null; mine: boolean; eventId: string }[] | null>(null);
+  const [allBusy, setAllBusy] = useState(false);
   // Klok voor "vandaag"-controles, eens per minuut bijgewerkt.
   const [now, setNow] = useState(() => Date.now());
   const lastSeen = useRef<{ code: string; at: number }>({ code: "", at: 0 });
@@ -272,6 +275,8 @@ export function ScannerApp() {
           setOnline(false);
           setPhase("ready");
         } else {
+          // Ingelogd in de Hub maar zonder scanrecht (403) of 2FA nog niet ingesteld: leg uit waarom, in plaats van stil de PIN te vragen.
+          if (e instanceof Error && !(e instanceof NetworkError) && !(e instanceof AuthError)) setMessage({ text: `${e.message} Log in met de code en PIN van een scanner, of vraag een beheerder om scanrechten voor je Hub-account.`, tone: "bad" });
           setPhase("login");
         }
       }
@@ -664,9 +669,22 @@ export function ScannerApp() {
       }
       flash("Scan ongedaan gemaakt. Het ticket kan opnieuw gescand worden.");
       setUndoFor(null);
+      if (allScans) void loadAllScans();
     } catch (e) {
       if (e instanceof NetworkError) flash("Ongedaan maken kan alleen met verbinding.", "bad");
       else flash(e instanceof Error ? e.message : "Ongedaan maken mislukt.", "bad");
+    }
+  }
+
+  async function loadAllScans() {
+    setAllBusy(true);
+    try {
+      const r = await call<{ scans: NonNullable<typeof allScans> }>(`/api/scan/recent?eventIds=${encodeURIComponent(eventIds.join(","))}`);
+      setAllScans(r.scans);
+    } catch (e) {
+      flash(e instanceof NetworkError ? "Scans van andere toestellen laden kan alleen met verbinding." : e instanceof Error ? e.message : "Laden mislukt.", "bad");
+    } finally {
+      setAllBusy(false);
     }
   }
 
@@ -823,6 +841,40 @@ export function ScannerApp() {
               </ul>
             )}
           </section>
+
+          {ctx.actor.canOverride && (
+            <section className="mx-4 mt-4" aria-label="Scans van alle toestellen">
+              <div className="mb-1 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-neutral-300">Scans van alle toestellen</h2>
+                <button onClick={() => void loadAllScans()} disabled={allBusy || eventIds.length === 0} className="rounded-lg bg-neutral-800 px-2.5 py-1.5 text-xs disabled:opacity-50">
+                  {allBusy ? "Laden…" : allScans ? "Vernieuwen" : "Tonen"}
+                </button>
+              </div>
+              {allScans && (allScans.length === 0 ? (
+                <p className="text-xs text-neutral-500">Nog geen geldige scans voor deze wedstrijd.</p>
+              ) : (
+                <ul className="divide-y divide-neutral-800 rounded-xl bg-neutral-900">
+                  {allScans.map((r) => (
+                    <li key={r.scanId} className="flex items-center gap-3 p-3 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{r.label ?? "Onbekend ticket"}</p>
+                        <p className="truncate text-xs text-neutral-400">
+                          {timeOf(r.at)} · {r.mine ? "dit toestel" : r.scanner ?? "ander toestel"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setUndoFor({ id: r.scanId, scanId: r.scanId, at: r.at, result: "VALID", label: r.label, reason: null, eventId: r.eventId, key: null, offline: false })}
+                        className="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-800 px-2.5 py-2 text-xs"
+                        aria-label={`Scan van ${timeOf(r.at)} ongedaan maken`}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Ongedaan
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ))}
+            </section>
+          )}
 
           <div className="mx-4 mb-6 mt-4 flex items-center justify-between gap-2 rounded-xl bg-neutral-900 p-3 text-xs text-neutral-400">
             <span>

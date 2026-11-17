@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isTicketsEnabled } from "@/lib/tickets/flag";
+import { clientIpFrom } from "@/lib/login-rate-limit";
 import { registerBannerClick } from "@/lib/tickets/banner.server";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isTicketsEnabled()) return new NextResponse("Niet gevonden.", { status: 404 });
   const { id } = await params;
-  const url = await registerBannerClick(id, new URL(req.url).searchParams.get("t")).catch(() => null);
+  const url = await registerBannerClick(id, new URL(req.url).searchParams.get("t"), clientIpFrom(req)).catch(() => null);
   if (!url) return new NextResponse("Niet gevonden.", { status: 404 });
   return NextResponse.redirect(url, { status: 302, headers: { "Referrer-Policy": "no-referrer", "Cache-Control": "no-store" } });
 }

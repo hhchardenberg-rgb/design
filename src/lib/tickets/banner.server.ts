@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { auditRecord, need, type RecordCtx } from "@/lib/commercial/ctx.server";
 import { visibleCompany } from "@/lib/commercial/companies.server";
 import { parseLinkToken } from "./token";
+import { hitLimit } from "./public-limit.server";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 
 // Sponsorbanner in de ticketmail. Beheer en cijfers staan in Commerciële Zaken (tab Ticketmail bij het dossier);
@@ -45,12 +46,16 @@ export async function pickBanner(now = new Date()) {
 export const recordBannerSend = (bannerId: string, ticketId: string) => prisma.ticketBannerSend.create({ data: { bannerId, ticketId } });
 
 /** Een klik: telt mee en geeft de doellink terug. Verwijst nooit naar iets anders dan de opgeslagen link. */
-export async function registerBannerClick(bannerId: string, linkToken: string | null): Promise<string | null> {
+export const BANNER_CLICKS_PER_IP = 5;
+export async function registerBannerClick(bannerId: string, linkToken: string | null, ip: string | null = null): Promise<string | null> {
   const banner = await prisma.ticketBanner.findUnique({ where: { id: bannerId }, select: { targetUrl: true } });
   if (!banner) return null;
+  // Per IP en banner maximaal een paar klikken per uur tellen; daarboven sturen we nog wel door, maar tellen niet mee.
+  if (ip && (await hitLimit("banner-click", `${bannerId}:${ip}`, BANNER_CLICKS_PER_IP, 3600_000))) return banner.targetUrl;
   const ref = linkToken ? parseLinkToken(linkToken) : null;
-  const ticket = ref ? await prisma.ticket.findUnique({ where: { publicId: ref.publicId }, select: { id: true } }) : null;
-  await prisma.ticketBannerClick.create({ data: { bannerId, ticketId: ticket?.id ?? null } });
+  // Alleen de huidige linkversie telt: een ingetrokken link (nieuwe versie) wordt niet aan het ticket toegerekend.
+  const ticket = ref ? await prisma.ticket.findUnique({ where: { publicId: ref.publicId }, select: { id: true, linkVersion: true } }) : null;
+  await prisma.ticketBannerClick.create({ data: { bannerId, ticketId: ticket && ticket.linkVersion === ref!.version ? ticket.id : null } });
   return banner.targetUrl;
 }
 

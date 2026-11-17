@@ -21,7 +21,7 @@ interface Holder {
 }
 const EMPTY: Holder = { firstName: "", lastName: "", email: "", phone: "", company: "", relation: "", note: "" };
 
-type Result = { pendingApproval: false; ticketIds: string[]; count: number } | { pendingApproval: true; batchId: string; count: number; threshold: number };
+type Result = { pendingApproval: false; ticketIds: string[]; count: number; capacityWarnings?: string[] } | { pendingApproval: true; batchId: string; count: number; threshold: number };
 
 export function IssueForm({ canMultiple, initialTypeId }: { canMultiple: boolean; initialTypeId?: string }) {
   const toast = useStableToast();
@@ -77,6 +77,11 @@ export function IssueForm({ canMultiple, initialTypeId }: { canMultiple: boolean
             ) : (
               <span>
                 {result.count === 1 ? "Het ticket is uitgegeven." : `${result.count} tickets zijn uitgegeven.`} {mailInfo ?? "Je kunt het ticket versturen vanuit het ticket zelf."}
+              </span>
+            )}
+            {!result.pendingApproval && (result.capacityWarnings?.length ?? 0) > 0 && (
+              <span className="basis-full font-medium text-amber-600" role="alert">
+                {result.capacityWarnings!.join(" ")}
               </span>
             )}
             {!result.pendingApproval && result.count === 1 && (
