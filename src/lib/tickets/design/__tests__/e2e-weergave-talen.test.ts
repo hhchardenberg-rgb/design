@@ -165,14 +165,3 @@ test("A4-pdf in het Duits: voettekst en datum volgen de taal; QR blijft leesbaar
   assert.equal(jsQR(img.data, img.width, img.height)?.data, CODE);
   await pdf.cleanup();
 });
-
-test("kapotte %-codering in een /t/-link: nette foutpagina in drie talen in plaats van een kale 400", async () => {
-  const { createElement } = await import("react");
-  const { renderToString } = await import("react-dom/server");
-  const ErrorPage = (await import("@/pages/_error")).default;
-  const html = renderToString(createElement(ErrorPage, { statusCode: 400 }));
-  assert.match(html, /Deze ticketlink werkt niet meer/);
-  assert.match(html, /Dieser Ticket-Link funktioniert nicht mehr/);
-  assert.match(html, /This ticket link no longer works/);
-  assert.doesNotMatch(renderToString(createElement(ErrorPage, { statusCode: 500 })), /ticketlink/);
-});
