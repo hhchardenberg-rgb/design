@@ -226,9 +226,15 @@ export function ScannerApp() {
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submitRef = useRef<(code: string, override?: string) => Promise<void>>(async () => {});
+  // Camera niet laten scannen zolang "Wat scan je?" of "Ongedaan maken" open staat: anders wordt een ticket
+  // dat toevallig in beeld is al gecontroleerd voordat de steward wedstrijd en ingang heeft bevestigd.
+  const pausedRef = useRef(false);
   useEffect(() => {
     resultRef.current = result;
   }, [result]);
+  useEffect(() => {
+    pausedRef.current = setupOpen || !!undoFor;
+  }, [setupOpen, undoFor]);
 
   const flash = useCallback((text: string, tone: "info" | "bad" = "info") => setMessage({ text, tone }), []);
   const addRecent = useCallback((r: Recent) => {
@@ -564,6 +570,7 @@ export function ScannerApp() {
       const same = raw === lastSeen.current.code;
       // Zolang een uitslag in beeld is of dezelfde code nog voor de camera blijft, niet opnieuw scannen:
       // anders krijgt iemand die net "GELDIG" kreeg meteen "AL GEBRUIKT" omdat hij zijn telefoon nog omhoog houdt.
+      if (pausedRef.current) return;
       if (resultRef.current || checkingRef.current || (same && now - lastSeen.current.at < SAME_CODE_QUIET_MS)) {
         if (same) lastSeen.current.at = now;
         return;

@@ -42,14 +42,30 @@ export async function scannerLogin(rawCode: string, pin: string, ip: string | nu
   const code = rawCode.trim().toUpperCase();
   const scanner = await prisma.ticketScanner.findUnique({ where: { loginCode: code } });
   const now = new Date();
-  if (scanner?.lockedUntil && scanner.lockedUntil > now) {
-    throw new ApiError(429, `Te vaak een foute PIN. Probeer het over ${Math.ceil((scanner.lockedUntil.getTime() - now.getTime()) / 60000)} minuten opnieuw, of vraag een beheerder.`);
+  const locked = (until: Date | null) =>
+    new ApiError(429, `Te vaak een foute PIN. Probeer het over ${Math.max(1, Math.ceil(((until?.getTime() ?? now.getTime() + LOCK_MINUTES * 60000) - now.getTime()) / 60000))} minuten opnieuw, of vraag een beheerder.`);
+  const lockNow = (id: string) => prisma.ticketScanner.update({ where: { id }, data: { failedAttempts: 0, lockedUntil: new Date(now.getTime() + LOCK_MINUTES * 60000) } });
+  if (scanner?.lockedUntil && scanner.lockedUntil > now) throw locked(scanner.lockedUntil);
+  if (scanner) {
+    // Elke poging vooraf (atomair) meetellen, zodat gelijktijdige verzoeken samen nooit meer dan
+    // MAX_FAILURES PIN's kunnen proberen voordat de blokkade ingaat.
+    const reserved = await prisma.ticketScanner.updateMany({
+      where: { id: scanner.id, failedAttempts: { lt: MAX_FAILURES }, OR: [{ lockedUntil: null }, { lockedUntil: { lte: now } }] },
+      data: { failedAttempts: { increment: 1 } },
+    });
+    if (reserved.count === 0) {
+      const cur = await prisma.ticketScanner.findUnique({ where: { id: scanner.id }, select: { lockedUntil: true } });
+      if (cur?.lockedUntil && cur.lockedUntil > now) throw locked(cur.lockedUntil);
+      // Alle pogingen op, maar (nog) geen blokkade vastgelegd: nu blokkeren.
+      await lockNow(scanner.id);
+      throw locked(null);
+    }
   }
   const ok = await bcrypt.compare(pin, scanner?.pinHash ?? getDummyHash());
   if (!scanner || !scanner.active || !ok) {
     if (scanner) {
-      const failed = scanner.failedAttempts + 1;
-      await prisma.ticketScanner.update({ where: { id: scanner.id }, data: failed >= MAX_FAILURES ? { failedAttempts: 0, lockedUntil: new Date(now.getTime() + LOCK_MINUTES * 60000) } : { failedAttempts: failed } });
+      const cur = await prisma.ticketScanner.findUnique({ where: { id: scanner.id }, select: { failedAttempts: true } });
+      if (cur && cur.failedAttempts >= MAX_FAILURES) await lockNow(scanner.id);
     }
     throw new ApiError(401, "Code of PIN klopt niet.");
   }

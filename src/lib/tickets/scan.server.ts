@@ -257,7 +257,11 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
       const mk = (result: Decision["result"], reason: ScanReason | null, label: string | null = null): Decision => ({ result, reason, reentry: false, ticketId: null, codeHash: hash, holderLabel: label, zone: f?.area ?? null });
       if (!event.externalId) return mk("INVALID", "WRONG_EVENT");
       // Fullhouse onbereikbaar is iets anders dan "bestaat niet": een supervisor mag dan met reden toelaten.
-      if (!f) return mk("INVALID", ext.unreachable ? "PROVIDER_DOWN" : "NOT_FOUND");
+      if (!f) {
+        // Tijdens een storing wel kijken of deze barcode al (met overrule) is toegelaten: dan "al gebruikt", niet opnieuw "storing".
+        if (ext.unreachable && (await tx.ticketScan.count({ where: { codeHash: hash, eventId: event.id, result: "VALID" } })) > 0) return mk("WARNING", "ALREADY_USED");
+        return mk("INVALID", ext.unreachable ? "PROVIDER_DOWN" : "NOT_FOUND");
+      }
       const label = [f.holderLabel, f.ticketName].filter(Boolean).join(" · ") || null;
       if (f.eventExtId !== event.externalId) return mk("INVALID", "WRONG_EVENT", label);
       if (event.status === "CANCELLED") return mk("INVALID", "EVENT_NOT_ACTIVE", label);
