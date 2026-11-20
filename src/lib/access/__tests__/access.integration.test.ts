@@ -40,6 +40,7 @@ before(async () => {
   db = (await import("@/lib/prisma")).prisma;
   await db.userAccessRole.deleteMany();
   await db.accessRole.deleteMany();
+  await db.accessRolePreset.deleteMany();
   await db.commercialAuditEvent.deleteMany();
   await db.commercialMembership.deleteMany();
   await db.commercialRole.deleteMany();
@@ -88,6 +89,23 @@ test("overzetten: iedereen houdt precies dezelfde toegang", { skip }, async () =
   const all = (await db.accessRole.findMany()).map((r) => r.name);
   for (const n of ["Hoofdadmin", "Communicatie", "Communicatiebeheerder", "Klantenservice", "Klantenservicebeheerder", "Relatiebeheerder", "Alleen lezen"]) assert.ok(all.includes(n), n);
   assert.equal(await db.accessRole.count({ where: { isSystem: true } }), 1);
+});
+
+test("standaardrollen voor Klantenservice en HHC Tickets: één keer aangemaakt, niemand toegewezen, verwijderd blijft weg", { skip }, async () => {
+  const { STANDARD_ROLES } = await import("../presets");
+  const presets = await db.accessRole.findMany({ where: { presetKey: { not: null } }, include: { _count: { select: { users: true } } } });
+  assert.equal(presets.length, STANDARD_ROLES.length);
+  assert.ok(presets.every((r) => r._count.users === 0));
+  const ks = presets.find((r) => r.presetKey === "ks-medewerker")!;
+  assert.equal(ks.ticketingLevel, "USER");
+  assert.ok(ks.ticketsAccess && ks.ticketsPermissions.includes("support:search"));
+
+  const holder = await mkUser("presethouder", { roles: ["USER"] });
+  await db.accessRole.delete({ where: { id: presets.find((r) => r.presetKey === "tickets-scanner")!.id } });
+  access.resetAccessReady();
+  await access.reconcileAccess();
+  assert.equal(await db.accessRole.count({ where: { presetKey: { not: null } } }), STANDARD_ROLES.length - 1);
+  assert.deepEqual(await roleNames(holder.id), []);
 });
 
 test("wijzigingen buiten het rollensysteem om worden opgepikt", { skip }, async () => {
