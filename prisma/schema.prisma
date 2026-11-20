@@ -130,12 +130,24 @@ model AccessRole {
   // Toegang tot HHC Tickets met deze bevoegdheden (zie src/lib/tickets/permissions.ts).
   ticketsAccess      Boolean         @default(false)
   ticketsPermissions String[]        @default([])
+  // Standaardrol uit src/lib/access/presets.ts (bv. "ks-medewerker"); null = zelf gemaakt.
+  presetKey          String?         @unique
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
   users UserAccessRole[]
 
   @@map("access_roles")
+}
+
+// Welke standaardrollen al eens zijn aangemaakt. Zo komt een standaardrol die een
+// beheerder bewust heeft verwijderd, niet vanzelf terug.
+model AccessRolePreset {
+  key       String   @id
+  roleId    String?
+  createdAt DateTime @default(now())
+
+  @@map("access_role_presets")
 }
 
 model UserAccessRole {

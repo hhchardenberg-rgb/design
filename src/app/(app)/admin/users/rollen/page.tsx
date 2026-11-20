@@ -313,6 +313,7 @@ export default function RolesPage() {
                       <p className="flex items-center gap-2 font-semibold">
                         {r.name}
                         {r.isSystem && <Badge variant="primary">vast</Badge>}
+                        {r.presetKey && <Badge variant="outline" title="Kant-en-klare rol; je mag hem aanpassen, kopiëren of verwijderen.">standaard</Badge>}
                       </p>
                       {r.description && <p className="text-sm text-muted-foreground">{r.description}</p>}
                     </div>

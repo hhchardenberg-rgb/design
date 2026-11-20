@@ -6,6 +6,7 @@ import { Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { describeRole, type SectionLevel } from "@/lib/access/model";
+import { standardRole } from "@/lib/access/presets";
 
 /** Een rol zoals de beheerschermen hem krijgen (zie listRoles in src/lib/access/service.server.ts). */
 export interface RoleView {
@@ -19,6 +20,8 @@ export interface RoleView {
   commercial: string[] | null;
   /** null/ontbreekt = geen toegang tot HHC Tickets. */
   tickets?: string[] | null;
+  /** Standaardrol (src/lib/access/presets.ts), of null. */
+  presetKey?: string | null;
   userCount: number;
   manageable: boolean;
   manageReason: string | null;
@@ -31,6 +34,9 @@ const GROUP_ORDER = ["Algemeen", "Communicatie", "Klantenservice", "Commerciële
 /** Onder welk kopje een rol hoort: het onderdeel waar hij toegang toe geeft. */
 export function roleGroup(r: RoleView): (typeof GROUP_ORDER)[number] {
   if (r.isAdmin) return "Algemeen";
+  // Standaardrollen staan onder hun eigen onderdeel (bv. Klantenservicemedewerker onder Klantenservice).
+  const preset = standardRole(r.presetKey);
+  if (preset) return preset.group;
   const parts = [r.hubLevel !== "NONE" && "Communicatie", r.ticketingLevel !== "NONE" && "Klantenservice", r.commercial !== null && "Commerciële Zaken", r.tickets != null && "HHC Tickets"].filter(Boolean) as (
     | "Communicatie"
     | "Klantenservice"

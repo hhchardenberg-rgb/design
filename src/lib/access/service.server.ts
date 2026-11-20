@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { effectiveRoles } from "@/lib/roles";
 import { findInconsistencies, isPermission, type Permission } from "@/lib/commercial/permissions";
 import { ROLE_TEMPLATES } from "@/lib/commercial/role-templates";
+import { STANDARD_ROLES } from "./presets";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { ticketPermissionIssues, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
 import {
@@ -177,6 +178,39 @@ async function freeKey(tx: Tx, base: string): Promise<string> {
   return key;
 }
 
+/**
+ * Zet de standaardrollen voor Klantenservice en HHC Tickets (src/lib/access/presets.ts)
+ * één keer in de database. Een standaardrol die al eens is aangemaakt (en misschien
+ * bewust verwijderd), komt niet terug; bestaat er al een rol met dezelfde naam, dan
+ * blijft die ongemoeid. Er worden nooit rollen aan gebruikers gegeven.
+ */
+async function ensureStandardRoles(tx: Tx): Promise<number> {
+  const done = new Set((await tx.accessRolePreset.findMany({ select: { key: true } })).map((p) => p.key));
+  let created = 0;
+  for (const p of STANDARD_ROLES) {
+    if (done.has(p.key)) continue;
+    const clash = await tx.accessRole.findFirst({ where: { OR: [{ name: p.name }, { presetKey: p.key }] }, select: { id: true } });
+    const role = clash
+      ? null
+      : await tx.accessRole.create({
+          data: {
+            name: p.name,
+            description: p.description,
+            presetKey: p.key,
+            ticketingLevel: p.ticketingLevel,
+            ticketsAccess: p.tickets !== null,
+            ticketsPermissions: p.tickets ?? [],
+          },
+        });
+    await tx.accessRolePreset.create({ data: { key: p.key, roleId: role?.id ?? clash?.id ?? null } });
+    if (role) {
+      created++;
+      await audit(tx, null, { action: "access.role.create", entity: "role", entityId: role.id, after: { name: p.name, preset: p.key, ticketingLevel: p.ticketingLevel, tickets: p.tickets } });
+    }
+  }
+  return created;
+}
+
 /** Wat de oude velden over deze gebruiker zeggen. */
 function legacySnapshotOf(u: { role: string; roles: string[]; commercialMembership: { roleId: string | null } | null }): LegacySnapshot {
   return {
@@ -212,6 +246,7 @@ export async function reconcileAccess(): Promise<{ firstRun: boolean; rebuilt: n
       }
       for (const cr of await tx.commercialRole.findMany({ orderBy: [{ isSystem: "desc" }, { createdAt: "asc" }] })) await roleForCommercialRole(tx, cr);
     }
+    await ensureStandardRoles(tx);
 
     const users = await tx.user.findMany({ select: USER_SELECT });
     let rebuilt = 0;
@@ -316,6 +351,8 @@ export interface RoleView {
   ticketingLevel: SectionLevel;
   commercial: string[] | null;
   tickets: string[] | null;
+  /** Standaardrol (src/lib/access/presets.ts), of null. */
+  presetKey: string | null;
   userCount: number;
   /** Mag de ingelogde beheerder deze rol toewijzen en aanpassen? */
   manageable: boolean;
@@ -341,6 +378,7 @@ export async function listRoles(scope: ManagerScope): Promise<RoleView[]> {
       ticketingLevel: g.ticketingLevel,
       commercial: g.commercial,
       tickets: g.tickets ?? null,
+      presetKey: r.presetKey ?? null,
       userCount: r._count.users,
       manageable: d.ok,
       manageReason: d.ok ? null : d.message,
