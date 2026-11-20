@@ -131,7 +131,8 @@ model AccessRole {
   ticketsAccess      Boolean         @default(false)
   ticketsPermissions String[]        @default([])
   // Standaardrol uit src/lib/access/presets.ts (bv. "ks-medewerker"); null = zelf gemaakt.
-  presetKey          String?         @unique
+  // Bewust zonder @unique: prisma db push weigert dan zonder --accept-data-loss.
+  presetKey          String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
