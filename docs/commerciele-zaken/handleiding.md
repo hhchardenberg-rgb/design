@@ -31,8 +31,8 @@ Beschermde sectie van de HHC Hub voor de sponsorcommissie. Alles hieronder is ge
 waarbij ze zijn aangesloten. Er is één beheer (Beheer), met drie soorten beheerders:
 
 - **Hoofdadmin** (ADMIN): ziet en beheert alles, ook Commerciële Zaken inclusief bedragen, zonder aparte toegang.
-- **Beheerder per onderdeel**: Communicatiebeheerder en Klantenservicebeheerder (platformrollen) en Beheerder Commerciële Zaken
-  (rol met rechtenbeheer). Zo iemand beheert alleen dat onderdeel. Iemand kan beheerder van meerdere onderdelen zijn.
+- **Beheerder per onderdeel**: Communicatie – beheerder, Klantenservice – beheerder en Commerciële Zaken – beheerder
+  (met rechtenbeheer). Zo iemand beheert alleen dat onderdeel. Iemand kan beheerder van meerdere onderdelen zijn.
 - **Gebruiker**: aangesloten bij één of meer onderdelen, zonder beheer.
 
 Toegang tot Commerciële Zaken geef je via Beheer > Gebruikers en rechten (blok "Commerciële Zaken" in de kaart van de gebruiker).
@@ -42,17 +42,16 @@ Een dossier kun je **archiveren** (uit de actieve lijsten, voor iedereen met lee
 het filter "Gearchiveerd") of **verwijderen**. Verwijderen wist niets: het dossier gaat met alles wat eraan
 vastzit naar het gesloten archief (zie hieronder).
 
-**Rolsjablonen** (aanpasbaar of te vervangen):
+**Standaardrollen** (aanpasbaar; zie ook `docs/rollen.md`). Per persoon kies je één niveau en eventueel taken erbij:
 
-| Rol | Kort |
-| --- | --- |
-| Alleen lezen | Dossiers, contacten, kansen, tegenprestaties, taken, bestanden bekijken. Geen bedragen |
-| Sponsorcommissielid | Dossiers, contacten, historie, taken bewerken; contracten lezen. Geen financiën |
-| Relatiebeheerder | Relaties, kansen, tegenprestaties, bestanden beheren; contracten, bedragen, rapportages lezen |
-| Contractbeheerder | Contracten en bedragen bewerken; definitief maken is aparte bevoegdheid |
-| Financieel medewerker | Facturen, creditnota's en betalingen beheren, definitief maken, downloaden en versturen |
-| Mailingbeheerder | Mailings voorbereiden en resultaten zien, niet versturen |
-| Beheerder Commerciële Zaken | Alles, inclusief rechtenbeheer binnen de delegatiegrens |
+| Rol | Soort | Kort |
+| --- | --- | --- |
+| Commerciële Zaken – alleen lezen | niveau | Dossiers, contacten, kansen, tegenprestaties, taken, bestanden bekijken. Geen bedragen |
+| Commerciële Zaken – medewerker | niveau | Relaties, kansen, tegenprestaties, bestanden beheren; contracten, bedragen, rapportages lezen |
+| Commerciële Zaken – beheerder | niveau | Alles, inclusief rechtenbeheer binnen de delegatiegrens |
+| Commerciële Zaken – contracten | taak | Contracten en bedragen bewerken; definitief maken is aparte bevoegdheid |
+| Commerciële Zaken – financiën | taak | Facturen, creditnota's en betalingen beheren, definitief maken, downloaden en versturen |
+| Commerciële Zaken – mailings | taak | Mailings voorbereiden en resultaten zien, niet versturen |
 
 **Persoonlijke afwijkingen**: per bevoegdheid toestaan of weigeren, bovenop de rol (weigeren wint).
 **Bereik** (dossiers en taken): *eigen*, *eigen team* of *alles*; wordt op de server afgedwongen. Buiten bereik
@@ -162,22 +161,20 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
 
 - **Dossier verwijderen en het gesloten archief**: in een dossier staat onder het tabblad Overzicht de knop
   *Dossier verwijderen*, alleen voor beheerders (`companies:archive` én `deleted_archive:update`: hoofdadmin
-  en de rol Beheerder Commerciële Zaken). Je krijgt eerst de vraag of je het zeker weet,
+  en de rol Commerciële Zaken – beheerder). Je krijgt eerst de vraag of je het zeker weet,
   met een overzicht van wat er meegaat (contactpersonen, contactmomenten, taken, bestanden, contracten, kansen
   en facturen) en een optionele reden; pas na het aanvinken van "Ja, ik weet het zeker" kan het. Het dossier
   verdwijnt daarna uit alle lijsten, overzichten, rapportages, herinneringen en mailings, maar er wordt niets
-  gewist. Alleen beheerders (hoofdadmin en de rol Beheerder Commerciële Zaken, bevoegdheid
+  gewist. Alleen beheerders (hoofdadmin en de rol Commerciële Zaken – beheerder, bevoegdheid
   `deleted_archive:read`) zien het bij Toezicht > *Gesloten archief*, alleen-lezen, met wie het verwijderde,
   wanneer en waarom. Met `deleted_archive:update` kan een beheerder het dossier daar terugzetten; dan is alles
   weer zichtbaar zoals het was. Verwijderen en terugzetten staan in het CZ-logboek en in Beheer > Audit-log.
 - **Toegang en rechten**: één rollensysteem voor de hele Hub, bij Beheer > Gebruikers en rechten. Op het
-  tabblad *Rollen* maak je rollen aan, bewerk, kopieer of verwijder je ze. Een rol zegt per onderdeel wat
-  iemand mag: Communicatie en Klantenservice (geen toegang, gebruiker of beheerder) en Commerciële Zaken (geen
-  toegang, of toegang met bevoegdheden per onderdeel; snel in te vullen vanuit een voorbeeld zoals
-  "Relatiebeheerder"). Op het tabblad *Gebruikers* vink je per persoon de rollen aan; met meerdere rollen
-  tellen de rechten op. Wat voor één persoon anders moet dan de rol (bereik "alleen eigen", een extra of
+  tabblad *Rollen* staan per onderdeel de standaardrollen (niveaus en taken) en apart je eigen rollen. Op het
+  tabblad *Gebruikers* kies je per persoon per onderdeel één niveau (Geen, Medewerker, Beheerder, …) en
+  eventueel taken; met meerdere rollen tellen de rechten op. Wat voor één persoon anders moet dan de rol (bereik "alleen eigen", een extra of
   geblokkeerde bevoegdheid) stel je in onder "Uitzonderingen en bereik" in de kaart van die persoon.
-  Een hoofdadmin beheert alles; een Beheerder Commerciële Zaken wijst alleen CZ-rollen toe en maakt alleen
+  Een hoofdadmin beheert alles; een Commerciële Zaken – beheerder wijst alleen CZ-rollen toe en maakt alleen
   CZ-rollen aan met bevoegdheden die hij zelf heeft. Onderaan het tabblad Rollen staan de laatste wijzigingen.
 - **Facturatie-instellingen**: Instellingen > Facturatie: gegevens van de vereniging, btw-nummer, IBAN,
   betalingstermijn en nummering. Zolang btw-nummer, IBAN, termijn en volgnummers leeg zijn, kan geen factuur
@@ -190,7 +187,7 @@ sponsorcontract is afgesloten: Hub-gebruikers, of losse e-mailadressen van bijvo
 - Wie alleen toegang heeft tot Commerciële Zaken (geen hub-/ticketingrol) wordt na het inloggen automatisch naar
   `/commercieel` gestuurd.
 
-- **Toezicht** (alleen met rechtenbeheer: hoofdadmin en Beheerder Commerciële Zaken): onder Toezicht in het menu.
+- **Toezicht** (alleen met rechtenbeheer: hoofdadmin en Commerciële Zaken – beheerder): onder Toezicht in het menu.
   *Per persoon* toont voor iedereen de openstaande taken (met achterstallige), open kansen, tegenprestaties onder
   verantwoordelijkheid, dossiers als eigenaar en de laatste handelingen. *Logboek* toont wie wat deed (rechten, dossiers,
   contracten, facturen, mailings, bestanden, exports) met filter op persoon, soort en datum. Beide zijn bewust niet

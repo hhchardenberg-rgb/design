@@ -9,7 +9,7 @@ Zie `architectuur.md` voor het ontwerp van het hele product. Dit bestand beschri
    - Sleutelrotatie: `nieuw:<base64>,oud:<base64>`. De eerste tekent, de rest blijft alleen geldig voor controle.
    - Verandert of verliest iemand de sleutel zonder rotatie, dan zijn alle uitgegeven QR-codes en links ongeldig. Bewaar de sleutel dus ook in de wachtwoordkluis.
 3. De database-tabellen (`tickets_*`) en de nieuwe kolommen op `access_roles` komen mee met `prisma db push` in `vercel-build`. Alles is additief.
-4. Geef rollen toegang: Beheer > Gebruikers en rechten > Rollen, blok **HHC Tickets**. Alleen de hoofdadmin kan dat. Kies per rol een voorbeeld (Ticketbeheerder, Ticketuitgever, Scannercoördinator, Scanner, Financieel beheerder, Communicatiebeheerder, Bestuur/directie, Alleen lezen). De Hoofdadmin is de superadmin en mag automatisch alles.
+4. Geef mensen toegang: Beheer > Gebruikers en rechten > Gebruikers, regel **HHC Tickets**: kies een niveau (Alleen lezen, Medewerker, Beheerder) en eventueel taken (Scanner, Scannercoördinator, Ontwerp, Financiële rapportages). Zie `docs/rollen.md`. Alleen de hoofdadmin geeft HHC Tickets-rollen; een Klantenservice-beheerder geeft Klantenservice-rollen door met bevoegdheden die hij zelf heeft. De Hoofdadmin is de superadmin en mag automatisch alles.
 5. Wie meer mag dan scannen, moet tweestapsverificatie instellen (zelfde regel als Commerciële Zaken).
 
 ## Omgevingsvariabelen

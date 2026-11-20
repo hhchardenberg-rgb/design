@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Eye, EyeOff, Mail, Plus, Search, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Mail, MoreHorizontal, Plus, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { generatePassword } from "@/lib/password";
 import { CommercialAccessProvider, UserCommercialPanel } from "@/components/commercial/commercial-access";
-import { AccessTabs, RoleBadge, RolePicker, type RoleView } from "@/components/access/access-parts";
+import { AccessSummary, AccessTabs, RolePicker, groupRoles, type RoleView } from "@/components/access/access-parts";
 
 interface Manager {
   full: boolean;
@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="text-2xl font-bold">Gebruikers en rechten</h1>
             <p className="mt-1 text-muted-foreground">
-              Iedereen krijgt toegang via rollen. Een rol bepaalt per onderdeel {czOn ? "(Communicatie, Klantenservice, Commerciële Zaken)" : "(Communicatie, Klantenservice)"} wat iemand mag; met meerdere rollen tellen de rechten op.
+              Per onderdeel {czOn ? "(Communicatie, Klantenservice, Commerciële Zaken, HHC Tickets)" : "(Communicatie, Klantenservice, HHC Tickets)"} kies je één niveau, eventueel met losse taken erbij. Met meerdere rollen tellen de rechten op.
               {!manager.full && " Je kunt alleen rollen toewijzen die binnen jouw eigen beheer vallen."}
             </p>
           </div>
@@ -166,8 +166,12 @@ export default function AdminUsersPage() {
           </div>
           <select aria-label="Filter op rol" className="h-10 rounded-md border border-border bg-surface px-2 text-sm" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
             <option value="">Alle rollen</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>{r.name} ({r.userCount})</option>
+            {groupRoles(roles).map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.roles.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name} ({r.userCount})</option>
+                ))}
+              </optgroup>
             ))}
             <option value="none">Zonder rol</option>
           </select>
@@ -216,7 +220,7 @@ export default function AdminUsersPage() {
                 </div>
                 <div>
                   <Label>Rollen</Label>
-                  <p className="mb-2 text-xs text-muted-foreground">Zonder rol kan iemand wel inloggen, maar nergens bij.</p>
+                  <p className="mb-2 text-xs text-muted-foreground">Kies per onderdeel een niveau. Zonder rol kan iemand wel inloggen, maar nergens bij.</p>
                   <RolePicker roles={roles} value={newRoles} onChange={setNewRoles} idPrefix="new" />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -239,14 +243,14 @@ export default function AdminUsersPage() {
 
         {loaded && shown.length === 0 && <p className="text-sm text-muted-foreground">Geen gebruikers gevonden.</p>}
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {shown.map((u) => {
             const assigned = u.roleIds.map((id) => roleById.get(id)).filter((r): r is RoleView => !!r);
             const canEditRoles = manager.full || (!isSelf(u.id) && !u.isAdmin && roles.some((r) => r.manageable));
             return (
               <Card key={u.id}>
-                <CardContent className="flex flex-col gap-3 p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <CardContent className="flex flex-col gap-2 px-4 py-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
                     {editAccountId === u.id ? (
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <Input className="h-8 sm:w-48" value={editName} onChange={(e) => setEditName(e.target.value)} aria-label="Naam" autoFocus />
@@ -257,16 +261,30 @@ export default function AdminUsersPage() {
                         </div>
                       </div>
                     ) : (
-                      <div>
-                        <p className="flex items-center gap-2 font-medium">
+                      <div className="min-w-0 md:w-56 md:shrink-0">
+                        <p className="flex items-center gap-2 truncate font-medium">
                           {u.name}
                           {isSelf(u.id) && <span className="text-xs font-normal text-muted-foreground">(jij)</span>}
                         </p>
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                      </div>
+                    )}
+                    {editRolesId !== u.id && editAccountId !== u.id && (
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                        <AccessSummary assigned={assigned} />
+                        {canEditRoles && (
+                          <button
+                            type="button"
+                            className="ml-1 text-xs font-medium text-hhc-orange-dark hover:underline"
+                            onClick={() => { setEditRolesId(u.id); setEditRolesValue(u.roleIds); }}
+                          >
+                            rollen wijzigen
+                          </button>
+                        )}
                       </div>
                     )}
                     {manager.full && editAccountId !== u.id && (
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1 md:ml-auto">
                         {resetId === u.id ? (
                           <div className="flex items-center gap-1">
                             <Input type={showResetPassword ? "text" : "password"} placeholder="Nieuw wachtwoord" className="h-8 w-36" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} />
@@ -290,54 +308,42 @@ export default function AdminUsersPage() {
                             <Button size="sm" variant="ghost" onClick={() => { setResetId(null); setResetPassword(""); setShowResetPassword(false); }}>Annuleren</Button>
                           </div>
                         ) : (
-                          <>
-                            <Button size="sm" variant="ghost" onClick={() => { setEditAccountId(u.id); setEditName(u.name); setEditEmail(u.email); }}>Gegevens wijzigen</Button>
-                            <Button size="sm" variant="outline" onClick={() => setResetId(u.id)}>Wachtwoord resetten</Button>
-                            <Button size="sm" variant="outline" onClick={() => resendWelcome(u)} disabled={welcomeBusyId === u.id} title="Welkomstmail met instellink sturen">
-                              <Mail className="h-4 w-4" />
-                              {welcomeBusyId === u.id ? "Bezig..." : "Welkomstmail"}
-                            </Button>
-                          </>
+                          <details className="relative">
+                            <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-muted [&::-webkit-details-marker]:hidden" title="Account beheren">
+                              <MoreHorizontal className="h-4 w-4" aria-hidden /> Account
+                            </summary>
+                            <div className="absolute right-0 z-10 mt-1 flex w-52 flex-col rounded-md border border-border bg-surface p-1 shadow-lg" onClick={(e) => ((e.currentTarget.parentElement as HTMLDetailsElement).open = false)}>
+                              <button type="button" className="rounded px-2 py-1.5 text-left text-sm hover:bg-surface-muted" onClick={() => { setEditAccountId(u.id); setEditName(u.name); setEditEmail(u.email); }}>Gegevens wijzigen</button>
+                              <button type="button" className="rounded px-2 py-1.5 text-left text-sm hover:bg-surface-muted" onClick={() => setResetId(u.id)}>Wachtwoord resetten</button>
+                              <button type="button" className="flex items-center gap-1.5 rounded px-2 py-1.5 text-left text-sm hover:bg-surface-muted disabled:opacity-50" onClick={() => resendWelcome(u)} disabled={welcomeBusyId === u.id}>
+                                <Mail className="h-3.5 w-3.5" /> {welcomeBusyId === u.id ? "Bezig..." : "Welkomstmail sturen"}
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded px-2 py-1.5 text-left text-sm text-destructive hover:bg-surface-muted disabled:opacity-50"
+                                disabled={isSelf(u.id) || busy}
+                                onClick={() => confirm(`${u.name} verwijderen? Dit kan niet ongedaan worden gemaakt.`) && run(() => call(`/api/admin/users/${u.id}`, "DELETE"))}
+                              >
+                                Verwijderen
+                              </button>
+                            </div>
+                          </details>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={isSelf(u.id) || busy}
-                          onClick={() => confirm(`${u.name} verwijderen? Dit kan niet ongedaan worden gemaakt.`) && run(() => call(`/api/admin/users/${u.id}`, "DELETE"))}
-                        >
-                          Verwijderen
-                        </Button>
                       </div>
                     )}
                   </div>
 
-                  <div className="border-t border-border pt-3">
-                    {editRolesId === u.id ? (
-                      <div className="flex flex-col gap-3">
-                        <RolePicker roles={roles} value={editRolesValue} onChange={setEditRolesValue} idPrefix={u.id} />
-                        <div className="flex gap-2">
-                          <Button size="sm" disabled={busy} onClick={() => run(() => call(`/api/admin/users/${u.id}`, "PATCH", { roleIds: editRolesValue }), () => setEditRolesId(null))}>
-                            {busy ? "Opslaan…" : "Rollen opslaan"}
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditRolesId(null)}>Annuleren</Button>
-                        </div>
+                  {editRolesId === u.id && (
+                    <div className="flex flex-col gap-3 border-t border-border pt-3">
+                      <RolePicker roles={roles} value={editRolesValue} onChange={setEditRolesValue} idPrefix={u.id} />
+                      <div className="flex gap-2">
+                        <Button size="sm" disabled={busy} onClick={() => run(() => call(`/api/admin/users/${u.id}`, "PATCH", { roleIds: editRolesValue }), () => setEditRolesId(null))}>
+                          {busy ? "Opslaan…" : "Rollen opslaan"}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditRolesId(null)}>Annuleren</Button>
                       </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {assigned.length === 0 && <Badge variant="outline">Geen rollen: nergens toegang</Badge>}
-                        {assigned.map((r) => <RoleBadge key={r.id} role={r} />)}
-                        {canEditRoles && (
-                          <button
-                            type="button"
-                            className="ml-1 text-xs font-medium text-hhc-orange-dark hover:underline"
-                            onClick={() => { setEditRolesId(u.id); setEditRolesValue(u.roleIds); }}
-                          >
-                            rollen wijzigen
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   {czOn && !u.isAdmin && <UserCommercialPanel userId={u.id} isSelf={isSelf(u.id)} />}
                 </CardContent>
               </Card>

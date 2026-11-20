@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { effectiveRoles } from "@/lib/roles";
 import { findInconsistencies, isPermission, type Permission } from "@/lib/commercial/permissions";
 import { ROLE_TEMPLATES } from "@/lib/commercial/role-templates";
-import { STANDARD_ROLES } from "./presets";
+import { LEGACY_SOURCES, RETIRED_COMMERCIAL, STANDARD_ROLES, matchesStandard } from "./presets";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { ticketPermissionIssues, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
 import {
@@ -129,6 +129,8 @@ const PRESETS: { name: string; description: string; isSystem?: boolean; isAdmin?
   { name: "Klantenservice", description: "Toegang tot Klantenservice met handleidingen en procedures.", ticketingLevel: "USER" },
   { name: "Klantenservicebeheerder", description: "Beheert de inhoud en de gebruikers van Klantenservice.", ticketingLevel: "ADMIN" },
 ];
+// Let op: deze oude namen gebruikt alleen de allereerste overzetting (lege database); daarna
+// hernoemt migrateToCompactRoles ze naar de standaardrollen uit presets.ts.
 
 async function freeName(tx: Tx, wanted: string): Promise<string> {
   let name = wanted.trim().slice(0, 80) || "Rol";
@@ -179,10 +181,10 @@ async function freeKey(tx: Tx, base: string): Promise<string> {
 }
 
 /**
- * Zet de standaardrollen voor Klantenservice en HHC Tickets (src/lib/access/presets.ts)
- * één keer in de database. Een standaardrol die al eens is aangemaakt (en misschien
- * bewust verwijderd), komt niet terug; bestaat er al een rol met dezelfde naam, dan
- * blijft die ongemoeid. Er worden nooit rollen aan gebruikers gegeven.
+ * Zet de standaardrollen (src/lib/access/presets.ts) één keer in de database. Een
+ * standaardrol die al eens is aangemaakt (en misschien bewust verwijderd), komt niet
+ * terug; bestaat er al een rol met dezelfde naam, dan blijft die ongemoeid. Er worden
+ * nooit rollen aan gebruikers gegeven.
  */
 async function ensureStandardRoles(tx: Tx): Promise<number> {
   const done = new Set((await tx.accessRolePreset.findMany({ select: { key: true } })).map((p) => p.key));
@@ -190,25 +192,132 @@ async function ensureStandardRoles(tx: Tx): Promise<number> {
   for (const p of STANDARD_ROLES) {
     if (done.has(p.key)) continue;
     const clash = await tx.accessRole.findFirst({ where: { OR: [{ name: p.name }, { presetKey: p.key }] }, select: { id: true } });
-    const role = clash
-      ? null
-      : await tx.accessRole.create({
-          data: {
-            name: p.name,
-            description: p.description,
-            presetKey: p.key,
-            ticketingLevel: p.ticketingLevel,
-            ticketsAccess: p.tickets !== null,
-            ticketsPermissions: p.tickets ?? [],
-          },
-        });
+    let role: { id: string } | null = null;
+    if (!clash) {
+      const cr = p.commercial
+        ? await tx.commercialRole.create({ data: { key: await freeKey(tx, `std-${p.key}`), name: p.name, description: p.description, permissions: p.commercial } })
+        : null;
+      role = await tx.accessRole.create({
+        data: {
+          name: p.name,
+          description: p.description,
+          presetKey: p.key,
+          hubLevel: p.hubLevel,
+          ticketingLevel: p.ticketingLevel,
+          commercialRoleId: cr?.id ?? null,
+          ticketsAccess: p.tickets !== null,
+          ticketsPermissions: p.tickets ?? [],
+        },
+      });
+    }
     await tx.accessRolePreset.create({ data: { key: p.key, roleId: role?.id ?? clash?.id ?? null } });
     if (role) {
       created++;
-      await audit(tx, null, { action: "access.role.create", entity: "role", entityId: role.id, after: { name: p.name, preset: p.key, ticketingLevel: p.ticketingLevel, tickets: p.tickets } });
+      await audit(tx, null, { action: "access.role.create", entity: "role", entityId: role.id, after: { name: p.name, preset: p.key } });
     }
   }
   return created;
+}
+
+const COMPACT_MARKER = "_migratie-compacte-rollen";
+
+/**
+ * Eenmalig: de bestaande rollen overzetten naar de compacte indeling (zie presets.ts).
+ * Niemand krijgt meer of minder rechten:
+ *  - een standaardrol neemt de bestaande rol over waar hij uit voortkomt (nieuwe naam en
+ *    omschrijving, toewijzingen blijven staan);
+ *  - heeft iemand die rol, dan blijven de rechten precies gelijk (ook als ze afwijken van de
+ *    standaard); heeft niemand hem, dan krijgt hij de standaardrechten;
+ *  - oude standaardrollen zonder plek vervallen als niemand ze heeft, anders blijven ze als eigen rol;
+ *  - eigen rollen blijven ongemoeid.
+ * Alles komt in het logboek.
+ */
+export async function migrateToCompactRoles(tx: Tx): Promise<{ adopted: number; reset: number; removed: number; kept: number } | null> {
+  if (await tx.accessRolePreset.findUnique({ where: { key: COMPACT_MARKER } })) return null;
+  const done = new Set((await tx.accessRolePreset.findMany({ select: { key: true } })).map((p) => p.key));
+  const all = await tx.accessRole.findMany({ include: { ...ROLE_INCLUDE, _count: { select: { users: true } } }, orderBy: { createdAt: "asc" } });
+  const taken = new Set<string>();
+  const stats = { adopted: 0, reset: 0, removed: 0, kept: 0 };
+  const usable = (r: (typeof all)[number]) => !r.isAdmin && !taken.has(r.id);
+
+  for (const s of STANDARD_ROLES) {
+    const src = LEGACY_SOURCES[s.key];
+    let found: (typeof all)[number] | undefined;
+    if (src && "presetKey" in src) found = all.find((r) => usable(r) && r.presetKey === src.presetKey);
+    else if (src && "commercialKey" in src) found = all.find((r) => usable(r) && r.commercialRole?.key === src.commercialKey);
+    else if (src && "exact" in src) {
+      const exact = all.filter(
+        (r) => usable(r) && !r.presetKey && !r.commercialRoleId && !r.ticketsAccess && r.hubLevel === src.exact.hubLevel && r.ticketingLevel === src.exact.ticketingLevel,
+      );
+      found = src.preferName.map((n) => exact.find((r) => r.name === n)).find(Boolean) ?? exact[0];
+    }
+    // Al eerder (door een vorige versie) als deze standaardrol aangemaakt?
+    found ??= all.find((r) => usable(r) && r.presetKey === s.key);
+    if (!found) continue;
+    taken.add(found.id);
+
+    const before = grantOf(found);
+    const held = found._count.users > 0;
+    const reset = !held && !matchesStandard(s, { hubLevel: before.hubLevel, ticketingLevel: before.ticketingLevel, commercial: before.commercial, tickets: before.tickets });
+    const name = found.name === s.name ? s.name : await freeName(tx, s.name);
+    let commercialRoleId = found.commercialRoleId;
+    if (reset) {
+      if (s.commercial && found.commercialRole) await tx.commercialRole.update({ where: { id: found.commercialRole.id }, data: { permissions: s.commercial } });
+      else if (s.commercial) commercialRoleId = (await tx.commercialRole.create({ data: { key: await freeKey(tx, `std-${s.key}`), name: s.name, permissions: s.commercial } })).id;
+      else commercialRoleId = null;
+    }
+    if (found.commercialRole) await tx.commercialRole.update({ where: { id: found.commercialRole.id }, data: { name } });
+    await tx.accessRole.update({
+      where: { id: found.id },
+      data: {
+        name,
+        description: s.description,
+        presetKey: s.key,
+        ...(reset
+          ? { hubLevel: s.hubLevel, ticketingLevel: s.ticketingLevel, commercialRoleId, ticketsAccess: s.tickets !== null, ticketsPermissions: s.tickets ?? [] }
+          : {}),
+      },
+    });
+    if (reset && found.commercialRole && !s.commercial) await dropCommercialRole(tx, found.commercialRole.id);
+    if (!done.has(s.key)) await tx.accessRolePreset.create({ data: { key: s.key, roleId: found.id } });
+    else await tx.accessRolePreset.update({ where: { key: s.key }, data: { roleId: found.id } });
+    stats.adopted++;
+    if (reset) stats.reset++;
+    await audit(tx, null, {
+      action: "access.role.update",
+      entity: "role",
+      entityId: found.id,
+      before: { name: found.name, ...before },
+      after: { name, preset: s.key, rights: reset ? "standaard (niemand had deze rol)" : "ongewijzigd" },
+    });
+  }
+
+  // Oude standaardrollen zonder plek in de nieuwe indeling.
+  for (const r of all) {
+    if (taken.has(r.id) || r.isAdmin) continue;
+    const key = r.commercialRole?.key ?? "";
+    const retiredName = r.commercialRole?.isSystem ? RETIRED_COMMERCIAL[key] : undefined;
+    const isBasis = key.startsWith("cz-basistoegang") && (r.commercialRole?.permissions.length ?? 0) === 0 && r.hubLevel === "NONE" && r.ticketingLevel === "NONE" && !r.ticketsAccess;
+    const oldPreset = !!r.presetKey;
+    if (!retiredName && !isBasis && !oldPreset) continue; // eigen rol
+    if (r._count.users === 0) {
+      await tx.accessRole.delete({ where: { id: r.id } });
+      stats.removed++;
+      await audit(tx, null, { action: "access.role.delete", entity: "role", entityId: r.id, before: { name: r.name, ...grantOf(r), users: 0 } });
+    } else {
+      stats.kept++;
+      const name = retiredName && r.name !== retiredName ? await freeName(tx, retiredName) : r.name;
+      await tx.accessRole.update({ where: { id: r.id }, data: { name, presetKey: null } });
+      if (name !== r.name) {
+        if (r.commercialRole) await tx.commercialRole.update({ where: { id: r.commercialRole.id }, data: { name } });
+        await audit(tx, null, { action: "access.role.update", entity: "role", entityId: r.id, before: { name: r.name }, after: { name, rights: "ongewijzigd" } });
+      }
+    }
+  }
+
+  await tx.accessRolePreset.create({ data: { key: COMPACT_MARKER, roleId: null } });
+  await audit(tx, null, { action: "access.compacted", entity: "role", after: stats });
+  return stats;
 }
 
 /** Wat de oude velden over deze gebruiker zeggen. */
@@ -246,11 +355,12 @@ export async function reconcileAccess(): Promise<{ firstRun: boolean; rebuilt: n
       }
       for (const cr of await tx.commercialRole.findMany({ orderBy: [{ isSystem: "desc" }, { createdAt: "asc" }] })) await roleForCommercialRole(tx, cr);
     }
-    await ensureStandardRoles(tx);
-
     const users = await tx.user.findMany({ select: USER_SELECT });
     let rebuilt = 0;
     for (const u of users) if (await reconcileUserRow(tx, u)) rebuilt++;
+    // Pas na het toewijzen: het overzetten naar de compacte indeling kijkt wie welke rol heeft.
+    await migrateToCompactRoles(tx);
+    await ensureStandardRoles(tx);
     if (isFirst || rebuilt > 0) {
       await audit(tx, null, { action: isFirst ? "access.migrated" : "access.reconciled", entity: "role", after: { users: rebuilt } });
     }
