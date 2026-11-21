@@ -80,3 +80,13 @@ test("vergelijking met de oude velden", () => {
   assert.equal(legacyCommercialRoleId([{ commercialRoleId: "a" }, { commercialRoleId: null }]), "a");
   assert.equal(legacyCommercialRoleId([{ commercialRoleId: "a" }, { commercialRoleId: "b" }]), null);
 });
+
+test("klantenservice-beheerder geeft alleen HHC Tickets-bevoegdheden door die hij zelf heeft", () => {
+  const ks = scope({ ticketingAdmin: true, ticketsGrantable: new Set(["support:search", "tickets:read", "tickets:personal", "tickets:resend"]) });
+  const role = (tickets: string[], ticketingLevel: "NONE" | "USER" = "USER") => ({ isAdmin: false, hubLevel: "NONE" as const, ticketingLevel, commercial: null, tickets });
+  assert.ok(roleWithinScope(ks, role(["support:search", "tickets:read"])).ok);
+  assert.ok(!roleWithinScope(ks, role(["tickets:block", "tickets:read"])).ok);
+  // Pure HHC Tickets-rollen (zonder Klantenservice) blijven voor de hoofdadmin.
+  assert.ok(!roleWithinScope(ks, role(["tickets:read"], "NONE")).ok);
+  assert.ok(!roleWithinScope(scope({ ticketsGrantable: new Set(["tickets:read"]) }), role(["tickets:read"])).ok);
+});

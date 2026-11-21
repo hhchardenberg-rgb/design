@@ -2,7 +2,10 @@
 
 import { Checkbox, Label } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ALL_TICKET_PERMISSIONS, TICKET_PERMISSIONS, TICKET_ROLE_TEMPLATES, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
+import { ALL_TICKET_PERMISSIONS, TICKET_PERMISSIONS, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
+import { STANDARD_ROLES } from "@/lib/access/presets";
+
+const QUICK = STANDARD_ROLES.filter((r) => r.tickets);
 
 const GROUPS = ["Overzicht", "Tickets", "Klantenservice", "Scannen", "Inrichting", "Ontwerp", "Rapportage", "Beheer"] as const;
 
@@ -64,12 +67,12 @@ export function TicketsRights({
               value=""
               disabled={!canGrant}
               onChange={(e) => {
-                const t = TICKET_ROLE_TEMPLATES.find((x) => x.key === e.target.value);
-                if (t) onChange(true, new Set(t.permissions));
+                const t = QUICK.find((x) => x.key === e.target.value);
+                if (t?.tickets) onChange(true, new Set(t.tickets));
               }}
             >
               <option value="">Kies een rol…</option>
-              {TICKET_ROLE_TEMPLATES.map((t) => (
+              {QUICK.map((t) => (
                 <option key={t.key} value={t.key}>
                   {t.name}
                 </option>

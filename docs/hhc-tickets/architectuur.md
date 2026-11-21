@@ -78,7 +78,7 @@ Ticketstatussen bij vivenu: `VALID`, `INVALID`, `RESERVED`, `DETAILSREQUIRED`, `
 
 ## 5. Rollen en rechten
 
-Rechten zijn fijnmazig en volgen het patroon van Commerciële Zaken (`gebied:actie`). De lijst staat in `src/lib/tickets/permissions.ts`. Een rol in Beheer > Gebruikers en rechten krijgt een blok "HHC Tickets" met een sjabloonkeuze:
+Rechten zijn fijnmazig en volgen het patroon van Commerciële Zaken (`gebied:actie`). De lijst staat in `src/lib/tickets/permissions.ts`. Een rol in Beheer > Gebruikers en rechten krijgt een blok "HHC Tickets" met een sjabloonkeuze. Sinds de compacte rolindeling zijn de standaardrollen HHC Tickets – alleen lezen / medewerker / beheerder plus de taken scanner, scannercoördinator, ontwerp en financiële rapportages (zie `docs/rollen.md`); de tabel hieronder beschrijft de onderliggende sjablonen:
 
 | Sjabloon | Kern |
 |---|---|
@@ -92,7 +92,7 @@ Rechten zijn fijnmazig en volgen het patroon van Commerciële Zaken (`gebied:act
 | Bestuur/directie | Dashboard en rapportages, alleen lezen. |
 | Alleen lezen | Dashboard, wedstrijden en tickettypes bekijken, zonder persoonsgegevens. |
 
-Regels: alleen de hoofdadmin kent HHC Tickets-rechten toe (de delegatie volgt later, net als bij CZ). Een scanner heeft technisch geen enkel recht om uit te geven, te blokkeren, te exporteren, prijzen te wijzigen, omzet te zien of rechten te wijzigen. Bulkuitgifte boven de drempel (standaard 50, instelbaar) vraagt goedkeuring van iemand met `bulk:approve`, en dat mag niet de aanvrager zelf zijn.
+Regels: alleen de hoofdadmin kent HHC Tickets-rechten toe; een Klantenservice-beheerder mag Klantenservice-rollen (met Klantenservice-toegang) toewijzen met alleen bevoegdheden die hij zelf heeft. Een scanner heeft technisch geen enkel recht om uit te geven, te blokkeren, te exporteren, prijzen te wijzigen, omzet te zien of rechten te wijzigen. Bulkuitgifte boven de drempel (standaard 50, instelbaar) vraagt goedkeuring van iemand met `bulk:approve`, en dat mag niet de aanvrager zelf zijn.
 
 ## 6. Datamodel (tabellen `tickets_*`)
 

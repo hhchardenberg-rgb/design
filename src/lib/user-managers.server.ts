@@ -1,4 +1,5 @@
 import { ApiError, requireUser } from "@/lib/api-guards";
+import { prisma } from "@/lib/prisma";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { hasRole, isSectionAdmin, type AppRole } from "@/lib/roles";
@@ -27,6 +28,12 @@ export async function managerFor(user: { id: string; name?: string | null; email
   const access = !full && isCommercialEnabled() ? await loadCommercialAccess(user.id) : null;
   const commercial = !!access?.can("rights:manage_rights");
   if (!full && sections.length === 0 && !commercial) return null;
+  // Klantenservice-beheerders geven alleen HHC Tickets-bevoegdheden door die ze zelf hebben.
+  const ticketsGrantable = new Set<string>();
+  if (!full && sections.includes("ticketing")) {
+    const rows = await prisma.userAccessRole.findMany({ where: { userId: user.id, role: { ticketsAccess: true } }, select: { role: { select: { ticketsPermissions: true } } } });
+    for (const r of rows) for (const p of r.role.ticketsPermissions) ticketsGrantable.add(p);
+  }
   const scope: ManagerScope = {
     userId: user.id,
     full,
@@ -34,6 +41,7 @@ export async function managerFor(user: { id: string; name?: string | null; email
     ticketingAdmin: full || sections.includes("ticketing"),
     commercialManage: full || commercial,
     commercialGrantable: new Set(commercial && access ? [...access.allowed] : []),
+    ticketsGrantable,
   };
   return { full, sections, commercial, scope, actor: { scope, label: user.name || user.email || user.id } };
 }
