@@ -117,7 +117,7 @@ export default function AdminTicketingExcelPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           Klantenservice
         </Link>
-        <h1 className="text-2xl font-bold">Excel-sjablonen</h1>
+        <h1 className="page-title">Excel-sjablonen</h1>
         <p className="mt-1 text-muted-foreground">
           Standaard Excel-bestanden om te downloaden en te gebruiken bij het ticketingsysteem, zichtbaar voor
           iedereen met de rol Klantenservice.

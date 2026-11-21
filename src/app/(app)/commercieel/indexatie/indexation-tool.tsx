@@ -52,7 +52,7 @@ export function IndexationTool({ canApply }: { canApply: boolean }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Indexatie</h1>
+        <h1 className="page-title">Indexatie</h1>
         <p className="text-sm text-muted-foreground">Pas een percentage toe op de concept-verlengingen van een seizoen. De basis is het bedrag van het voorgaande contract; een verlenging wordt maar één keer geïndexeerd. Maak eerst de verlengingen aan in de dossiers (tab Contracten, Verlengen).</p>
       </div>
       <Card>

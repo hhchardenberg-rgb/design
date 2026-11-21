@@ -101,7 +101,7 @@ export default function AdminTicketingHandleidingenPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           Klantenservice
         </Link>
-        <h1 className="text-2xl font-bold">Handleidingen</h1>
+        <h1 className="page-title">Handleidingen</h1>
         <p className="mt-1 text-muted-foreground">
           Handleidingen en procedures voor het ticketingsysteem — zichtbaar voor iedereen met de rol Klantenservice.
         </p>

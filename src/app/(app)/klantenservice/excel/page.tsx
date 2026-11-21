@@ -21,7 +21,7 @@ export default async function TicketingExcelPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold">Excel-sjablonen</h1>
+        <h1 className="page-title">Excel-sjablonen</h1>
         <p className="mt-1 text-muted-foreground">Standaard Excel-bestanden om te gebruiken bij het ticketingsysteem.</p>
       </div>
 

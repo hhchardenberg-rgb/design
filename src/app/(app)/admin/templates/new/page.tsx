@@ -127,7 +127,7 @@ function NewTemplateForm() {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">{templateId ? "Nieuwe versie uploaden" : "Nieuwe template uploaden"}</h1>
+        <h1 className="page-title">{templateId ? "Nieuwe versie uploaden" : "Nieuwe template uploaden"}</h1>
         <p className="mt-1 text-muted-foreground">
           Upload een .psd-bestand met de naamgevingsconventie (TEXT:/IMAGE:/COLOR:/VISIBILITY:). Bekijk de{" "}
           <a href="/docs/psd-conventions" className="text-hhc-orange-dark hover:underline">

@@ -1,14 +1,10 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+// Panelen in de Hub: wit vlak met een haarlijn, geen schaduw (richting "Dug-out").
+// Schaduw is voorbehouden aan wat echt zweeft: menu's, dialogen en meldingen.
 export const Card = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "rounded-lg border border-border bg-surface shadow-sm",
-      className
-    )}
-    {...props}
-  />
+  <div className={cn("rounded-xl border border-border bg-surface", className)} {...props} />
 );
 
 export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
@@ -16,7 +12,7 @@ export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDiv
 );
 
 export const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={cn("text-base font-semibold leading-tight", className)} {...props} />
+  <h3 className={cn("text-[1.0625rem] font-bold leading-tight", className)} {...props} />
 );
 
 export const CardDescription = ({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (

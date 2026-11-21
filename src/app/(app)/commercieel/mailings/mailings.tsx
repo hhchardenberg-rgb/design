@@ -110,7 +110,7 @@ export function Mailings({ canCreate, canUpdate, canSend }: { canCreate: boolean
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Mailings</h1>
+        <h1 className="page-title">Mailings</h1>
         <p className="text-sm text-muted-foreground">Verstuur een bericht aan sponsorcontacten binnen jouw bereik. Elke mail bevat een afmeldlink; afgemelde adressen, ongeldige adressen en dubbelen worden overgeslagen. Gebruik {"{{naam}}"} voor de naam van het contact.</p>
       </div>
       <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">

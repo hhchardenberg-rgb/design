@@ -78,7 +78,7 @@ export function ImportWizard() {
     <div className="space-y-5">
       <Link href="/commercieel/sponsoren" className="inline-flex items-center gap-1 text-sm text-hhc-orange-dark"><ArrowLeft className="h-4 w-4" /> Alle sponsoren</Link>
       <div>
-        <h1 className="text-2xl font-bold">Sponsoren importeren</h1>
+        <h1 className="page-title">Sponsoren importeren</h1>
         <p className="text-sm text-muted-foreground">Kies een CSV-bestand (Excel: opslaan als CSV). Je koppelt de kolommen, controleert eerst een proefrun en importeert daarna. Bestaande dossiers worden nooit overschreven; dubbelen worden overgeslagen. Maximaal 500 rijen per keer.</p>
       </div>
       <Card>

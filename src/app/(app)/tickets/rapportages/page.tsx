@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const Stat = ({ label, value }: { label: string; value: number | string }) => (
   <Card>
     <CardContent className="p-4">
-      <p className="text-2xl font-bold tabular-nums">{value}</p>
+      <p className="stat-number mt-1 text-[1.875rem]">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </CardContent>
   </Card>
@@ -37,7 +37,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Rapportages</h1>
+        <h1 className="page-title">Rapportages</h1>
         <p className="mt-1 text-sm text-muted-foreground">Toegang per wedstrijd. Zonder persoonsgegevens. Omzet staat er niet in: HHC-tickets zijn gratis en betaalgegevens van Fullhouse worden niet bewaard.</p>
       </div>
       <form className="flex flex-wrap gap-2 text-sm">

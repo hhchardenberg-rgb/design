@@ -28,7 +28,7 @@ export default async function CommercialHome() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Commerciële Zaken</h1>
+        <h1 className="page-title">Commerciële Zaken</h1>
         <p className="mt-1 text-sm text-muted-foreground">Sponsorbeheer van HHC Hardenberg. Kies hieronder waar je mee aan de slag wilt, of gebruik het menu links.</p>
       </div>
 
@@ -40,7 +40,7 @@ export default async function CommercialHome() {
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Mijn open taken</CardTitle></CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.tasks.total}</span>{dash.overdueTasks ? <span className="ml-2 text-destructive">{dash.overdueTasks} achterstallig</span> : null}</p>
+                  <p><span className="stat-number text-[1.875rem]">{dash.tasks.total}</span>{dash.overdueTasks ? <span className="ml-2 text-destructive">{dash.overdueTasks} achterstallig</span> : null}</p>
                   <ul className="divide-y divide-border">
                     {dash.tasks.rows.map((t) => <li key={t.id} className="py-1.5"><span className="font-medium">{t.title}</span><span className="block text-xs text-muted-foreground">{[t.companyName, t.dueAt && formatDate(t.dueAt)].filter(Boolean).join(" · ")}</span></li>)}
                   </ul>
@@ -52,7 +52,7 @@ export default async function CommercialHome() {
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Aflopende contracten</CardTitle></CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.contracts.total}</span><span className="ml-2 text-muted-foreground">binnen 90 dagen</span></p>
+                  <p><span className="stat-number text-[1.875rem]">{dash.contracts.total}</span><span className="ml-2 text-muted-foreground">binnen 90 dagen</span></p>
                   <ul className="divide-y divide-border">
                     {dash.contracts.rows.map((c) => <li key={c.id} className="py-1.5"><Link className="font-medium underline" href={`/commercieel/sponsoren/${c.companyId}`}>{c.companyName}</Link><span className="block text-xs text-muted-foreground">{c.seasonName} · einde {formatDate(c.endsOn)}{c.noticeUntil ? ` · opzeggen vóór ${formatDate(c.noticeUntil)}` : ""}</span></li>)}
                   </ul>
@@ -64,7 +64,7 @@ export default async function CommercialHome() {
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Openstaande facturen</CardTitle></CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.invoices.count}</span>{dash.invoices.outstandingCents != null ? <span className="ml-2 text-muted-foreground">{formatEuro(dash.invoices.outstandingCents)} te ontvangen</span> : null}</p>
+                  <p><span className="stat-number text-[1.875rem]">{dash.invoices.count}</span>{dash.invoices.outstandingCents != null ? <span className="ml-2 text-muted-foreground">{formatEuro(dash.invoices.outstandingCents)} te ontvangen</span> : null}</p>
                   <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/facturen">Naar facturen</Link>
                 </CardContent>
               </Card>
@@ -73,7 +73,7 @@ export default async function CommercialHome() {
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Pijplijn</CardTitle></CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.pipeline.count}</span><span className="ml-2 text-muted-foreground">open kansen</span></p>
+                  <p><span className="stat-number text-[1.875rem]">{dash.pipeline.count}</span><span className="ml-2 text-muted-foreground">open kansen</span></p>
                   <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/pijplijn">Naar de pijplijn</Link>
                 </CardContent>
               </Card>
@@ -82,7 +82,7 @@ export default async function CommercialHome() {
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Contactmoment nodig</CardTitle></CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.contactGaps.total}</span><span className="ml-2 text-muted-foreground">van jouw sponsoren al lang niet gesproken</span></p>
+                  <p><span className="stat-number text-[1.875rem]">{dash.contactGaps.total}</span><span className="ml-2 text-muted-foreground">van jouw sponsoren al lang niet gesproken</span></p>
                   <ul className="divide-y divide-border">
                     {dash.contactGaps.rows.map((g) => <li key={g.companyId} className="py-1.5"><Link className="font-medium underline" href={`/commercieel/sponsoren/${g.companyId}`}>{g.companyName}</Link><span className="block text-xs text-muted-foreground">{g.lastContactOn ? `laatst gesproken ${formatDate(g.lastContactOn)} (${g.daysSince} dagen)` : "nog geen contactmoment vastgelegd"}</span></li>)}
                   </ul>
@@ -94,7 +94,7 @@ export default async function CommercialHome() {
               <Card className="flex h-full flex-col">
                 <CardHeader><CardTitle className="text-base">Tegenprestaties</CardTitle></CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.counterparts.open}</span><span className="ml-2 text-muted-foreground">te leveren</span>{dash.counterparts.overdue > 0 ? <span className="ml-2 text-destructive">{dash.counterparts.overdue} te laat</span> : null}</p>
+                  <p><span className="stat-number text-[1.875rem]">{dash.counterparts.open}</span><span className="ml-2 text-muted-foreground">te leveren</span>{dash.counterparts.overdue > 0 ? <span className="ml-2 text-destructive">{dash.counterparts.overdue} te laat</span> : null}</p>
                   <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/tegenprestaties">Naar de planning</Link>
                 </CardContent>
               </Card>

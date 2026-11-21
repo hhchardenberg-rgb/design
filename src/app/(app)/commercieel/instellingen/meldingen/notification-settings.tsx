@@ -47,7 +47,7 @@ export function NotificationSettings({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Meldingen</h1>
+        <h1 className="page-title">Meldingen</h1>
         <p className="mt-1 text-muted-foreground">Wie een e-mail krijgt zodra er een nieuw sponsorcontract is afgesloten.</p>
       </div>
       <Card>

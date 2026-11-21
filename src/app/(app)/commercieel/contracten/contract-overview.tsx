@@ -46,7 +46,7 @@ export function ContractOverview() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Contracten</h1>
+        <h1 className="page-title">Contracten</h1>
         <p className="text-sm text-muted-foreground">Alle sponsorcontracten binnen jouw bereik. Een contract maak je aan in het dossier van de sponsor.</p>
       </div>
       <div className="flex flex-wrap items-end gap-3 text-sm">

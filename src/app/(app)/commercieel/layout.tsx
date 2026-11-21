@@ -4,9 +4,6 @@ import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
-import { visibleNavGroups } from "@/lib/commercial/navigation";
-import { CommercialSidebar } from "@/components/commercial/commercial-sidebar";
-import { isNewsEnabled } from "@/lib/news.server";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +31,6 @@ export default async function CommercialLayout({ children }: { children: React.R
       </div>
     );
   }
-  return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
-      {/* Staat het nieuws uit, dan houden alleen de beheerders de link om het weer aan te zetten. */}
-      <CommercialSidebar groups={visibleNavGroups(access.can, { news: (await isNewsEnabled("commercial")) || access.can("settings:manage_settings") })} />
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
-  );
+  // Het menu van Commerciële Zaken staat in de zijbalk van de Hub (zie app-shell.tsx).
+  return <>{children}</>;
 }

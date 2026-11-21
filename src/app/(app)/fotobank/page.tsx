@@ -13,7 +13,7 @@ export default async function FotobankPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold">Fotobank</h1>
+        <h1 className="page-title">Fotobank</h1>
         <p className="mt-1 text-muted-foreground">Standaardfoto&apos;s om te gebruiken in je content. Klik op downloaden om de foto op te slaan.</p>
       </div>
 

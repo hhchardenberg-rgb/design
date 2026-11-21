@@ -25,7 +25,7 @@ export default async function SeasonCardsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Seizoenskaarten</h1>
+        <h1 className="page-title">Seizoenskaarten</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Interne seizoenskaarten gelden voor een seizoen, eventueel beperkt tot thuiswedstrijden, competities en een vak. Alleen seizoenskaarten kunnen opnieuw naar binnen, en alleen bij wedstrijden waar herintrede aan staat ({reentryEvents} komende).
         </p>

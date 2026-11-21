@@ -141,7 +141,7 @@ export function SponsorList({ canCreate, canExportContacts = false }: { canCreat
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Sponsoren</h1>
+          <h1 className="page-title">Sponsoren</h1>
           <p className="text-sm text-muted-foreground">Eén dossier per bedrijf: potentiële, actieve en voormalige sponsoren.</p>
         </div>
         {canCreate && (

@@ -34,7 +34,7 @@ export default async function TemplateGalleryPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold">Wat wil je maken?</h1>
+        <h1 className="page-title">Wat wil je maken?</h1>
         <p className="mt-1 text-muted-foreground">
           Kies een template. Je vult daarna alleen de gegevens in — de vormgeving staat al vast.
         </p>

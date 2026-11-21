@@ -111,7 +111,7 @@ export function BackupsPanel() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Back-ups</h1>
+          <h1 className="page-title">Back-ups</h1>
           <p className="mt-1 max-w-2xl text-muted-foreground">
             Elke nacht (rond 03:00) wordt een volledige kopie van alle gegevens gemaakt, versleuteld en buiten de database bewaard.
             Bewaard worden: alles van de laatste 14 dagen, één per week voor 8 weken en één per maand voor 12 maanden.

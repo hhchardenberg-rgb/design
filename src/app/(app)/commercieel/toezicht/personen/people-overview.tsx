@@ -41,7 +41,7 @@ export function PeopleOverview() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Per persoon</h1>
+        <h1 className="page-title">Per persoon</h1>
         <p className="text-sm text-muted-foreground">Wat per persoon openstaat: taken, kansen, tegenprestaties en dossiers. Als beheerder zie je dit voor iedereen, ongeacht het eigen bereik. Bedragen staan hier niet.</p>
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

@@ -10,7 +10,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
   const email = e && t ? readUnsubscribeParams(e, t) : null;
   return (
     <main className="mx-auto max-w-md px-4 py-16">
-      <h1 className="text-2xl font-bold">Afmelden voor mailings</h1>
+      <h1 className="page-title">Afmelden voor mailings</h1>
       {email && e && t ? (
         <UnsubscribeForm e={e} t={t} email={email} />
       ) : (

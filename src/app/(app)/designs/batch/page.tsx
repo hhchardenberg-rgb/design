@@ -52,7 +52,7 @@ export default async function BatchPage() {
         <Link href="/designs" className="text-xs text-muted-foreground hover:underline">
           &larr; Mijn ontwerpen
         </Link>
-        <h1 className="mt-1 text-2xl font-bold">Meerdere afbeeldingen tegelijk</h1>
+        <h1 className="page-title mt-1">Meerdere afbeeldingen tegelijk</h1>
         <p className="mt-1 text-muted-foreground">
           Kies een template en een reeks wedstrijden of spelers. Je krijgt alles in één ZIP, en elk ontwerp staat daarna ook bij Mijn ontwerpen.
         </p>

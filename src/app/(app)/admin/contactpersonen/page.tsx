@@ -157,7 +157,7 @@ export default function AdminContactpersonenPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Contactpersonen</h1>
+        <h1 className="page-title">Contactpersonen</h1>
         <p className="mt-1 text-muted-foreground">Wie doet wat binnen HHC Hardenberg en hoe bereik je elkaar?</p>
       </div>
 

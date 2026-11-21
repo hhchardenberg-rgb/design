@@ -33,7 +33,7 @@ export default async function KalenderPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Agenda</h1>
+        <h1 className="page-title">Agenda</h1>
         <p className="mt-1 text-muted-foreground">
           Activiteiten en planning, live verbonden met de Google Agenda van HHC Hardenberg. Klik op een event voor
           meer uitleg.

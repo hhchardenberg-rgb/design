@@ -188,7 +188,7 @@ export default function AdminFontsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Lettertypen</h1>
+        <h1 className="page-title">Lettertypen</h1>
         <p className="mt-1 text-muted-foreground">
           Upload de huisstijl-fonts (WOFF2, WOFF, TTF of OTF) die templates mogen gebruiken. Familie, gewicht, stijl
           en PostScript-naam worden uit het bestand zelf gelezen. Upload elk gewicht als eigen bestand; een

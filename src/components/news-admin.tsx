@@ -217,7 +217,7 @@ export function NewsAdmin({ rights, enabled: initialEnabled }: { rights: NewsRig
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Nieuws</h1>
+        <h1 className="page-title">Nieuws</h1>
         <p className="mt-1 text-muted-foreground">
           Eén nieuwsmodule voor alle onderdelen. Een bericht kan bij meerdere onderdelen staan en is alleen zichtbaar voor wie toegang
           heeft tot dat onderdeel. Je publiceert bij de onderdelen die jij beheert.

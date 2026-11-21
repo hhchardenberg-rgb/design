@@ -60,7 +60,7 @@ export default function AdminSocialMediaPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Social media</h1>
+        <h1 className="page-title">Social media</h1>
         <p className="mt-1 text-muted-foreground">
           Links naar de kanalen van HHC Hardenberg. Ze staan als knoppen op de Communicatie-startpagina. Laat een veld
           leeg om dat kanaal niet te tonen.

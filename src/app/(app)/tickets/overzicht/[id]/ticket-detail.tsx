@@ -144,7 +144,7 @@ export function TicketDetail({ id, canBlock, canResend, canAnonymize, canTransfe
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{t.displayName}</h1>
+          <h1 className="page-title">{t.displayName}</h1>
           <p className="font-mono text-xs text-muted-foreground">{t.publicId}</p>
         </div>
         <TicketStatusBadge status={t.status} />

@@ -15,7 +15,7 @@ export default async function HuisstijlPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold">Huisstijl</h1>
+        <h1 className="page-title">Huisstijl</h1>
         <p className="mt-1 text-muted-foreground">
           De officiële HHC Hardenberg-kleuren en lettertypen uit het huisstijlhandboek, zodat je ze ook buiten de
           designtool consistent kunt gebruiken.

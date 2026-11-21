@@ -122,7 +122,7 @@ export default function PersberichtenPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Persberichten</h1>
+        <h1 className="page-title">Persberichten</h1>
         <p className="mt-1 text-muted-foreground">
           Maak een persbericht in de vaste HHC-huisstijl en exporteer het als Word- of PDF-bestand.
         </p>

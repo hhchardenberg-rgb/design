@@ -71,7 +71,7 @@ export function TaskBoard({ canCreate, canUpdate }: { canCreate: boolean; canUpd
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Taken</h1>
+        <h1 className="page-title">Taken</h1>
         <p className="text-sm text-muted-foreground">Taken en afspraken van de sponsorcommissie. Je ziet de taken binnen jouw bereik.</p>
       </div>
       <div className="flex flex-wrap gap-2">

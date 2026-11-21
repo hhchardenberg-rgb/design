@@ -46,7 +46,7 @@ export default async function DashboardPage() {
           <Link href="/hub" className="text-xs font-medium text-white/60 hover:text-white hover:underline">
             ← Hub
           </Link>
-          <h1 className="mt-1 text-2xl font-bold">Designtool</h1>
+          <h1 className="page-title mt-1">Designtool</h1>
           <p className="mt-1 text-white/70">Maak in een paar klikken een professionele clubafbeelding.</p>
         </div>
         <Link href="/templates">

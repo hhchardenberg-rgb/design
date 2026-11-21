@@ -74,7 +74,7 @@ export function ListDetail({ id, canIssue, canResend }: { id: string; canIssue: 
       <Link href="/tickets/gastenlijsten" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline">
         <ArrowLeft className="h-4 w-4" /> Gastenlijsten
       </Link>
-      <h1 className="text-2xl font-bold">{d.name}</h1>
+      <h1 className="page-title">{d.name}</h1>
 
       <Card>
         <CardHeader>

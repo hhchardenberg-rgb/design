@@ -130,7 +130,7 @@ export default function AdminClubsPage() {
   return (
     <div className="flex flex-col gap-10">
       <div>
-        <h1 className="text-2xl font-bold">Club, teams &amp; spelers</h1>
+        <h1 className="page-title">Club, teams &amp; spelers</h1>
         <p className="mt-1 text-muted-foreground">Centrale clubgegevens zodat je ze niet telkens opnieuw hoeft in te typen.</p>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

@@ -66,7 +66,7 @@ export function AuditLogPanel({ commercialEnabled = false }: { commercialEnabled
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Audit-log</h1>
+        <h1 className="page-title">Audit-log</h1>
         <p className="mt-1 max-w-2xl text-muted-foreground">
           Wie deed wat, en wanneer: inloggen, beveiligingsinstellingen, accounts en rollen, back-ups en downloads. Regels worden ruim een jaar bewaard.
           {commercialEnabled && " Wijzigingen binnen Commerciële Zaken staan daarnaast in het eigen logboek van dat onderdeel."}

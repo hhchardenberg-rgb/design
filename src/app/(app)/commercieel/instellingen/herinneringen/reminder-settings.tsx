@@ -16,7 +16,7 @@ export function ReminderSettingsForm({ canEdit, canReadRules }: { canEdit: boole
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Herinneringen</h1>
+        <h1 className="page-title">Herinneringen</h1>
         <p className="mt-1 text-muted-foreground">
           De herinneringsmail van Commerciële Zaken: hoe vaak die standaard komt, na hoeveel dagen zonder contact een sponsor gemeld wordt, en wie welke sponsor voor zichzelf op stil zette.
         </p>

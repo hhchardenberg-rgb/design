@@ -22,7 +22,7 @@ function Stat({ label, value, icon: Icon, hint }: { label: string; value: string
         </span>
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold tabular-nums">{value}</p>
+          <p className="stat-number mt-1 text-[1.875rem]">{value}</p>
           {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
       </CardContent>
@@ -52,7 +52,7 @@ export default async function TicketsDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">HHC Tickets</h1>
+        <h1 className="page-title">HHC Tickets</h1>
         <p className="mt-1 text-sm text-muted-foreground">Eigen tickets van HHC Hardenberg, naast de betaalde tickets van Fullhouse.</p>
         {quickActions.length > 0 && (
           <nav aria-label="Snelle acties" className="mt-4 flex flex-wrap gap-2">

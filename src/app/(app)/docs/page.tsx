@@ -16,7 +16,7 @@ export default function DocsIndexPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Documentatie</h1>
+        <h1 className="page-title">Documentatie</h1>
         <p className="mt-2 text-muted-foreground">
           Handleidingen en uitleg voor vrijwilligers van Team Communicatie.
         </p>

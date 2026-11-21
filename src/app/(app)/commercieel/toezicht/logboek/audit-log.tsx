@@ -53,7 +53,7 @@ export function AuditLog() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Logboek</h1>
+        <h1 className="page-title">Logboek</h1>
         <p className="text-sm text-muted-foreground">Wie heeft wat gedaan in Commerciële Zaken: wijzigingen, verzendingen, downloads en rechten. Bedragen worden bewust niet vastgelegd.</p>
       </div>
       <div className="flex flex-wrap items-end gap-3">

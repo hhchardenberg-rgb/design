@@ -27,7 +27,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Scanhistorie</h1>
+        <h1 className="page-title">Scanhistorie</h1>
         <p className="mt-1 text-sm text-muted-foreground">Elke scanpoging, ook mislukte. Namen staan hier alleen als initialen.</p>
       </div>
       <form className="flex flex-wrap gap-2 text-sm">
@@ -60,7 +60,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
           ].map(([l, v]) => (
             <Card key={String(l)}>
               <CardContent className="p-4">
-                <p className="text-2xl font-bold tabular-nums">{v}</p>
+                <p className="stat-number mt-1 text-[1.875rem]">{v}</p>
                 <p className="text-xs text-muted-foreground">{l}</p>
               </CardContent>
             </Card>

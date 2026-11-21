@@ -40,7 +40,7 @@ export function Reports({ canExport, canCompanies, canContracts, canContacts }: 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Rapportages</h1>
+        <h1 className="page-title">Rapportages</h1>
         <p className="text-sm text-muted-foreground">Inkomsten per seizoen en de stand van de pijplijn, binnen de dossiers die jij mag zien. Bedragen zijn exclusief btw en alleen zichtbaar met bedragenrechten.</p>
       </div>
       <Card>

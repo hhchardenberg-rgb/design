@@ -60,7 +60,7 @@ export function TeamManager({ canManage, canCreate }: { canManage: boolean; canC
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">CZ-teams</h1>
+        <h1 className="page-title">CZ-teams</h1>
         <p className="text-sm text-muted-foreground">CZ-teams (teams binnen Commerciële Zaken) bepalen wat iemand met het bereik “Eigen team” ziet. Teamleden wijzigen is een rechtenwijziging en vereist rechtenbeheer.</p>
       </div>
       {canCreate && (

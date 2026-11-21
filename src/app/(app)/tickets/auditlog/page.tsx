@@ -22,7 +22,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Auditlog</h1>
+        <h1 className="page-title">Auditlog</h1>
         <p className="mt-1 text-sm text-muted-foreground">Alle belangrijke handelingen in HHC Tickets. Inloggen staat in het auditlog van de Hub (Beheer).</p>
       </div>
       <form className="flex flex-wrap gap-2 text-sm">

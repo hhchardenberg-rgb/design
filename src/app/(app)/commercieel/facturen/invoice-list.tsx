@@ -51,7 +51,7 @@ export function InvoiceList({ canCreate }: { canCreate: boolean }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Facturen</h1>
+        <h1 className="page-title">Facturen</h1>
         <p className="text-sm text-muted-foreground">Facturen en creditnota&apos;s binnen jouw bereik. Een concept heeft nog geen nummer; pas bij definitief maken wordt het nummer toegekend.</p>
       </div>
       {canCreate && (
