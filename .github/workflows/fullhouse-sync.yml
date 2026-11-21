@@ -1,0 +1,41 @@
+# Frequente synchronisatie met Fullhouse (alleen lezen). Vercel Hobby staat cron maar eens per dag toe,
+# daarom geeft GitHub elke 10 minuten het startsein. De Hub doet het werk zelf (/api/cron/fullhouse-sync).
+# Nodig: repository-geheim FULLHOUSE_SYNC_SECRET (Settings > Secrets and variables > Actions), met
+# dezelfde waarde als de Vercel-variabele FULLHOUSE_SYNC_SECRET. Zonder geheim doet deze taak niets.
+# Uitleg: docs/hhc-tickets/fullhouse-sync.md
+name: Fullhouse-synchronisatie
+
+on:
+  schedule:
+    - cron: "3-59/10 * * * *" # elke 10 minuten (GitHub kan bij drukte een paar minuten later starten)
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: fullhouse-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Synchronisatie starten
+        env:
+          SECRET: ${{ secrets.FULLHOUSE_SYNC_SECRET }}
+          HUB_URL: ${{ vars.HUB_URL || 'https://hub.hhc-hardenberg.nl' }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "::notice::FULLHOUSE_SYNC_SECRET is nog niet ingesteld; er wordt niets gesynchroniseerd."
+            exit 0
+          fi
+          code=$(curl -sS -o response.json -w '%{http_code}' --max-time 90 --retry 2 --retry-delay 10 \
+            -X POST -H "Authorization: Bearer $SECRET" "$HUB_URL/api/cron/fullhouse-sync" || echo "000")
+          echo "HTTP $code"
+          cat response.json 2>/dev/null || true
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::De Hub antwoordde met HTTP $code."
+            exit 1
+          fi
