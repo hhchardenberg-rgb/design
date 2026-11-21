@@ -1,4 +1,5 @@
 import { formatDayTime } from "@/lib/date-format";
+import { RefreshAfterSync } from "./refresh-after-sync";
 
 // Status van de Fullhouse-synchronisatie, voor het dashboard en de Fullhouse-pagina. Puur weergave.
 
@@ -31,7 +32,11 @@ export function sinceText(value: string | Date | null, now: number): string {
   return formatDayTime(value);
 }
 
-export function SyncStatus({ health, compact = false, quietWhenOk = false }: { health: SyncHealthView; compact?: boolean; quietWhenOk?: boolean }) {
+/**
+ * `refreshing`: bij het openen van de pagina is net op de achtergrond een ronde gestart. Bij een probleem toont de
+ * status dat en laadt hij zichzelf na een halve minuut opnieuw, zodat de gebruiker de verse stand ziet.
+ */
+export function SyncStatus({ health, compact = false, quietWhenOk = false, refreshing = false }: { health: SyncHealthView; compact?: boolean; quietWhenOk?: boolean; refreshing?: boolean }) {
   const now = new Date(health.checkedAt).getTime();
   const problem = health.state === "failing" || health.state === "late" || health.state === "warning";
   const when = `${sinceText(health.lastOkAt, now)}${health.lastOkAt && new Date(health.lastOkAt).getTime() > now - 86_400_000 ? ` (${formatDayTime(health.lastOkAt)})` : ""}`;
@@ -55,6 +60,12 @@ export function SyncStatus({ health, compact = false, quietWhenOk = false }: { h
             {!compact && ` · Laatste webhook: ${sinceText(health.lastWebhookAt, now)}`}
             {health.lastError && ` · Fout: ${health.lastError}`}
           </p>
+        )}
+        {refreshing && problem && health.state !== "test" && (
+          <>
+            <p className="text-xs text-muted-foreground">Wordt nu bijgewerkt; deze melding ververst zichzelf over een halve minuut.</p>
+            <RefreshAfterSync />
+          </>
         )}
       </div>
     </div>
