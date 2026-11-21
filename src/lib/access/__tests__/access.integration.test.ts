@@ -64,6 +64,10 @@ test("overzetten: iedereen houdt precies dezelfde toegang", { skip }, async () =
   await db.commercialMembership.create({ data: { userId: czWithRole.id, roleId: cr.id, overrides: { create: [{ permission: "contacts:read", effect: "DENY" }] } } });
   await db.commercialMembership.create({ data: { userId: czNoRole.id, roleId: null, overrides: { create: [{ permission: "companies:read", effect: "ALLOW" }] } } });
   await db.commercialMembership.create({ data: { userId: czOnly.id, roleId: other.id } });
+  // Een oude standaardrol zonder plek in de nieuwe indeling, die wel iemand heeft.
+  const lid = await mkUser("lid", { roles: ["USER"] });
+  const retired = await db.commercialRole.create({ data: { key: "sponsorcommissielid", name: "Sponsorcommissielid", permissions: ["companies:read"], isSystem: true } });
+  await db.commercialMembership.create({ data: { userId: lid.id, roleId: retired.id } });
 
   const before = new Map<string, string[]>();
   for (const u of [czWithRole, czNoRole, czOnly]) before.set(u.id, [...(await authz.loadCommercialAccess(u.id)).allowed].sort());
@@ -71,12 +75,21 @@ test("overzetten: iedereen houdt precies dezelfde toegang", { skip }, async () =
   access.resetAccessReady();
   assert.equal((await access.reconcileAccess()).rebuilt, 0);
 
-  assert.deepEqual(await roleNames(legacyAdmin.id), ["Communicatie", "Hoofdadmin"]);
-  assert.deepEqual(await roleNames(both.id), ["Communicatie", "Klantenservicebeheerder"]);
+  // Meteen in de compacte indeling: dezelfde rollen, met de nieuwe namen.
+  assert.deepEqual(await roleNames(legacyAdmin.id), ["Communicatie – medewerker", "Hoofdadmin"]);
+  assert.deepEqual(await roleNames(both.id), ["Communicatie – medewerker", "Klantenservice – beheerder"]);
   assert.deepEqual(await roleNames(nobody.id), []);
-  assert.deepEqual(await roleNames(czWithRole.id), ["Communicatie", "Relatiebeheerder"]);
-  assert.deepEqual(await roleNames(czNoRole.id), ["Commerciële Zaken (basistoegang)", "Klantenservice"]);
-  assert.deepEqual(await roleNames(czOnly.id), ["Alleen lezen"]);
+  assert.deepEqual(await roleNames(czWithRole.id), ["Commerciële Zaken – medewerker", "Communicatie – medewerker"]);
+  assert.deepEqual(await roleNames(czNoRole.id), ["Commerciële Zaken (basistoegang)", "Klantenservice – basis"]);
+  assert.deepEqual(await roleNames(czOnly.id), ["Commerciële Zaken – alleen lezen"]);
+  assert.deepEqual(await roleNames(lid.id), ["Commerciële Zaken – dossiers bewerken"]);
+  assert.deepEqual([...(await authz.loadCommercialAccess(lid.id)).allowed], ["companies:read"]);
+
+  // Rollen die iemand heeft, houden precies hun rechten (ook als die afwijken van de standaard).
+  const ksAdmin = await db.accessRole.findUniqueOrThrow({ where: { name: "Klantenservice – beheerder" } });
+  assert.equal(ksAdmin.ticketingLevel, "ADMIN");
+  assert.equal(ksAdmin.ticketsAccess, false);
+  assert.deepEqual((await db.user.findUniqueOrThrow({ where: { id: both.id } })).roles.sort(), ["HUB", "TICKETING", "TICKETING_ADMIN"]);
 
   // Inlogtoken-rollen blijven gelijk in betekenis; CZ-rechten (incl. persoonlijke uitzonderingen) exact gelijk.
   assert.ok((await db.user.findUniqueOrThrow({ where: { id: legacyAdmin.id } })).roles.includes("ADMIN"));
@@ -87,15 +100,21 @@ test("overzetten: iedereen houdt precies dezelfde toegang", { skip }, async () =
 
   // Alle standaardrollen staan klaar, ook ongebruikte CZ-rollen; de vaste Hoofdadmin-rol is er één keer.
   const all = (await db.accessRole.findMany()).map((r) => r.name);
-  for (const n of ["Hoofdadmin", "Communicatie", "Communicatiebeheerder", "Klantenservice", "Klantenservicebeheerder", "Relatiebeheerder", "Alleen lezen"]) assert.ok(all.includes(n), n);
+  const { STANDARD_ROLES } = await import("../presets");
+  for (const n of ["Hoofdadmin", ...STANDARD_ROLES.map((r) => r.name)]) assert.ok(all.includes(n), n);
+  for (const n of ["Communicatie", "Klantenservicebeheerder", "Relatiebeheerder", "Sponsorcommissielid"]) assert.ok(!all.includes(n), n);
   assert.equal(await db.accessRole.count({ where: { isSystem: true } }), 1);
 });
 
-test("standaardrollen voor Klantenservice en HHC Tickets: één keer aangemaakt, niemand toegewezen, verwijderd blijft weg", { skip }, async () => {
-  const { STANDARD_ROLES } = await import("../presets");
-  const presets = await db.accessRole.findMany({ where: { presetKey: { not: null } }, include: { _count: { select: { users: true } } } });
+test("standaardrollen: één keer aangemaakt, ongebruikte met standaardrechten, verwijderd blijft weg", { skip }, async () => {
+  const { STANDARD_ROLES, matchesStandard, standardRole } = await import("../presets");
+  const presets = await db.accessRole.findMany({ where: { presetKey: { not: null } }, include: { commercialRole: true, _count: { select: { users: true } } } });
   assert.equal(presets.length, STANDARD_ROLES.length);
-  assert.ok(presets.every((r) => r._count.users === 0));
+  for (const r of presets.filter((x) => x._count.users === 0)) {
+    const grant = { hubLevel: r.hubLevel, ticketingLevel: r.ticketingLevel, commercial: r.commercialRole?.permissions ?? null, tickets: r.ticketsAccess ? r.ticketsPermissions : null };
+    assert.ok(matchesStandard(standardRole(r.presetKey)!, grant), r.name);
+  }
+  assert.ok((await db.commercialAuditEvent.findMany({ where: { action: "access.compacted" } })).length === 1);
   const ks = presets.find((r) => r.presetKey === "ks-medewerker")!;
   assert.equal(ks.ticketingLevel, "USER");
   assert.ok(ks.ticketsAccess && ks.ticketsPermissions.includes("support:search"));
@@ -115,7 +134,7 @@ test("wijzigingen buiten het rollensysteem om worden opgepikt", { skip }, async 
   const cr = await db.commercialRole.findUniqueOrThrow({ where: { key: "alleen-lezen" } });
   await db.commercialMembership.create({ data: { userId: u.id, roleId: cr.id } });
   assert.equal((await access.reconcileAccess()).rebuilt, 1);
-  assert.deepEqual(await roleNames(u.id), ["Alleen lezen", "Communicatiebeheerder"]);
+  assert.deepEqual(await roleNames(u.id), ["Commerciële Zaken – alleen lezen", "Communicatie – beheerder"]);
   assert.equal((await access.reconcileAccess()).rebuilt, 0);
 });
 
@@ -166,10 +185,10 @@ test("beheerder van een onderdeel: alleen gebruikerstoegang tot dat onderdeel, n
   const actor = await actorOf(hubAdmin.id);
   const byName = async (name: string) => (await db.accessRole.findUniqueOrThrow({ where: { name } })).id;
 
-  await access.setUserRoles(actor, target.id, [await byName("Communicatie")]);
+  await access.setUserRoles(actor, target.id, [await byName("Communicatie – medewerker")]);
   assert.deepEqual((await db.user.findUniqueOrThrow({ where: { id: target.id } })).roles, ["HUB"]);
-  await rejects(access.setUserRoles(actor, target.id, [await byName("Communicatie"), await byName("Klantenservice")]), 403);
-  await rejects(access.setUserRoles(actor, target.id, [await byName("Communicatiebeheerder")]), 403);
+  await rejects(access.setUserRoles(actor, target.id, [await byName("Communicatie – medewerker"), await byName("Klantenservice – basis")]), 403);
+  await rejects(access.setUserRoles(actor, target.id, [await byName("Communicatie – beheerder")]), 403);
   await rejects(access.setUserRoles(actor, hubAdmin.id, []), 403);
   await rejects(access.createAccessRole(actor, { name: "Te ruim", hubLevel: "USER", ticketingLevel: "USER", commercial: null }), 403);
   const own = await access.createAccessRole(actor, { name: "Fotograaf", hubLevel: "USER", ticketingLevel: "NONE", commercial: null });

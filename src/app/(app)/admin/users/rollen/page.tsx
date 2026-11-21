@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useToast } from "@/components/toast";
-import { AccessTabs, groupRoles, summaryOf, type RoleView } from "@/components/access/access-parts";
+import { AccessTabs, groupRoles, isCustomized, shortName, standardOf, summaryOf, type RoleView } from "@/components/access/access-parts";
+import { standardRole, standardRolesOf } from "@/lib/access/presets";
 import { ACTION_NAMES, Matrix } from "@/components/commercial/rights-parts";
 import { findInconsistencies, isPermission, type Permission } from "@/lib/commercial/permissions";
-import { ROLE_TEMPLATES } from "@/lib/commercial/role-templates";
 import { TicketsRights } from "@/components/tickets/role-rights";
 import { isTicketPermission, ticketPermissionIssues, type TicketPermission } from "@/lib/tickets/permissions";
 import { LEVEL_LABELS, type SectionLevel } from "@/lib/access/model";
@@ -37,6 +37,7 @@ interface AuditRow {
 
 interface Draft {
   id: string | null;
+  presetKey: string | null;
   isSystem: boolean;
   name: string;
   description: string;
@@ -48,7 +49,7 @@ interface Draft {
   tickets: Set<TicketPermission>;
 }
 
-const EMPTY: Draft = { id: null, isSystem: false, name: "", description: "", hubLevel: "NONE", ticketingLevel: "NONE", commercialOn: false, commercial: new Set(), ticketsOn: false, tickets: new Set() };
+const EMPTY: Draft = { id: null, presetKey: null, isSystem: false, name: "", description: "", hubLevel: "NONE", ticketingLevel: "NONE", commercialOn: false, commercial: new Set(), ticketsOn: false, tickets: new Set() };
 
 const SECTION_HINTS: Record<"hub" | "ticketing", Record<SectionLevel, string>> = {
   hub: { NONE: "Ziet Communicatie niet.", USER: "Designtool, agenda, nieuws, kennisbank en meer.", ADMIN: "Gebruiker, plus de inhoud beheren en anderen toegang geven." },
@@ -126,6 +127,7 @@ export default function RolesPage() {
     } else {
       setDraft({
         id: copy ? null : r.id,
+        presetKey: copy ? null : r.presetKey ?? null,
         isSystem: copy ? false : r.isSystem,
         name: copy ? `${r.name} (kopie)` : r.name,
         description: r.description ?? "",
@@ -192,7 +194,7 @@ export default function RolesPage() {
         <div>
           <h1 className="text-2xl font-bold">Gebruikers en rechten</h1>
           <p className="mt-1 text-muted-foreground">
-            Een rol is een herbruikbaar pakket rechten. Stel per onderdeel in wat de rol geeft en wijs hem daarna toe bij Gebruikers. Een wijziging aan een rol geldt meteen voor iedereen die hem heeft.
+            Per onderdeel zijn er een paar niveaus (elk niveau kan alles van het vorige) en losse taken. Wijs ze toe bij Gebruikers. Lukt het niet met de standaardrollen, maak dan een eigen rol. Een wijziging aan een rol geldt meteen voor iedereen die hem heeft.
           </p>
         </div>
         <AccessTabs />
@@ -217,6 +219,22 @@ export default function RolesPage() {
                 <Input id="role-description" className="mt-1" value={draft.description} maxLength={300} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Voor wie is deze rol bedoeld?" />
               </div>
             </div>
+
+            {draft.presetKey && standardRole(draft.presetKey) && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md bg-surface-muted p-2 text-xs text-muted-foreground">
+                Standaardrol <strong className="text-foreground">{standardRole(draft.presetKey)!.name}</strong>: {standardRole(draft.presetKey)!.description}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const s = standardRole(draft.presetKey)!;
+                    setDraft({ ...draft, hubLevel: s.hubLevel, ticketingLevel: s.ticketingLevel, commercialOn: s.commercial !== null, commercial: new Set(s.commercial ?? []), ticketsOn: s.tickets !== null, tickets: new Set(s.tickets ?? []) });
+                  }}
+                >
+                  Standaard invullen
+                </Button>
+              </div>
+            )}
 
             {!draft.isSystem && (
               <>
@@ -255,13 +273,13 @@ export default function RolesPage() {
                           className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
                           value=""
                           onChange={(e) => {
-                            const t = ROLE_TEMPLATES.find((x) => x.key === e.target.value);
-                            if (t) setDraft({ ...draft, commercial: new Set(t.permissions.filter((p) => !grantable || grantable.has(p))) });
+                            const t = standardRole(e.target.value);
+                            if (t?.commercial) setDraft({ ...draft, commercial: new Set(t.commercial.filter((p) => !grantable || grantable.has(p))) });
                           }}
                         >
                           <option value="">Kies een voorbeeld…</option>
-                          {ROLE_TEMPLATES.map((t) => (
-                            <option key={t.key} value={t.key}>{t.name}</option>
+                          {standardRolesOf("Commerciële Zaken").map((t) => (
+                            <option key={t.key} value={t.key}>{t.short}</option>
                           ))}
                         </select>
                         <span className="text-xs text-muted-foreground">Overschrijft de keuzes hieronder; daarna kun je nog aanpassen.</span>
@@ -302,46 +320,48 @@ export default function RolesPage() {
       )}
 
       {groupRoles(roles).map((g) => (
-        <section key={g.label} className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{g.label}</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {g.roles.map((r) => (
-              <Card key={r.id} className={cn(draft?.id === r.id && "border-hhc-orange")}>
-                <CardContent className="flex h-full flex-col gap-3 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-2 font-semibold">
-                        {r.name}
-                        {r.isSystem && <Badge variant="primary">vast</Badge>}
-                        {r.presetKey && <Badge variant="outline" title="Kant-en-klare rol; je mag hem aanpassen, kopiëren of verwijderen.">standaard</Badge>}
-                      </p>
-                      {r.description && <p className="text-sm text-muted-foreground">{r.description}</p>}
-                    </div>
-                    <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground" title="Aantal gebruikers met deze rol">
+        <details key={g.label} open className="group rounded-lg border border-border bg-surface">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
+            <span className="text-sm font-semibold">
+              {g.label}
+              <span className="ml-2 font-normal text-muted-foreground">{g.roles.length} {g.roles.length === 1 ? "rol" : "rollen"}</span>
+            </span>
+            <span className="text-xs text-muted-foreground group-open:hidden">tonen</span>
+            <span className="hidden text-xs text-muted-foreground group-open:inline">verbergen</span>
+          </summary>
+          <ul className="divide-y divide-border border-t border-border">
+            {g.roles.map((r) => {
+              const std = standardOf(r);
+              return (
+                <li key={r.id} className={cn("flex flex-col gap-1.5 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-4", draft?.id === r.id && "bg-primary/5")}>
+                  <div className="min-w-0 sm:w-56 sm:shrink-0">
+                    <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                      {g.label === "Algemeen" || g.label === "Eigen rollen" ? r.name : shortName(r)}
+                      {r.isSystem && <Badge variant="primary">vast</Badge>}
+                      {std && <span className="text-xs font-normal text-muted-foreground">{std.kind === "taak" ? "taak" : "niveau"}</span>}
+                      {isCustomized(r) && <Badge variant="outline" title="De rechten wijken af van de standaard. Bewerk de rol en kies Standaard invullen om terug te gaan.">aangepast</Badge>}
+                    </p>
+                  </div>
+                  <p className="min-w-0 flex-1 text-xs text-muted-foreground" title={summaryOf(r).join(" · ")}>{r.description ?? summaryOf(r).join(" · ")}</p>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span className="mr-2 flex items-center gap-1 text-xs text-muted-foreground" title="Aantal gebruikers met deze rol">
                       <Users className="h-3.5 w-3.5" aria-hidden /> {r.userCount}
                     </span>
-                  </div>
-                  <ul className="flex flex-wrap gap-1.5">
-                    {summaryOf(r).map((line) => (
-                      <li key={line}><Badge variant="outline">{line}</Badge></li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto flex flex-wrap items-center gap-1 pt-1">
                     {r.manageable ? (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => edit(r)}><Pencil className="h-3.5 w-3.5" /> Bewerken</Button>
-                        {!r.isSystem && <Button size="sm" variant="ghost" onClick={() => edit(r, true)}><Copy className="h-3.5 w-3.5" /> Kopiëren</Button>}
-                        {!r.isSystem && <Button size="sm" variant="ghost" onClick={() => remove(r)}><Trash2 className="h-3.5 w-3.5" /> Verwijderen</Button>}
+                        <Button size="icon" variant="ghost" title="Bewerken" aria-label={`${r.name} bewerken`} onClick={() => edit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        {!r.isSystem && <Button size="icon" variant="ghost" title="Kopiëren" aria-label={`${r.name} kopiëren`} onClick={() => edit(r, true)}><Copy className="h-3.5 w-3.5" /></Button>}
+                        {!r.isSystem && <Button size="icon" variant="ghost" title="Verwijderen" aria-label={`${r.name} verwijderen`} onClick={() => remove(r)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                       </>
                     ) : (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground"><Lock className="h-3 w-3" aria-hidden /> {r.manageReason}</span>
+                      <span title={r.manageReason ?? undefined} className="flex items-center gap-1 text-xs text-muted-foreground"><Lock className="h-3 w-3" aria-hidden /> alleen inzien</span>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
       ))}
 
       <details className="text-sm">

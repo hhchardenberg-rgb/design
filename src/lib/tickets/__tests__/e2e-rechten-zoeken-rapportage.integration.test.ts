@@ -93,15 +93,19 @@ test("verplichte tweestapsverificatie: elk rolsjabloon behalve Scanner", () => {
   assert.equal(ticketsNeedsMfa([]), false);
 });
 
-test("alleen de hoofdadmin deelt HHC Tickets-rechten uit (ook een lege set)", () => {
-  const base: ManagerScope = { userId: "m", full: false, hubAdmin: true, ticketingAdmin: true, commercialManage: true, commercialGrantable: new Set(["rights:manage_rights"]) };
-  const grant = (tickets: string[] | null) => ({ isAdmin: false, hubLevel: "USER" as const, ticketingLevel: "USER" as const, commercial: null, tickets });
-  for (const tickets of [["scan:scan"], []]) {
-    assert.equal(checkRoleEdit(base, null, grant(tickets)).ok, false);
-    assert.equal(checkRoleEdit(base, grant(tickets), grant(null)).ok, false, "rechten weghalen ook niet");
-    assert.equal(checkAssignment(base, { userId: "x", isAdmin: false }, [grant(tickets)]).ok, false);
-    assert.equal(checkRoleEdit({ ...base, full: true }, null, grant(tickets)).ok, true);
+test("HHC Tickets-rechten: hoofdadmin alles, Klantenservice-beheerder alleen wat hij zelf heeft", () => {
+  const base: ManagerScope = { userId: "m", full: false, hubAdmin: true, ticketingAdmin: true, commercialManage: true, commercialGrantable: new Set(["rights:manage_rights"]), ticketsGrantable: new Set(["support:search"]) };
+  const grant = (tickets: string[] | null, ticketingLevel: "NONE" | "USER" = "USER") => ({ isAdmin: false, hubLevel: "USER" as const, ticketingLevel, commercial: null, tickets });
+  // Niet zelf in bezit, of een pure HHC Tickets-rol (zonder Klantenservice): alleen de hoofdadmin.
+  for (const g of [grant(["scan:scan"]), grant([], "NONE"), grant(["support:search"], "NONE")]) {
+    assert.equal(checkRoleEdit(base, null, g).ok, false);
+    assert.equal(checkRoleEdit(base, g, grant(null)).ok, false, "rechten weghalen ook niet");
+    assert.equal(checkAssignment(base, { userId: "x", isAdmin: false }, [g]).ok, false);
+    assert.equal(checkRoleEdit({ ...base, full: true }, null, g).ok, true);
   }
+  // Klantenservice-rol met alleen eigen bevoegdheden: mag.
+  assert.equal(checkAssignment(base, { userId: "x", isAdmin: false }, [grant(["support:search"])]).ok, true);
+  assert.equal(checkAssignment({ ...base, ticketingAdmin: false }, { userId: "x", isAdmin: false }, [grant(["support:search"])]).ok, false);
 });
 
 test("HHC Tickets uit: API en scannerlogin geven 404 vóór iets anders", { skip }, async () => {
