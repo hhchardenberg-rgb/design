@@ -11,11 +11,16 @@ import { isNewsEnabled, loadNewsEnabled } from "@/lib/news.server";
 import { isTicketsEnabled } from "@/lib/tickets/flag";
 import { loadTicketsAccess } from "@/lib/tickets/authz.server";
 import { visibleTicketsNav } from "@/lib/tickets/navigation";
+import { pwaMetadata } from "@/lib/pwa-apps";
 
 // Alle pagina's hier vereisen een ingelogde gebruiker en actuele
 // databasedata (templates, wedstrijden, ontwerpen) en mogen dus nooit
 // statisch geprerenderd worden.
 export const dynamic = "force-dynamic";
+
+// Standaard is dit de app "Communicatie"; Commerciële Zaken, Klantenservice en HHC Tickets
+// zetten in hun eigen layout hun eigen manifest (zie src/lib/pwa-apps.ts).
+export const metadata = pwaMetadata("communicatie");
 
 // Of Commerciële Zaken in het menu verschijnt, en met welke menu-items, wordt
 // hier server-side bepaald (flag + lidmaatschap + rechten uit de database), niet uit het JWT.

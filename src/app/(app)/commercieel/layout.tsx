@@ -4,8 +4,11 @@ import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { isCommercialEnabled } from "@/lib/commercial/flag";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
+import { pwaMetadata } from "@/lib/pwa-apps";
 
 export const dynamic = "force-dynamic";
+// Eigen app op het beginscherm (manifest, icoon, naam): zie src/lib/pwa-apps.ts.
+export const metadata = pwaMetadata("commercieel");
 
 // Server-side toegangspoort voor de hele sectie. Flag uit: de sectie bestaat
 // niet (404). Geen lid: toegangsweigering, ook voor platformbeheerders.

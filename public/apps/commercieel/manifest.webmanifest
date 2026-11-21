@@ -1,0 +1,39 @@
+{
+  "id": "/commercieel",
+  "name": "HHC Commerciële Zaken",
+  "short_name": "Commercieel",
+  "description": "Sponsorbeheer, contracten, facturen en taken van HHC Hardenberg.",
+  "lang": "nl",
+  "dir": "ltr",
+  "start_url": "/commercieel",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f3",
+  "theme_color": "#0b0b0b",
+  "icons": [
+    {
+      "src": "/apps/commercieel/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/commercieel/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/commercieel/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apps/commercieel/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

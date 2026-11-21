@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { hasRole, resolveHomePath } from "@/lib/roles";
+import { pwaMetadata } from "@/lib/pwa-apps";
 
 // Alle pagina's onder /klantenservice bevatten actuele databasedata en mogen dus
 // nooit statisch geprerenderd worden (zelfde reden als (app)/layout.tsx).
 export const dynamic = "force-dynamic";
+// Eigen app op het beginscherm (manifest, icoon, naam): zie src/lib/pwa-apps.ts.
+export const metadata = pwaMetadata("klantenservice");
 
 /**
  * Extra, server-side controle bovenop middleware.ts: middleware beschermt

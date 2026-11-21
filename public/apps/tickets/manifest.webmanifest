@@ -1,0 +1,39 @@
+{
+  "id": "/tickets",
+  "name": "HHC Tickets",
+  "short_name": "HHC Tickets",
+  "description": "Tickets, wedstrijden, gastenlijsten en scans van HHC Hardenberg.",
+  "lang": "nl",
+  "dir": "ltr",
+  "start_url": "/tickets",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f3",
+  "theme_color": "#0b0b0b",
+  "icons": [
+    {
+      "src": "/apps/tickets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/tickets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/tickets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apps/tickets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

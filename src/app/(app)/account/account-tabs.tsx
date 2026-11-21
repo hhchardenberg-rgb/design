@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/account/profiel", label: "Profiel" },
   { href: "/account/security", label: "Beveiliging" },
+  { href: "/account/apps", label: "Apps" },
 ];
 
 export function AccountTabs() {

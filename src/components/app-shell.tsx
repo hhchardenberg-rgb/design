@@ -31,6 +31,8 @@ import { visibleTicketingModules } from "@/lib/ticketing-modules";
 import { hasAnyAdminRole, hasRole, resolveHomePath } from "@/lib/roles";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { MatchChip } from "@/components/shell/match-chip";
+import { InstallAppHint } from "@/components/install-app-hint";
+import { pwaAppForSection } from "@/lib/pwa-apps";
 import { iconForHref } from "@/components/shell/nav-icons";
 import type { NextMatch, PlainNavGroup, ShellNavGroup, ShellNavItem, ShellSection } from "@/components/shell/types";
 
@@ -159,6 +161,9 @@ export function AppShell({
   const current = activeHref(pathname, section);
   const currentItem: ShellNavItem | undefined = section?.groups.flatMap((g) => g.items).find((i) => i.href === current);
   const crumb = isAccount ? "Profiel" : current === section?.href ? section?.homeLabel : currentItem?.title;
+  // "Zet als app op je telefoon": alleen op de startpagina van een onderdeel waar deze gebruiker echt bij mag
+  // (staat in sections), zodat de melding niet op elke pagina terugkomt.
+  const installApp = sectionKey && section?.key === sectionKey && pathname === section.href ? pwaAppForSection(sectionKey) : null;
 
   // Sluit het uitschuifmenu bij navigeren.
   useEffect(() => setDrawer(false), [pathname]);
@@ -250,7 +255,10 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[84rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">{children}</main>
+      <main className="mx-auto w-full max-w-[84rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+        {installApp && <InstallAppHint app={installApp} />}
+        {children}
+      </main>
 
       <CommandPalette open={palette} onClose={() => setPalette(false)} sections={sections} />
     </div>
