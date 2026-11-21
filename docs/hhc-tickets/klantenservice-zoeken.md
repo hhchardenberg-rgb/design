@@ -4,10 +4,10 @@ Pagina: **Klantenservice > Klant of ticket zoeken** (`/klantenservice/zoeken`). 
 
 ## Wie mag het
 
-- Klantenservice-rol (zoals elke pagina onder `/klantenservice`) **én** het HHC Tickets-recht `support:search` ("Klanten en tickets zoeken in Klantenservice"). De hoofdadmin heeft het automatisch.
+- Klantenservice-rol (zoals elke pagina onder `/klantenservice`) **én** het Tickets-recht `support:search` ("Klanten en tickets zoeken in Klantenservice"). De hoofdadmin heeft het automatisch.
 - Nieuw rolsjabloon **Klantenservicemedewerker**: zoeken, ticketdetails bekijken en opnieuw versturen.
 - E-mailadressen alleen voluit met `tickets:personal`; anders `j•••@domein.nl`.
-- Werkt alleen als HHC Tickets aan staat (`TICKETS_ENABLED=true`).
+- Werkt alleen als Tickets aan staat (`TICKETS_ENABLED=true`).
 
 ## Waarop zoek je
 
@@ -31,7 +31,7 @@ Pagina: **Klantenservice > Klant of ticket zoeken** (`/klantenservice/zoeken`). 
 ## Privacy
 
 - Zoekterm alleen in de body van een POST (`/api/klantenservice/zoeken`), nooit in een URL; antwoord `no-store`.
-- Auditlog (HHC Tickets > Auditlog, actie "Klantenservice: klanten en tickets gezocht"): wie, wanneer, soort, gemaskeerde term en aantallen. Nooit de volledige term.
+- Auditlog (Tickets > Auditlog, actie "Klantenservice: klanten en tickets gezocht"): wie, wanneer, soort, gemaskeerde term en aantallen. Nooit de volledige term.
 - Limiet: 30 zoekopdrachten per 5 minuten en 400 per dag per medewerker.
 - Fullhouse-barcodes altijd gemaskeerd (laatste 4 tekens).
 

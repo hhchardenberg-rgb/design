@@ -3,7 +3,7 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { IssueForm } from "./issue-form";
 
-export const metadata: Metadata = { title: "Tickets uitgeven – HHC Tickets" };
+export const metadata: Metadata = { title: "Tickets uitgeven – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function IssuePage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {

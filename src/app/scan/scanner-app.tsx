@@ -735,7 +735,7 @@ export function ScannerApp() {
       </header>
 
       {ctx.events.length === 0 ? (
-        <p className="p-6 text-center text-neutral-300">Er is nu geen wedstrijd om te scannen. Vraag een beheerder om de wedstrijd in HHC Tickets aan te zetten.</p>
+        <p className="p-6 text-center text-neutral-300">Er is nu geen wedstrijd om te scannen. Vraag een beheerder om de wedstrijd in Tickets aan te zetten.</p>
       ) : (
         <>
           <button onClick={() => setSetupOpen(true)} className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-[#141414] p-3 text-left hover:border-white/20">
@@ -1156,7 +1156,7 @@ function Login({ onDone, notice }: { onDone: (c: Ctx) => void; notice: string | 
     <form onSubmit={go} className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 p-6">
       <Image src="/branding/hhc-logo.png" alt="HHC Hardenberg" width={44} height={56} className="h-14 w-11" priority />
       <div>
-        <p className="eyebrow text-[0.6875rem] text-[#f26a21]">HHC Tickets</p>
+        <p className="eyebrow text-[0.6875rem] text-[#f26a21]">Tickets</p>
         <h1 className="mt-1 font-heading text-[2.25rem] leading-none font-bold">HHC Scanner</h1>
         <span aria-hidden className="mt-3 block h-[3px] w-16 bg-[#f26a21]" />
       </div>

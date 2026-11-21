@@ -3,7 +3,7 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { DesignEditor } from "@/components/tickets/design/editor";
 
-export const metadata: Metadata = { title: "Ticketontwerp en standaarden – HHC Tickets" };
+export const metadata: Metadata = { title: "Ticketontwerp en standaarden – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function DesignPage({ searchParams }: { searchParams: Promise<{ scope?: string }> }) {

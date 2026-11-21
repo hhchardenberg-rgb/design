@@ -6,7 +6,7 @@ import { loadTicketsAccess } from "@/lib/tickets/authz.server";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { seasonTrends } from "@/lib/tickets/trends.server";
 
-export const metadata: Metadata = { title: "Trends – HHC Tickets" };
+export const metadata: Metadata = { title: "Trends – Tickets" };
 export const dynamic = "force-dynamic";
 
 const Stat = ({ label, value, hint }: { label: string; value: number | string; hint?: string }) => (
@@ -21,7 +21,7 @@ const Stat = ({ label, value, hint }: { label: string; value: number | string; h
 
 export default async function TrendsPage({ searchParams }: { searchParams: Promise<{ seizoen?: string }> }) {
   const a = await ticketsPageAccess("reports:read");
-  if (!a.allowed) return <NoAccess what="de trends van HHC Tickets" />;
+  if (!a.allowed) return <NoAccess what="de trends van Tickets" />;
   const sp = await searchParams;
   const access = await loadTicketsAccess(a.userId);
   const t = await seasonTrends({ id: a.userId, name: "", access }, sp.seizoen);

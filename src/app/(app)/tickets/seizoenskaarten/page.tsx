@@ -7,7 +7,7 @@ import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { SEASON_PHASE_LABEL, seasonPhase } from "@/lib/commercial/season-phase";
 import { formatDay } from "@/lib/date-format";
 
-export const metadata: Metadata = { title: "Seizoenskaarten – HHC Tickets" };
+export const metadata: Metadata = { title: "Seizoenskaarten – Tickets" };
 export const dynamic = "force-dynamic";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);

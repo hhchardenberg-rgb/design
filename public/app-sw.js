@@ -1,5 +1,5 @@
 // Service worker voor de Hub-apps op het beginscherm (Communicatie, Commerciële Zaken, Klantenservice,
-// HHC Tickets). Bewust minimaal: pagina's en API's gaan altijd rechtstreeks naar de server en worden
+// Tickets). Bewust minimaal: pagina's en API's gaan altijd rechtstreeks naar de server en worden
 // nooit bewaard (ingelogde gegevens horen niet in een cache). Alleen als er geen verbinding is, toont
 // hij een eigen melding in plaats van de foutpagina van de browser.
 // De scanner (/scan) en ticketpagina's (/t/) hebben hun eigen service worker met een smallere scope.

@@ -4,8 +4,8 @@ import { effectiveRoles } from "@/lib/roles";
 import { isTicketsEnabled } from "./flag";
 import { ALL_TICKET_PERMISSIONS, isTicketPermission, type TicketPermission } from "./permissions";
 
-// Server-side autorisatie voor HHC Tickets. De hoofdadmin (superadmin) heeft alles. Ieder
-// ander heeft toegang via een rol met HHC Tickets-toegang; de bevoegdheden van al iemands
+// Server-side autorisatie voor Tickets. De hoofdadmin (superadmin) heeft alles. Ieder
+// ander heeft toegang via een rol met Tickets-toegang; de bevoegdheden van al iemands
 // rollen tellen op. Rechten komen bij elk verzoek uit de database (niet uit het JWT), zodat
 // intrekken direct werkt.
 
@@ -45,11 +45,11 @@ export async function requireTickets(...permissions: TicketPermission[]): Promis
   if (!isTicketsEnabled()) throw new ApiError(404, "Niet gevonden.");
   const user = await requireUser();
   const access = await loadTicketsAccess(user.id);
-  if (!access.hasAccess) throw new ApiError(403, "Je hebt geen toegang tot HHC Tickets.");
-  if (permissions.some((p) => !access.can(p))) throw new ApiError(403, "Je hebt hiervoor geen bevoegdheid binnen HHC Tickets.");
+  if (!access.hasAccess) throw new ApiError(403, "Je hebt geen toegang tot Tickets.");
+  if (permissions.some((p) => !access.can(p))) throw new ApiError(403, "Je hebt hiervoor geen bevoegdheid binnen Tickets.");
   return { id: user.id, name: user.name || user.email || user.id, access };
 }
 
 export function need(actor: TicketsActor, p: TicketPermission) {
-  if (!actor.access.can(p)) throw new ApiError(403, "Je hebt hiervoor geen bevoegdheid binnen HHC Tickets.");
+  if (!actor.access.can(p)) throw new ApiError(403, "Je hebt hiervoor geen bevoegdheid binnen Tickets.");
 }

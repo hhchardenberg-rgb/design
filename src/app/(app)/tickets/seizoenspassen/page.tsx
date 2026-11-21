@@ -3,11 +3,11 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { Passes } from "./passes";
 
-export const metadata: Metadata = { title: "Seizoenspassen – HHC Tickets" };
+export const metadata: Metadata = { title: "Seizoenspassen – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function PassesPage() {
   const a = await ticketsPageAccess("tickets:read");
-  if (!a.allowed) return <NoAccess what="de seizoenspassen van HHC Tickets" />;
+  if (!a.allowed) return <NoAccess what="de seizoenspassen van Tickets" />;
   return <Passes canRenew={a.can("tickets:issue")} />;
 }

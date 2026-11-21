@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /**
  * Zoektool in Klantenservice. Alleen POST: de zoekterm (naam, e-mail, ordernummer) staat in de
  * body en komt dus nooit in een URL, serverlog of browsergeschiedenis.
- * Vereist de Klantenservice-rol én het HHC Tickets-recht "support:search".
+ * Vereist de Klantenservice-rol én het Tickets-recht "support:search".
  */
 export async function POST(req: Request) {
   try {

@@ -7,7 +7,7 @@ import { loadTicketsAccess } from "@/lib/tickets/authz.server";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { eventReport } from "@/lib/tickets/reports.server";
 
-export const metadata: Metadata = { title: "Rapportages – HHC Tickets" };
+export const metadata: Metadata = { title: "Rapportages – Tickets" };
 export const dynamic = "force-dynamic";
 
 const Stat = ({ label, value }: { label: string; value: number | string }) => (
@@ -21,7 +21,7 @@ const Stat = ({ label, value }: { label: string; value: number | string }) => (
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ wedstrijd?: string }> }) {
   const a = await ticketsPageAccess("reports:read");
-  if (!a.allowed) return <NoAccess what="de rapportages van HHC Tickets" />;
+  if (!a.allowed) return <NoAccess what="de rapportages van Tickets" />;
   const sp = await searchParams;
   const events = await prisma.ticketEvent.findMany({ orderBy: { startsAt: "desc" }, take: 40, select: { id: true, title: true, startsAt: true } });
   const eventId = sp.wedstrijd && events.some((e) => e.id === sp.wedstrijd) ? sp.wedstrijd : events[0]?.id;

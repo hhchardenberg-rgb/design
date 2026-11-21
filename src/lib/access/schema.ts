@@ -9,6 +9,6 @@ export const roleSchema = z.object({
   hubLevel: LEVEL,
   ticketingLevel: LEVEL,
   commercial: z.array(z.string()).nullable(),
-  /** null/ontbreekt = geen toegang tot HHC Tickets. */
+  /** null/ontbreekt = geen toegang tot Tickets. */
   tickets: z.array(z.string()).nullable().optional(),
 });

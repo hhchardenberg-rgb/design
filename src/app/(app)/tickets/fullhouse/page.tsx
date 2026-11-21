@@ -3,11 +3,11 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { FullhousePanel } from "./fullhouse-panel";
 
-export const metadata: Metadata = { title: "Fullhouse – HHC Tickets" };
+export const metadata: Metadata = { title: "Fullhouse – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function FullhousePage() {
   const a = await ticketsPageAccess("sync:read");
-  if (!a.allowed) return <NoAccess what="de Fullhouse-koppeling van HHC Tickets" />;
+  if (!a.allowed) return <NoAccess what="de Fullhouse-koppeling van Tickets" />;
   return <FullhousePanel canManage={a.can("sync:manage")} canCreate={a.can("types:manage")} />;
 }

@@ -60,7 +60,7 @@ De Fullhouse-pagina toont wanneer de laatste webhook binnenkwam.
 
 ## Status en storingen
 
-- Het dashboard van HHC Tickets en de Fullhouse-pagina tonen wanneer de laatste geslaagde synchronisatie was.
+- Het dashboard van Tickets en de Fullhouse-pagina tonen wanneer de laatste geslaagde synchronisatie was.
 - Oranje: de laatste ronde ging deels mis, of de laatste geslaagde ronde is te lang geleden (20 minuten als de
   geplande taak draait, anders 26 uur). Is de geplande taak zelf al een tijd niet gestart, dan zegt de melding dat.
   Het openen van het dashboard start dan een ronde, en de melding ververst zichzelf na een halve minuut.

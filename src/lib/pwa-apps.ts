@@ -73,8 +73,8 @@ export const PWA_APPS: Record<PwaAppKey, PwaApp> = {
   },
   tickets: {
     key: "tickets",
-    name: "HHC Tickets",
-    shortName: "HHC Tickets",
+    name: "Tickets",
+    shortName: "Tickets",
     description: "Tickets, wedstrijden, gastenlijsten en scans van HHC Hardenberg.",
     startUrl: "/tickets",
     scope: "/tickets",

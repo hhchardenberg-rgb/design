@@ -1,5 +1,5 @@
 /**
- * Featureflag voor HHC Tickets. Standaard UIT: zolang TICKETS_ENABLED niet exact "true" is,
+ * Featureflag voor Tickets. Standaard UIT: zolang TICKETS_ENABLED niet exact "true" is,
  * bestaat de sectie niet (menu, pagina's en API geven 404).
  */
 export function isTicketsEnabled(): boolean {

@@ -3,7 +3,7 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { Approvals } from "./approvals";
 
-export const metadata: Metadata = { title: "Goedkeuringen – HHC Tickets" };
+export const metadata: Metadata = { title: "Goedkeuringen – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {

@@ -28,7 +28,7 @@ export async function managerFor(user: { id: string; name?: string | null; email
   const access = !full && isCommercialEnabled() ? await loadCommercialAccess(user.id) : null;
   const commercial = !!access?.can("rights:manage_rights");
   if (!full && sections.length === 0 && !commercial) return null;
-  // Klantenservice-beheerders geven alleen HHC Tickets-bevoegdheden door die ze zelf hebben.
+  // Klantenservice-beheerders geven alleen Tickets-bevoegdheden door die ze zelf hebben.
   const ticketsGrantable = new Set<string>();
   if (!full && sections.includes("ticketing")) {
     const rows = await prisma.userAccessRole.findMany({ where: { userId: user.id, role: { ticketsAccess: true } }, select: { role: { select: { ticketsPermissions: true } } } });

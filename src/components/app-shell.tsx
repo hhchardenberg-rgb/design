@@ -98,11 +98,11 @@ export function AppShell({
 }: {
   children: React.ReactNode;
   commercial: CommercialShellState;
-  /** Toegang tot HHC Tickets (server-side bepaald: flag + rol). */
+  /** Toegang tot Tickets (server-side bepaald: flag + rol). */
   tickets?: boolean;
-  /** Menu van HHC Tickets, server-side gefilterd op rechten. */
+  /** Menu van Tickets, server-side gefilterd op rechten. */
   ticketsNav?: PlainNavGroup[];
-  /** Mag de zoektool in Klantenservice gebruiken (HHC Tickets-recht support:search). */
+  /** Mag de zoektool in Klantenservice gebruiken (Tickets-recht support:search). */
   supportSearch?: boolean;
   /** Of het nieuws van Communicatie en Klantenservice aan staat (server-side uit de database). */
   news: { hub: boolean; ticketing: boolean };
@@ -129,7 +129,7 @@ export function AppShell({
         groups: [{ id: "ticketing", label: "Onderdelen", items: visibleTicketingModules({ newsEnabled: news.ticketing, supportSearch }).map((m) => ({ title: m.title, href: m.href, icon: m.icon, status: m.status })) }],
       });
     if (commercial.member) out.push({ key: "commercial", label: "Commerciële Zaken", href: "/commercieel", icon: Briefcase, homeLabel: "Startpagina", groups: plain(commercial.nav) });
-    if (tickets) out.push({ key: "tickets", label: "HHC Tickets", href: "/tickets", icon: QrCode, homeLabel: "Dashboard", groups: plain(ticketsNav) });
+    if (tickets) out.push({ key: "tickets", label: "Tickets", href: "/tickets", icon: QrCode, homeLabel: "Dashboard", groups: plain(ticketsNav) });
     if (hasAnyAdminRole(roles) || commercial.admin)
       out.push({
         key: "admin",

@@ -18,7 +18,7 @@ export interface RoleView {
   hubLevel: SectionLevel;
   ticketingLevel: SectionLevel;
   commercial: string[] | null;
-  /** null/ontbreekt = geen toegang tot HHC Tickets. */
+  /** null/ontbreekt = geen toegang tot Tickets. */
   tickets?: string[] | null;
   /** Standaardrol (src/lib/access/presets.ts), of null. */
   presetKey?: string | null;
@@ -101,7 +101,7 @@ export function RoleBadge({ role }: { role: RoleView }) {
   );
 }
 
-/** Wat iemand heeft, per onderdeel in één regel: "Communicatie: Beheerder", "HHC Tickets: Scanner". */
+/** Wat iemand heeft, per onderdeel in één regel: "Communicatie: Beheerder", "Tickets: Scanner". */
 export function AccessSummary({ assigned }: { assigned: RoleView[] }) {
   if (assigned.length === 0) return <Badge variant="outline">Geen rollen: nergens toegang</Badge>;
   return (

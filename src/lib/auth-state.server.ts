@@ -29,7 +29,7 @@ export async function loadAuthState(userId: string): Promise<AuthState | null> {
   if (!user) return null;
   const roles = effectiveRoles(user);
   const mfaEnabled = !!user.totpCredential?.verifiedAt || user._count.webauthnCredentials > 0;
-  // HHC Tickets: wie meer mag dan scannen (persoonsgegevens, uitgeven, beheer) heeft ook 2FA nodig.
+  // Tickets: wie meer mag dan scannen (persoonsgegevens, uitgeven, beheer) heeft ook 2FA nodig.
   const ticketPerms = user.accessRoles.filter((a) => a.role.ticketsAccess).flatMap((a) => a.role.ticketsPermissions);
   const required = mfaRequired(roles, (isCommercialEnabled() && !!user.commercialMembership) || (isTicketsEnabled() && ticketsNeedsMfa(ticketPerms)));
   return { roles, sessionVersion: user.sessionVersion, mfaEnabled, mfaSetupRequired: required && !mfaEnabled };

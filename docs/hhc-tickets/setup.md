@@ -1,15 +1,15 @@
-# HHC Tickets: setup en gebruik
+# Tickets: setup en gebruik
 
-Zie `architectuur.md` voor het ontwerp van het hele product. Dit bestand beschrijft wat je nodig hebt om HHC Tickets te draaien en hoe je het gebruikt.
+Zie `architectuur.md` voor het ontwerp van het hele product. Dit bestand beschrijft wat je nodig hebt om Tickets te draaien en hoe je het gebruikt.
 
 ## Aanzetten
 
-1. Zet in Vercel de variabele `TICKETS_ENABLED=true` (zonder die variabele bestaat HHC Tickets niet en geven alle pagina's en API's 404).
+1. Zet in Vercel de variabele `TICKETS_ENABLED=true` (zonder die variabele bestaat Tickets niet en geven alle pagina's en API's 404).
 2. Maak een sleutel voor QR-codes en ticketlinks: `openssl rand -base64 32`, en zet die als `TICKETS_SIGNING_KEY`. Gebruik voor Production en Preview **verschillende** waarden. Zonder sleutel weigert de Hub in Vercel tickets uit te geven.
    - Sleutelrotatie: `nieuw:<base64>,oud:<base64>`. De eerste tekent, de rest blijft alleen geldig voor controle.
    - Verandert of verliest iemand de sleutel zonder rotatie, dan zijn alle uitgegeven QR-codes en links ongeldig. Bewaar de sleutel dus ook in de wachtwoordkluis.
 3. De database-tabellen (`tickets_*`) en de nieuwe kolommen op `access_roles` komen mee met `prisma db push` in `vercel-build`. Alles is additief.
-4. Geef mensen toegang: Beheer > Gebruikers en rechten > Gebruikers, regel **HHC Tickets**: kies een niveau (Alleen lezen, Medewerker, Beheerder) en eventueel taken (Scanner, Scannercoördinator, Ontwerp, Financiële rapportages). Zie `docs/rollen.md`. Alleen de hoofdadmin geeft HHC Tickets-rollen; een Klantenservice-beheerder geeft Klantenservice-rollen door met bevoegdheden die hij zelf heeft. De Hoofdadmin is de superadmin en mag automatisch alles.
+4. Geef mensen toegang: Beheer > Gebruikers en rechten > Gebruikers, regel **Tickets**: kies een niveau (Alleen lezen, Medewerker, Beheerder) en eventueel taken (Scanner, Scannercoördinator, Ontwerp, Financiële rapportages). Zie `docs/rollen.md`. Alleen de hoofdadmin geeft Tickets-rollen; een Klantenservice-beheerder geeft Klantenservice-rollen door met bevoegdheden die hij zelf heeft. De Hoofdadmin is de superadmin en mag automatisch alles.
 5. Wie meer mag dan scannen, moet tweestapsverificatie instellen (zelfde regel als Commerciële Zaken).
 
 ## Omgevingsvariabelen
@@ -28,7 +28,7 @@ Zie `architectuur.md` voor het ontwerp van het hele product. Dit bestand beschri
 | `FULLHOUSE_SYNC_SECRET` | 4 | Sleutel (minstens 16 tekens) voor de synchronisatie elke 5 minuten; dezelfde waarde als GitHub-geheim. Zie `fullhouse-sync.md` |
 | Apple/Google Wallet | later | Zie `architectuur.md` §11 |
 
-Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja/nee, nooit de waarde).
+Onder Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja/nee, nooit de waarde).
 
 ## Wat fase 1 doet
 
@@ -78,7 +78,7 @@ Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja
 - Apple Wallet en Google Wallet (accounts nodig), geplande rapportagemails en een CZ-scherm voor uitgifte ontbreken nog.
 - Pasfoto's bij tickets zijn niet gebouwd.
 - De echte Fullhouse-koppeling is nog niet getest, zie `architectuur.md` §13.
-- Toegang tot HHC Tickets geeft alleen de hoofdadmin; delegatie volgt later.
+- Toegang tot Tickets geeft alleen de hoofdadmin; delegatie volgt later.
 
 ## Wedstrijden verwijderen, archiveren en activeren (15/11/2026)
 

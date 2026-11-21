@@ -1,4 +1,4 @@
-// Bevoegdheden binnen HHC Tickets. Pure TypeScript zonder imports, zodat dit in
+// Bevoegdheden binnen Tickets. Pure TypeScript zonder imports, zodat dit in
 // server-code, client-code en tests bruikbaar is. Een bevoegdheid is "<gebied>:<actie>".
 // De hoofdadmin (superadmin) heeft automatisch alles; ieder ander krijgt
 // bevoegdheden via een rol in Beheer > Gebruikers en rechten.
@@ -128,7 +128,7 @@ export const TICKET_ROLE_TEMPLATES: TicketRoleTemplate[] = [
   {
     key: "ticketbeheerder",
     name: "Ticketbeheerder",
-    description: "Alles binnen HHC Tickets, behalve rechten van anderen.",
+    description: "Alles binnen Tickets, behalve rechten van anderen.",
     permissions: ALL_TICKET_PERMISSIONS.filter((p) => p !== "reports:revenue"),
   },
   {

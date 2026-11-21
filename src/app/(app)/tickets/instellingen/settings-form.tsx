@@ -67,7 +67,7 @@ export function SettingsForm() {
   if (!s) return <p className="text-sm text-muted-foreground">Laden…</p>;
   return (
     <div className="space-y-6">
-      <PageTitle title="Instellingen" description="Goedkeuring en bewaartermijnen van HHC Tickets." />
+      <PageTitle title="Instellingen" description="Goedkeuring en bewaartermijnen van Tickets." />
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
           {FIELDS.map((f) => (

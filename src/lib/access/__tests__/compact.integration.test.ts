@@ -94,7 +94,7 @@ test("overzetten vanuit productie-situatie: rechten per persoon exact gelijk", {
   assert.equal(await name(ksAdmin.id), "Klantenservice – beheerder");
   assert.equal(await name(rel.id), "Commerciële Zaken – medewerker");
   assert.equal(await name(ksMw.id), "Klantenservice – medewerker");
-  assert.equal(await name(scanner.id), "HHC Tickets – scanner");
+  assert.equal(await name(scanner.id), "Tickets – scanner");
   assert.equal(await name(custom.id), "Vrijwilliger wedstrijddag");
   assert.equal(await name(admin.id), "Hoofdadmin");
 

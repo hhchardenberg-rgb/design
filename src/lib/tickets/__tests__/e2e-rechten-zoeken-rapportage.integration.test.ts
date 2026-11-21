@@ -93,10 +93,10 @@ test("verplichte tweestapsverificatie: elk rolsjabloon behalve Scanner", () => {
   assert.equal(ticketsNeedsMfa([]), false);
 });
 
-test("HHC Tickets-rechten: hoofdadmin alles, Klantenservice-beheerder alleen wat hij zelf heeft", () => {
+test("Tickets-rechten: hoofdadmin alles, Klantenservice-beheerder alleen wat hij zelf heeft", () => {
   const base: ManagerScope = { userId: "m", full: false, hubAdmin: true, ticketingAdmin: true, commercialManage: true, commercialGrantable: new Set(["rights:manage_rights"]), ticketsGrantable: new Set(["support:search"]) };
   const grant = (tickets: string[] | null, ticketingLevel: "NONE" | "USER" = "USER") => ({ isAdmin: false, hubLevel: "USER" as const, ticketingLevel, commercial: null, tickets });
-  // Niet zelf in bezit, of een pure HHC Tickets-rol (zonder Klantenservice): alleen de hoofdadmin.
+  // Niet zelf in bezit, of een pure Tickets-rol (zonder Klantenservice): alleen de hoofdadmin.
   for (const g of [grant(["scan:scan"]), grant([], "NONE"), grant(["support:search"], "NONE")]) {
     assert.equal(checkRoleEdit(base, null, g).ok, false);
     assert.equal(checkRoleEdit(base, g, grant(null)).ok, false, "rechten weghalen ook niet");
@@ -108,7 +108,7 @@ test("HHC Tickets-rechten: hoofdadmin alles, Klantenservice-beheerder alleen wat
   assert.equal(checkAssignment({ ...base, ticketingAdmin: false }, { userId: "x", isAdmin: false }, [grant(["support:search"])]).ok, false);
 });
 
-test("HHC Tickets uit: API en scannerlogin geven 404 vóór iets anders", { skip }, async () => {
+test("Tickets uit: API en scannerlogin geven 404 vóór iets anders", { skip }, async () => {
   const authz = await import("../authz.server");
   const scannerAuth = await import("../scanner-auth.server");
   process.env.TICKETS_ENABLED = "false";

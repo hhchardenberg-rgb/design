@@ -1,6 +1,6 @@
 import type { TicketPermission } from "./permissions";
 
-// Navigatie binnen HHC Tickets. Alleen schermen die er echt zijn staan in het menu.
+// Navigatie binnen Tickets. Alleen schermen die er echt zijn staan in het menu.
 
 export interface TicketsNavItem {
   href: string;

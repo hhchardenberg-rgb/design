@@ -3,7 +3,7 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { TicketDetail } from "./ticket-detail";
 
-export const metadata: Metadata = { title: "Ticket – HHC Tickets" };
+export const metadata: Metadata = { title: "Ticket – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {

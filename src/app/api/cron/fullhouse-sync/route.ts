@@ -24,7 +24,7 @@ function authorized(req: Request): boolean {
  */
 async function handle(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Niet toegestaan." }, { status: 401 });
-  if (!isTicketsEnabled()) return NextResponse.json({ skipped: "HHC Tickets staat uit." });
+  if (!isTicketsEnabled()) return NextResponse.json({ skipped: "Tickets staat uit." });
   try {
     return NextResponse.json(await runAutoSync({ trigger: "schedule", minIntervalMs: 60_000 }));
   } catch (e) {

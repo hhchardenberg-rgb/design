@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="page-title">Gebruikers en rechten</h1>
             <p className="mt-1 text-muted-foreground">
-              Per onderdeel {czOn ? "(Communicatie, Klantenservice, Commerciële Zaken, HHC Tickets)" : "(Communicatie, Klantenservice, HHC Tickets)"} kies je één niveau, eventueel met losse taken erbij. Met meerdere rollen tellen de rechten op.
+              Per onderdeel {czOn ? "(Communicatie, Klantenservice, Commerciële Zaken, Tickets)" : "(Communicatie, Klantenservice, Tickets)"} kies je één niveau, eventueel met losse taken erbij. Met meerdere rollen tellen de rechten op.
               {!manager.full && " Je kunt alleen rollen toewijzen die binnen jouw eigen beheer vallen."}
             </p>
           </div>

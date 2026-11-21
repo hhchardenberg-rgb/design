@@ -4,7 +4,7 @@
 //   Communicatie       niveaus: medewerker, beheerder
 //   Klantenservice     niveaus: basis, medewerker, teamleider, beheerder
 //   Commerciële Zaken  niveaus: alleen lezen, medewerker, beheerder; taken: contracten, financiën, mailings
-//   HHC Tickets        niveaus: alleen lezen, medewerker, beheerder; taken: scanner, scannercoördinator, ontwerp, financiële rapportages
+//   Tickets        niveaus: alleen lezen, medewerker, beheerder; taken: scanner, scannercoördinator, ontwerp, financiële rapportages
 //
 // Plus de vaste rol Hoofdadmin (alles). Standaardrollen staan één keer in de database
 // (zie ensureStandardRoles in service.server.ts) en zijn daarna gewone rollen: een
@@ -16,8 +16,8 @@ import { ALL_PERMISSIONS, type Permission } from "@/lib/commercial/permissions";
 import { ROLE_TEMPLATES } from "@/lib/commercial/role-templates";
 import { TICKET_ROLE_TEMPLATES, withRequired, type TicketPermission } from "@/lib/tickets/permissions";
 
-export type Section = "Communicatie" | "Klantenservice" | "Commerciële Zaken" | "HHC Tickets";
-export const SECTIONS: Section[] = ["Communicatie", "Klantenservice", "Commerciële Zaken", "HHC Tickets"];
+export type Section = "Communicatie" | "Klantenservice" | "Commerciële Zaken" | "Tickets";
+export const SECTIONS: Section[] = ["Communicatie", "Klantenservice", "Commerciële Zaken", "Tickets"];
 
 export interface StandardRole {
   key: string;
@@ -35,7 +35,7 @@ export interface StandardRole {
   ticketingLevel: SectionLevel;
   /** null = geen toegang tot Commerciële Zaken. */
   commercial: Permission[] | null;
-  /** null = geen toegang tot HHC Tickets. */
+  /** null = geen toegang tot Tickets. */
   tickets: TicketPermission[] | null;
 }
 
@@ -84,14 +84,14 @@ export const STANDARD_ROLES: StandardRole[] = [
   def({ key: "cz-financien", section: "Commerciële Zaken", kind: "taak", rank: 11, short: "Financiën", commercial: cz("financieel-medewerker"), description: "Facturen, creditnota's en betalingen beheren en versturen." }),
   def({ key: "cz-mailings", section: "Commerciële Zaken", kind: "taak", rank: 12, short: "Mailings", commercial: cz("mailingbeheerder"), description: "Mailings voorbereiden en resultaten inzien (verzenden is een aparte bevoegdheid)." }),
 
-  // --- HHC Tickets ---------------------------------------------------------------
-  def({ key: "tickets-alleen-lezen", section: "HHC Tickets", kind: "niveau", rank: 1, short: "Alleen lezen", tickets: tk("alleen-lezen"), description: "Dashboard, wedstrijden, tickettypes en het ticketoverzicht bekijken, zonder contactgegevens." }),
-  def({ key: "tickets-uitgever", section: "HHC Tickets", kind: "niveau", rank: 2, short: "Medewerker", tickets: tk("ticketuitgever"), description: "Alleen lezen, plus tickets uitgeven (ook via CSV), opnieuw versturen en contactgegevens zien." }),
-  def({ key: "tickets-beheerder", section: "HHC Tickets", kind: "niveau", rank: 3, short: "Beheerder", tickets: tk("ticketbeheerder"), description: "Alles binnen HHC Tickets (wedstrijden, tickettypes, uitgifte, ontwerp, scanners, instellingen), behalve omzetcijfers." }),
-  def({ key: "tickets-scanner", section: "HHC Tickets", kind: "taak", rank: 10, short: "Scanner", tickets: tk("scanner"), description: "Met een Hub-account scannen bij de ingang en een notitie toevoegen. Geen tweestapsverificatie nodig." }),
-  def({ key: "tickets-scannercoordinator", section: "HHC Tickets", kind: "taak", rank: 11, short: "Scannercoördinator", tickets: tk("scannercoordinator"), description: "Scanners en ingangen beheren, scanhistorie bekijken en scans overrulen." }),
-  def({ key: "tickets-ontwerper", section: "HHC Tickets", kind: "taak", rank: 12, short: "Ontwerp", tickets: withRequired(["dashboard:read", "events:read", "types:read", "design:publish"]), description: "Ticketontwerpen en standaarden bewerken en publiceren (mobiel en A4). Geen persoonsgegevens." }),
-  def({ key: "tickets-rapportages", section: "HHC Tickets", kind: "taak", rank: 13, short: "Financiële rapportages", tickets: tk("financieel"), description: "Rapportages, omzetcijfers en exports. Geen wijzigingen." }),
+  // --- Tickets ---------------------------------------------------------------
+  def({ key: "tickets-alleen-lezen", section: "Tickets", kind: "niveau", rank: 1, short: "Alleen lezen", tickets: tk("alleen-lezen"), description: "Dashboard, wedstrijden, tickettypes en het ticketoverzicht bekijken, zonder contactgegevens." }),
+  def({ key: "tickets-uitgever", section: "Tickets", kind: "niveau", rank: 2, short: "Medewerker", tickets: tk("ticketuitgever"), description: "Alleen lezen, plus tickets uitgeven (ook via CSV), opnieuw versturen en contactgegevens zien." }),
+  def({ key: "tickets-beheerder", section: "Tickets", kind: "niveau", rank: 3, short: "Beheerder", tickets: tk("ticketbeheerder"), description: "Alles binnen Tickets (wedstrijden, tickettypes, uitgifte, ontwerp, scanners, instellingen), behalve omzetcijfers." }),
+  def({ key: "tickets-scanner", section: "Tickets", kind: "taak", rank: 10, short: "Scanner", tickets: tk("scanner"), description: "Met een Hub-account scannen bij de ingang en een notitie toevoegen. Geen tweestapsverificatie nodig." }),
+  def({ key: "tickets-scannercoordinator", section: "Tickets", kind: "taak", rank: 11, short: "Scannercoördinator", tickets: tk("scannercoordinator"), description: "Scanners en ingangen beheren, scanhistorie bekijken en scans overrulen." }),
+  def({ key: "tickets-ontwerper", section: "Tickets", kind: "taak", rank: 12, short: "Ontwerp", tickets: withRequired(["dashboard:read", "events:read", "types:read", "design:publish"]), description: "Ticketontwerpen en standaarden bewerken en publiceren (mobiel en A4). Geen persoonsgegevens." }),
+  def({ key: "tickets-rapportages", section: "Tickets", kind: "taak", rank: 13, short: "Financiële rapportages", tickets: tk("financieel"), description: "Rapportages, omzetcijfers en exports. Geen wijzigingen." }),
 ];
 
 export function standardRole(key: string | null | undefined): StandardRole | undefined {

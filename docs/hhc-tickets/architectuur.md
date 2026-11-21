@@ -1,23 +1,23 @@
-# HHC Tickets: analyse, aannames, risico's en architectuur
+# Tickets: analyse, aannames, risico's en architectuur
 
 Status: fase 1 (fundament) in aanbouw, 11/11/2026. Dit document beschrijft het hele product en markeert per onderdeel in welke fase het gebouwd wordt.
 
 ## 1. Analyse van de bestaande HHC Hub
 
-| Onderwerp | Wat er is | Gevolg voor HHC Tickets |
+| Onderwerp | Wat er is | Gevolg voor Tickets |
 |---|---|---|
 | Stack | Next.js 16 (App Router, React 19), TypeScript, Tailwind 4, Prisma 6 op Postgres (Neon), Vercel. Tests met `node:test` via `tsx --test`. | Zelfde stack. Er komt geen nieuw framework bij. |
 | Database-wijzigingen | `vercel-build` draait `prisma db push`. Previews krijgen sinds 06/11/2026 een eigen Neon-branch (kopie van productie). | Alleen additieve tabellen (`tickets_*`) en kolommen. Niets wordt hernoemd of verwijderd. |
-| Authenticatie | NextAuth v5 (credentials) met verplichte 2FA voor beheerders en CZ-leden. Rollen staan in het JWT en worden elke minuut ververst. `src/proxy.ts` bewaakt routes. | De HHC Tickets-routes (`/tickets`) zijn in de proxy "alleen ingelogd". De echte rechtencontrole gebeurt per verzoek server-side uit de database, net als bij Commerciële Zaken. |
-| Rollen | Eén rollensysteem (`access_roles` en `user_access_roles`, PR #53). Per rol: niveau voor Communicatie en Ticketing, en een set CZ-bevoegdheden. Hoofdadmin mag alles. | Een rol krijgt er een set **HHC Tickets-bevoegdheden** bij (`ticketsAccess` en `ticketsPermissions`). De gevraagde rollen zijn sjablonen in de rolbewerker (§5). |
-| Modules en navigatie | Apps-knop met tegels (Communicatie, Ticketing, Commerciële Zaken, Beheer). CZ heeft een eigen zijmenu (`CommercialSidebar`). | Nieuwe tegel **HHC Tickets** en een eigen zijmenu in dezelfde stijl, met oranje accent. |
-| Bestaande module "Ticketing" | `/ticketing` bevat ondersteuning voor medewerkers: handleidingen, standaardmails, wachtwoordgenerator, Excel-sjablonen en een snelle link naar Fullhouse. Er is geen ticketdata. | **Niet vervangen.** Ticketing blijft de kennisbank voor het ticketteam. HHC Tickets is een nieuw hoofdonderdeel naast Ticketing. Later komt er vanuit Ticketing een snelle link naar HHC Tickets. |
+| Authenticatie | NextAuth v5 (credentials) met verplichte 2FA voor beheerders en CZ-leden. Rollen staan in het JWT en worden elke minuut ververst. `src/proxy.ts` bewaakt routes. | De Tickets-routes (`/tickets`) zijn in de proxy "alleen ingelogd". De echte rechtencontrole gebeurt per verzoek server-side uit de database, net als bij Commerciële Zaken. |
+| Rollen | Eén rollensysteem (`access_roles` en `user_access_roles`, PR #53). Per rol: niveau voor Communicatie en Ticketing, en een set CZ-bevoegdheden. Hoofdadmin mag alles. | Een rol krijgt er een set **Tickets-bevoegdheden** bij (`ticketsAccess` en `ticketsPermissions`). De gevraagde rollen zijn sjablonen in de rolbewerker (§5). |
+| Modules en navigatie | Apps-knop met tegels (Communicatie, Ticketing, Commerciële Zaken, Beheer). CZ heeft een eigen zijmenu (`CommercialSidebar`). | Nieuwe tegel **Tickets** en een eigen zijmenu in dezelfde stijl, met oranje accent. |
+| Bestaande module "Ticketing" | `/ticketing` bevat ondersteuning voor medewerkers: handleidingen, standaardmails, wachtwoordgenerator, Excel-sjablonen en een snelle link naar Fullhouse. Er is geen ticketdata. | **Niet vervangen.** Ticketing blijft de kennisbank voor het ticketteam. Tickets is een nieuw hoofdonderdeel naast Ticketing. Later komt er vanuit Ticketing een snelle link naar Tickets. |
 | E-mail | Resend (`src/lib/mail.ts`). Previews sturen nooit echte mail (`PREVIEW_MAIL_TO` optioneel). | Ticketmails gaan via dezelfde `getClient()` en erven daarmee de previewbewaking (fase 2). |
 | Bestandsopslag | Vercel Blob, of S3 als dat is ingesteld (`src/lib/storage`). Gevoelige bestanden worden versleuteld opgeslagen. | Geen pasfoto's bij tickets. |
 | Audit-log | Hub-breed `audit_events` (login, rollen). CZ heeft daarnaast een eigen `commercial_audit_events`. | Eigen tabel `tickets_audit_events` met de gevraagde velden (ticket, wedstrijd, scanner, ingang, oude en nieuwe status, reden, apparaat). Inloggen staat al in `audit_events`. |
 | Versleuteling | AES-256-GCM-veldversleuteling (`DATA_ENCRYPTION_KEY`) via een Prisma-extensie. | Het telefoonnummer van de tickethouder wordt op dezelfde manier versleuteld. |
 | PDF en QR | `pdf-lib`, `qrcode`, `sharp` en `@napi-rs/canvas` zijn al aanwezig. | Er zijn geen nieuwe pakketten nodig voor de PDF en de QR-code (fase 2). Voor Apple Wallet komt mogelijk `node-forge` erbij voor PKCS#7-ondertekening; dat wordt beoordeeld in fase 2. |
-| Wedstrijden | Tabel `matches` (designtool, met team, tegenstander en datum). | Een wedstrijd in HHC Tickets kan optioneel aan een bestaande `Match` gekoppeld worden, zodat datum en tegenstander niet dubbel worden ingevoerd. |
+| Wedstrijden | Tabel `matches` (designtool, met team, tegenstander en datum). | Een wedstrijd in Tickets kan optioneel aan een bestaande `Match` gekoppeld worden, zodat datum en tegenstander niet dubbel worden ingevoerd. |
 | Commerciële Zaken | Bedrijven, contactpersonen, contracten en seizoenen (`commercial_*`). | Een ticket kan optioneel een `commercialCompanyId` en `externalRef` dragen. De koppeling zelf komt in fase 5 (§9). |
 | Fullhouse-documentatie | Niet in de repo, alleen een snelle link naar `dashboard.fullhouse.tech`. Jermaine leverde een pagina uit de vivenu-kennisbank aan als API-informatie. | Zie §2. |
 
@@ -57,7 +57,7 @@ Ticketstatussen bij vivenu: `VALID`, `INVALID`, `RESERVED`, `DETAILSREQUIRED`, `
 
 ## 3. Aannames
 
-1. HHC Tickets is een nieuw hoofdonderdeel achter een featureflag `TICKETS_ENABLED` (standaard uit, net als Commerciële Zaken). In previews staat de flag aan.
+1. Tickets is een nieuw hoofdonderdeel achter een featureflag `TICKETS_ENABLED` (standaard uit, net als Commerciële Zaken). In previews staat de flag aan.
 2. Wedstrijden zijn evenementen met een datum. Een wedstrijd verloopt standaard 6 uur na de aftrap (instelbaar per wedstrijd).
 3. Het seizoen loopt van 1 juli tot en met 30 juni, en heet in de interface "huidig seizoen", "afgelopen seizoen" of "aankomend seizoen".
 4. Een ticket heeft een eigen status: `ACTIVE`, `BLOCKED` of `CANCELLED`. "Verlopen" en "gebruikt" worden afgeleid uit de geldigheid en de scans, zodat ze nooit uit de pas lopen.
@@ -78,12 +78,12 @@ Ticketstatussen bij vivenu: `VALID`, `INVALID`, `RESERVED`, `DETAILSREQUIRED`, `
 
 ## 5. Rollen en rechten
 
-Rechten zijn fijnmazig en volgen het patroon van Commerciële Zaken (`gebied:actie`). De lijst staat in `src/lib/tickets/permissions.ts`. Een rol in Beheer > Gebruikers en rechten krijgt een blok "HHC Tickets" met een sjabloonkeuze. Sinds de compacte rolindeling zijn de standaardrollen HHC Tickets – alleen lezen / medewerker / beheerder plus de taken scanner, scannercoördinator, ontwerp en financiële rapportages (zie `docs/rollen.md`); de tabel hieronder beschrijft de onderliggende sjablonen:
+Rechten zijn fijnmazig en volgen het patroon van Commerciële Zaken (`gebied:actie`). De lijst staat in `src/lib/tickets/permissions.ts`. Een rol in Beheer > Gebruikers en rechten krijgt een blok "Tickets" met een sjabloonkeuze. Sinds de compacte rolindeling zijn de standaardrollen Tickets – alleen lezen / medewerker / beheerder plus de taken scanner, scannercoördinator, ontwerp en financiële rapportages (zie `docs/rollen.md`); de tabel hieronder beschrijft de onderliggende sjablonen:
 
 | Sjabloon | Kern |
 |---|---|
 | Superadmin | Is de bestaande Hoofdadmin. Mag automatisch alles. |
-| Ticketbeheerder | Alles binnen HHC Tickets, behalve rechten van anderen. |
+| Ticketbeheerder | Alles binnen Tickets, behalve rechten van anderen. |
 | Ticketuitgever | Tickets bekijken, uitgeven (enkel en bulk tot de drempel) en opnieuw versturen. |
 | Scannercoördinator | Wedstrijden bekijken, scanners en ingangen beheren, scanhistorie inzien, overrides doen. |
 | Scanner | Alleen scannen, scanresultaten zien en een scannotitie maken. |
@@ -92,7 +92,7 @@ Rechten zijn fijnmazig en volgen het patroon van Commerciële Zaken (`gebied:act
 | Bestuur/directie | Dashboard en rapportages, alleen lezen. |
 | Alleen lezen | Dashboard, wedstrijden en tickettypes bekijken, zonder persoonsgegevens. |
 
-Regels: alleen de hoofdadmin kent HHC Tickets-rechten toe; een Klantenservice-beheerder mag Klantenservice-rollen (met Klantenservice-toegang) toewijzen met alleen bevoegdheden die hij zelf heeft. Een scanner heeft technisch geen enkel recht om uit te geven, te blokkeren, te exporteren, prijzen te wijzigen, omzet te zien of rechten te wijzigen. Bulkuitgifte boven de drempel (standaard 50, instelbaar) vraagt goedkeuring van iemand met `bulk:approve`, en dat mag niet de aanvrager zelf zijn.
+Regels: alleen de hoofdadmin kent Tickets-rechten toe; een Klantenservice-beheerder mag Klantenservice-rollen (met Klantenservice-toegang) toewijzen met alleen bevoegdheden die hij zelf heeft. Een scanner heeft technisch geen enkel recht om uit te geven, te blokkeren, te exporteren, prijzen te wijzigen, omzet te zien of rechten te wijzigen. Bulkuitgifte boven de drempel (standaard 50, instelbaar) vraagt goedkeuring van iemand met `bulk:approve`, en dat mag niet de aanvrager zelf zijn.
 
 ## 6. Datamodel (tabellen `tickets_*`)
 

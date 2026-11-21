@@ -10,9 +10,9 @@ const QUICK = STANDARD_ROLES.filter((r) => r.tickets);
 const GROUPS = ["Overzicht", "Tickets", "Klantenservice", "Scannen", "Inrichting", "Ontwerp", "Rapportage", "Beheer"] as const;
 
 /**
- * Het blok "HHC Tickets" in de rolbewerker: geen toegang, of toegang met bevoegdheden.
+ * Het blok "Tickets" in de rolbewerker: geen toegang, of toegang met bevoegdheden.
  * Sjablonen voor de vaste rollen (ticketbeheerder, scanner, …). Alleen de hoofdadmin
- * kan HHC Tickets-toegang geven (de server dwingt dat ook af).
+ * kan Tickets-toegang geven (de server dwingt dat ook af).
  */
 export function TicketsRights({
   on,
@@ -35,7 +35,7 @@ export function TicketsRights({
   };
   return (
     <fieldset className="rounded-md border border-border p-3">
-      <legend className="px-1 text-sm font-semibold">HHC Tickets</legend>
+      <legend className="px-1 text-sm font-semibold">Tickets</legend>
       <div className="flex flex-wrap gap-2" role="radiogroup">
         {[false, true].map((v) => (
           <button
@@ -54,7 +54,7 @@ export function TicketsRights({
           </button>
         ))}
       </div>
-      {!canGrant && <p className="mt-2 text-xs text-muted-foreground">Toegang tot HHC Tickets geeft de hoofdadmin.</p>}
+      {!canGrant && <p className="mt-2 text-xs text-muted-foreground">Toegang tot Tickets geeft de hoofdadmin.</p>}
       {on && (
         <div className="mt-4 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
