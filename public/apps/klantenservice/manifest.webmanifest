@@ -1,0 +1,39 @@
+{
+  "id": "/klantenservice",
+  "name": "HHC Klantenservice",
+  "short_name": "Klantenservice",
+  "description": "Handleidingen, standaardmails en de zoektool van Klantenservice van HHC Hardenberg.",
+  "lang": "nl",
+  "dir": "ltr",
+  "start_url": "/klantenservice",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f3",
+  "theme_color": "#0b0b0b",
+  "icons": [
+    {
+      "src": "/apps/klantenservice/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/klantenservice/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/klantenservice/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apps/klantenservice/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

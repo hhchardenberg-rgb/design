@@ -5,8 +5,11 @@ import { MFA_SETUP_PATH } from "@/lib/auth-policy";
 import { Card, CardContent } from "@/components/ui/card";
 import { isTicketsEnabled } from "@/lib/tickets/flag";
 import { loadTicketsAccess } from "@/lib/tickets/authz.server";
+import { pwaMetadata } from "@/lib/pwa-apps";
 
 export const dynamic = "force-dynamic";
+// Eigen app op het beginscherm (manifest, icoon, naam): zie src/lib/pwa-apps.ts.
+export const metadata = pwaMetadata("tickets");
 
 // Toegangspoort voor heel HHC Tickets. Flag uit: de sectie bestaat niet (404).
 // Zonder rol met HHC Tickets-toegang: duidelijke weigering.

@@ -1,0 +1,39 @@
+{
+  "id": "/hub",
+  "name": "HHC Communicatie",
+  "short_name": "Communicatie",
+  "description": "Team Communicatie van HHC Hardenberg: ontwerpen, nieuws, agenda en huisstijl.",
+  "lang": "nl",
+  "dir": "ltr",
+  "start_url": "/hub",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f3",
+  "theme_color": "#0b0b0b",
+  "icons": [
+    {
+      "src": "/apps/communicatie/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/communicatie/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apps/communicatie/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apps/communicatie/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
