@@ -105,8 +105,11 @@
   --font-heading: "FF DIN", "DIN Next", var(--font-sans);
 }
 
-* {
-  border-color: var(--border);
+/* In @layer base, zodat border-kleurklassen (bijv. border-white/10, border-hhc-orange) wel werken. */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
 }
 
 body {

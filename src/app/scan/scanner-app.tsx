@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { AlertTriangle, Check, ChevronRight, Flashlight, FlashlightOff, Loader2, RotateCcw, Settings, WifiOff, X } from "lucide-react";
+import Image from "next/image";
 import { formatDay, formatDayTime } from "@/lib/date-format";
 import { checkOffline, cacheExpired, isTestCode, parseHhcCode, scanKey, ticketNumberFrom, TEST_CODES, TEST_DETAIL, TEST_LABEL, type OfflineCache } from "@/lib/tickets/offline-check";
 
@@ -713,29 +714,34 @@ export function ScannerApp() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col pb-[env(safe-area-inset-bottom)]">
-      <header className="flex items-center justify-between gap-2 bg-[#f26a21] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-black">
-        <div className="min-w-0">
-          <p className="text-base font-black leading-tight">HHC Scanner</p>
-          <p className="truncate text-xs font-medium">{ctx.actor.name}{ctx.actor.canOverride ? " · supervisor" : ""}</p>
+      <header className="relative flex items-center justify-between gap-2 border-b border-white/10 bg-[#0b0b0b] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="flex min-w-0 items-center gap-3">
+          <Image src="/branding/hhc-logo.png" alt="" width={26} height={33} className="h-[33px] w-[26px] shrink-0" priority />
+          <div className="min-w-0">
+            <p className="font-heading text-base leading-tight font-bold">HHC Scanner</p>
+            <p className="truncate text-xs text-[#8f8d87]">{ctx.actor.name}{ctx.actor.canOverride ? " · supervisor" : ""}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${online ? "bg-black/15" : "bg-black text-white"}`} role="status">
-            {online ? <span className="h-2 w-2 rounded-full bg-green-800" aria-hidden /> : <WifiOff className="h-3.5 w-3.5" aria-hidden />}
+          <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${online ? "border border-white/15 text-white/85" : "bg-[#f26a21] text-black"}`} role="status">
+            {online ? <span className="h-2 w-2 rounded-full bg-green-500" aria-hidden /> : <WifiOff className="h-3.5 w-3.5" aria-hidden />}
             {online ? "Online" : "Offline"}
           </span>
-          <button onClick={() => setSetupOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/15" aria-label="Wedstrijd, ingang en uitloggen">
+          <button onClick={() => setSetupOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 hover:bg-white/10" aria-label="Wedstrijd, ingang en uitloggen">
             <Settings className="h-5 w-5" aria-hidden />
           </button>
         </div>
+        <span aria-hidden className="absolute bottom-[-1px] left-0 h-[3px] w-24 bg-[#f26a21]" />
       </header>
 
       {ctx.events.length === 0 ? (
         <p className="p-6 text-center text-neutral-300">Er is nu geen wedstrijd om te scannen. Vraag een beheerder om de wedstrijd in HHC Tickets aan te zetten.</p>
       ) : (
         <>
-          <button onClick={() => setSetupOpen(true)} className="mx-4 mt-3 flex items-center gap-3 rounded-xl bg-neutral-900 p-3 text-left">
+          <button onClick={() => setSetupOpen(true)} className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-[#141414] p-3 text-left hover:border-white/20">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{selected.length ? selected.map((e) => e.title).join(" + ") : "Kies een wedstrijd"}</p>
+              <p className="eyebrow text-[0.625rem] text-[#8f8d87]">Je scant</p>
+              <p className="mt-0.5 truncate font-heading text-base font-bold">{selected.length ? selected.map((e) => e.title).join(" + ") : "Kies een wedstrijd"}</p>
               <p className="truncate text-xs text-neutral-400">
                 {selected[0] ? (isToday(selected[0].startsAt) ? `Vandaag ${timeOf(selected[0].startsAt)}` : formatDayTime(selected[0].startsAt)) : ""}
                 {" · "}
@@ -751,13 +757,13 @@ export function ScannerApp() {
             </div>
           )}
 
-          <div className="relative mx-4 mt-3 aspect-square overflow-hidden rounded-2xl bg-black">
+          <div className="relative mx-4 mt-3 aspect-square overflow-hidden rounded-xl border border-white/10 bg-black">
             <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
             <div className="pointer-events-none absolute inset-[12%]" aria-hidden>
-              <span className="absolute left-0 top-0 h-10 w-10 rounded-tl-xl border-l-4 border-t-4 border-white/80" />
-              <span className="absolute right-0 top-0 h-10 w-10 rounded-tr-xl border-r-4 border-t-4 border-white/80" />
-              <span className="absolute bottom-0 left-0 h-10 w-10 rounded-bl-xl border-b-4 border-l-4 border-white/80" />
-              <span className="absolute bottom-0 right-0 h-10 w-10 rounded-br-xl border-b-4 border-r-4 border-white/80" />
+              <span className="absolute left-0 top-0 h-10 w-10 rounded-tl-xl border-l-4 border-t-4 border-[#f26a21]" />
+              <span className="absolute right-0 top-0 h-10 w-10 rounded-tr-xl border-r-4 border-t-4 border-[#f26a21]" />
+              <span className="absolute bottom-0 left-0 h-10 w-10 rounded-bl-xl border-b-4 border-l-4 border-[#f26a21]" />
+              <span className="absolute bottom-0 right-0 h-10 w-10 rounded-br-xl border-b-4 border-r-4 border-[#f26a21]" />
             </div>
             {checking && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-lg font-semibold" role="status">
@@ -773,11 +779,17 @@ export function ScannerApp() {
             )}
           </div>
 
-          <div className="mx-4 mt-2 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-neutral-800 px-2.5 py-1">Deze telefoon: {admittedHere} binnen</span>
-            {stats && <span className="rounded-full bg-neutral-800 px-2.5 py-1">Totaal binnen: {stats.inside}</span>}
-            {pending > 0 && <span className="rounded-full bg-amber-400 px-2.5 py-1 font-semibold text-black">{pending} nog terug te melden</span>}
+          <div className="mx-4 mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10">
+            <div className="bg-[#141414] px-3 py-2.5">
+              <p className="eyebrow text-[0.625rem] text-[#8f8d87]">Deze telefoon</p>
+              <p className="stat-number mt-0.5 text-[1.75rem] leading-none">{admittedHere}<span className="ml-1.5 font-sans text-xs font-normal text-[#8f8d87]">binnen</span></p>
+            </div>
+            <div className="bg-[#141414] px-3 py-2.5">
+              <p className="eyebrow text-[0.625rem] text-[#8f8d87]">Totaal binnen</p>
+              <p className="stat-number mt-0.5 text-[1.75rem] leading-none">{stats ? stats.inside : "–"}</p>
+            </div>
           </div>
+          {pending > 0 && <p className="mx-4 mt-2 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black">{pending} nog terug te melden</p>}
 
           <form
             className="flex gap-2 px-4 pt-3"
@@ -798,26 +810,26 @@ export function ScannerApp() {
               autoCapitalize="characters"
               enterKeyHint="go"
               placeholder={ctx.actor.canOverride ? "Ticketnummer of code typen" : "Code typen of handscanner"}
-              className="min-w-0 flex-1 rounded-xl bg-neutral-800 p-3 text-base text-white placeholder:text-neutral-500"
+              className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#141414] p-3 text-base text-white placeholder:text-neutral-500 focus:border-[#f26a21] focus:outline-none"
             />
-            <button disabled={checking} className="rounded-xl bg-[#f26a21] px-4 text-base font-semibold text-black disabled:opacity-50">Controleer</button>
+            <button disabled={checking} className="rounded-xl bg-[#f26a21] px-4 text-base font-bold text-black hover:bg-[#ff7a1a] disabled:opacity-50">Controleer</button>
           </form>
 
           {message && (
-            <p className={`mx-4 mt-3 rounded-xl p-3 text-sm ${message.tone === "bad" ? "bg-red-900 text-white" : "bg-neutral-800 text-neutral-100"}`} role="status">
+            <p className={`mx-4 mt-3 rounded-xl p-3 text-sm ${message.tone === "bad" ? "bg-red-900 text-white" : "border border-white/10 bg-[#141414] text-neutral-100"}`} role="status">
               {message.text}
             </p>
           )}
 
           <section className="mx-4 mt-4" aria-label="Laatste scans">
-            <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-neutral-300">Laatste scans</h2>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="eyebrow text-[0.6875rem] text-[#8f8d87]">Laatste scans</h2>
               {conflicts > 0 && <span className="rounded-full bg-red-700 px-2 py-0.5 text-xs font-semibold">{conflicts} achteraf afgekeurd</span>}
             </div>
             {recent.length === 0 ? (
               <p className="text-xs text-neutral-500">Nog niets gescand op deze telefoon.</p>
             ) : (
-              <ul className="divide-y divide-neutral-800 rounded-xl bg-neutral-900">
+              <ul className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-[#141414]">
                 {recent.slice(0, 8).map((r) => (
                   <li key={r.id} className="flex items-center gap-3 p-3 text-sm">
                     <ResultDot result={r.conflict ? "INVALID" : r.result} />
@@ -832,7 +844,7 @@ export function ScannerApp() {
                       {r.conflict && <p className="text-xs font-semibold text-red-400">Achteraf: {r.conflict}</p>}
                     </div>
                     {r.result === "VALID" && r.scanId && !r.offline && !r.test && (
-                      <button onClick={() => setUndoFor(r)} className="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-800 px-2.5 py-2 text-xs" aria-label={`Scan van ${timeOf(r.at)} ongedaan maken`}>
+                      <button onClick={() => setUndoFor(r)} className="flex shrink-0 items-center gap-1 rounded-lg border border-white/15 px-2.5 py-2 text-xs" aria-label={`Scan van ${timeOf(r.at)} ongedaan maken`}>
                         <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Ongedaan
                       </button>
                     )}
@@ -844,16 +856,16 @@ export function ScannerApp() {
 
           {ctx.actor.canOverride && (
             <section className="mx-4 mt-4" aria-label="Scans van alle toestellen">
-              <div className="mb-1 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-neutral-300">Scans van alle toestellen</h2>
-                <button onClick={() => void loadAllScans()} disabled={allBusy || eventIds.length === 0} className="rounded-lg bg-neutral-800 px-2.5 py-1.5 text-xs disabled:opacity-50">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="eyebrow text-[0.6875rem] text-[#8f8d87]">Scans van alle toestellen</h2>
+                <button onClick={() => void loadAllScans()} disabled={allBusy || eventIds.length === 0} className="rounded-lg border border-white/15 px-2.5 py-1.5 text-xs disabled:opacity-50">
                   {allBusy ? "Laden…" : allScans ? "Vernieuwen" : "Tonen"}
                 </button>
               </div>
               {allScans && (allScans.length === 0 ? (
                 <p className="text-xs text-neutral-500">Nog geen geldige scans voor deze wedstrijd.</p>
               ) : (
-                <ul className="divide-y divide-neutral-800 rounded-xl bg-neutral-900">
+                <ul className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-[#141414]">
                   {allScans.map((r) => (
                     <li key={r.scanId} className="flex items-center gap-3 p-3 text-sm">
                       <div className="min-w-0 flex-1">
@@ -864,7 +876,7 @@ export function ScannerApp() {
                       </div>
                       <button
                         onClick={() => setUndoFor({ id: r.scanId, scanId: r.scanId, at: r.at, result: "VALID", label: r.label, reason: null, eventId: r.eventId, key: null, offline: false })}
-                        className="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-800 px-2.5 py-2 text-xs"
+                        className="flex shrink-0 items-center gap-1 rounded-lg border border-white/15 px-2.5 py-2 text-xs"
                         aria-label={`Scan van ${timeOf(r.at)} ongedaan maken`}
                       >
                         <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Ongedaan
@@ -876,11 +888,11 @@ export function ScannerApp() {
             </section>
           )}
 
-          <div className="mx-4 mb-6 mt-4 flex items-center justify-between gap-2 rounded-xl bg-neutral-900 p-3 text-xs text-neutral-400">
+          <div className="mx-4 mb-6 mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/10 p-3 text-xs text-neutral-400">
             <span>
               {cacheInfo ? `Offline-lijst: ${cacheInfo.count} tickets, bijgewerkt ${timeOf(cacheInfo.generatedAt)}. Wordt automatisch ververst.` : online ? "Offline-lijst wordt geladen…" : "Geen offline-lijst op deze telefoon."}
             </span>
-            <button onClick={() => void refreshCache(eventIds, { force: true })} disabled={cacheBusy || !online} className="shrink-0 rounded-lg bg-neutral-800 px-3 py-2 text-white disabled:opacity-50">
+            <button onClick={() => void refreshCache(eventIds, { force: true })} disabled={cacheBusy || !online} className="shrink-0 rounded-lg border border-white/15 px-3 py-2 text-white disabled:opacity-50">
               {cacheBusy ? "Bezig…" : "Vernieuw"}
             </button>
           </div>
@@ -955,8 +967,8 @@ function ResultScreen(props: {
         <Icon className="h-16 w-16" strokeWidth={3} />
       </span>
       {r.test && <p className="rounded-full bg-black px-4 py-1 text-base font-bold uppercase tracking-wide text-white">Test · niemand binnengelaten</p>}
-      <p className="text-5xl font-black tracking-tight">{title}</p>
-      {r.label && <p className="text-2xl font-semibold">{r.label}</p>}
+      <p className="font-heading text-5xl font-bold tracking-tight">{title}</p>
+      {r.label && <p className="font-heading text-2xl font-bold">{r.label}</p>}
       {r.zone && <p className={`rounded-full px-4 py-1 text-xl font-bold ${subtle}`}>Vak {r.zone}</p>}
       {r.reasonLabel && !ok && <p className="max-w-sm text-xl font-medium">{r.reasonLabel}</p>}
       {r.detail && <p className="max-w-sm text-lg">{r.detail}</p>}
@@ -1013,8 +1025,8 @@ function Setup(props: { now: number; ctx: Ctx; eventIds: string[]; entranceId: s
   const group = (title: string, list: Ctx["events"]) =>
     list.length > 0 && (
       <div>
-        <h3 className="mb-1 mt-4 text-xs font-semibold uppercase tracking-wide text-neutral-400">{title}</h3>
-        <ul className="divide-y divide-neutral-800 rounded-xl bg-neutral-900">
+        <h3 className="eyebrow mb-2 mt-5 text-[0.6875rem] text-[#8f8d87]">{title}</h3>
+        <ul className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-[#141414]">
           {list.map((e) => {
             const on = props.eventIds.includes(e.id);
             return (
@@ -1042,10 +1054,10 @@ function Setup(props: { now: number; ctx: Ctx; eventIds: string[]; entranceId: s
       </div>
     );
   return (
-    <div className="fixed inset-0 z-40 overflow-y-auto bg-neutral-950" role="dialog" aria-modal="true" aria-label="Wedstrijd en ingang kiezen">
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-[#0b0b0b]" role="dialog" aria-modal="true" aria-label="Wedstrijd en ingang kiezen">
       <div className="mx-auto max-w-md px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Wat scan je?</h2>
+          <h2 className="font-heading text-2xl font-bold">Wat scan je?</h2>
           <button onClick={props.onClose} className="rounded-xl bg-[#f26a21] px-5 py-2.5 font-semibold text-black">Klaar</button>
         </div>
         <p className="mt-1 text-sm text-neutral-400">Kies de wedstrijd. Bij een dubbele wedstrijddag kun je er meer kiezen; de scanner kijkt dan zelf bij welke wedstrijd het ticket hoort.</p>
@@ -1053,13 +1065,13 @@ function Setup(props: { now: number; ctx: Ctx; eventIds: string[]; entranceId: s
         {group("Komende wedstrijden", upcoming)}
         {group("Eerder en seizoenspassen", other)}
 
-        <h3 className="mb-1 mt-6 text-xs font-semibold uppercase tracking-wide text-neutral-400">Ingang</h3>
+        <h3 className="eyebrow mb-2 mt-6 text-[0.6875rem] text-[#8f8d87]">Ingang</h3>
         {ctx.actor.entranceId ? (
-          <p className="rounded-xl bg-neutral-900 p-3 text-sm">Deze scanner hoort vast bij ingang {ctx.entrances.find((e) => e.id === ctx.actor.entranceId)?.name ?? "?"}.</p>
+          <p className="rounded-xl border border-white/10 bg-[#141414] p-3 text-sm">Deze scanner hoort vast bij ingang {ctx.entrances.find((e) => e.id === ctx.actor.entranceId)?.name ?? "?"}.</p>
         ) : ctx.entrances.length === 0 ? (
-          <p className="rounded-xl bg-neutral-900 p-3 text-sm text-neutral-400">Er zijn geen ingangen ingesteld; alle tickets gelden bij elke ingang.</p>
+          <p className="rounded-xl border border-white/10 bg-[#141414] p-3 text-sm text-neutral-400">Er zijn geen ingangen ingesteld; alle tickets gelden bij elke ingang.</p>
         ) : (
-          <ul className="divide-y divide-neutral-800 rounded-xl bg-neutral-900">
+          <ul className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-[#141414]">
             {[{ id: "", name: "Geen vaste ingang (vak niet controleren)" }, ...ctx.entrances].map((e) => (
               <li key={e.id}>
                 <label className="flex min-h-12 items-center gap-3 p-3">
@@ -1071,7 +1083,7 @@ function Setup(props: { now: number; ctx: Ctx; eventIds: string[]; entranceId: s
           </ul>
         )}
 
-        <button onClick={props.onLogout} className="mt-8 w-full rounded-xl bg-neutral-800 p-3 text-sm font-semibold">
+        <button onClick={props.onLogout} className="mt-8 w-full rounded-xl border border-white/15 p-3 text-sm font-semibold hover:bg-white/5">
           Uitloggen ({ctx.actor.name})
         </button>
       </div>
@@ -1084,21 +1096,21 @@ function UndoDialog({ item, onCancel, onConfirm }: { item: Recent; onCancel: () 
   const [busy, setBusy] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Scan ongedaan maken">
-      <div className="w-full max-w-md space-y-3 rounded-2xl bg-neutral-900 p-4">
-        <h2 className="text-lg font-bold">Scan ongedaan maken?</h2>
+      <div className="w-full max-w-md space-y-3 rounded-xl border border-white/10 bg-[#141414] p-4">
+        <h2 className="font-heading text-xl font-bold">Scan ongedaan maken?</h2>
         <p className="text-sm text-neutral-300">
           {item.label ?? "Ticket"} · {timeOf(item.at)}. Het ticket telt daarna weer als niet gebruikt. Dit komt met je reden in het logboek.
         </p>
         <div className="flex flex-wrap gap-1.5">
           {UNDO_REASONS.map((x) => (
-            <button key={x} type="button" onClick={() => setReason(x)} className={`rounded-full px-3 py-1.5 text-sm ${reason === x ? "bg-white text-black" : "bg-neutral-800"}`}>
+            <button key={x} type="button" onClick={() => setReason(x)} className={`rounded-full px-3 py-1.5 text-sm ${reason === x ? "bg-white text-black" : "border border-white/15"}`}>
               {x}
             </button>
           ))}
         </div>
-        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Of typ een reden" className="w-full rounded-lg bg-neutral-800 p-2.5 text-base" aria-label="Reden" />
+        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Of typ een reden" className="w-full rounded-lg border border-white/15 bg-[#0b0b0b] p-2.5 text-base focus:border-[#f26a21] focus:outline-none" aria-label="Reden" />
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 rounded-xl bg-neutral-800 p-3 font-semibold">Annuleren</button>
+          <button onClick={onCancel} className="flex-1 rounded-xl border border-white/15 p-3 font-semibold">Annuleren</button>
           <button
             disabled={busy || reason.trim().length < 3}
             onClick={async () => {
@@ -1142,19 +1154,24 @@ function Login({ onDone, notice }: { onDone: (c: Ctx) => void; notice: string | 
   }
   return (
     <form onSubmit={go} className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 p-6">
-      <h1 className="text-3xl font-black">HHC Scanner</h1>
+      <Image src="/branding/hhc-logo.png" alt="HHC Hardenberg" width={44} height={56} className="h-14 w-11" priority />
+      <div>
+        <p className="eyebrow text-[0.6875rem] text-[#f26a21]">HHC Tickets</p>
+        <h1 className="mt-1 font-heading text-[2.25rem] leading-none font-bold">HHC Scanner</h1>
+        <span aria-hidden className="mt-3 block h-[3px] w-16 bg-[#f26a21]" />
+      </div>
       <p className="text-sm text-neutral-400">Log in met de code en PIN van je scanner. Heb je een Hub-account met scanrechten? Log dan in met je Hub-account.</p>
       {notice && <p className="rounded-xl bg-amber-400 p-3 text-sm font-medium text-black">{notice}</p>}
-      <label className="text-sm text-neutral-300">
+      <label className="text-sm font-semibold text-neutral-300">
         Scannercode
-        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" className="mt-1 w-full rounded-xl bg-neutral-800 p-3 text-lg tracking-widest text-white" />
+        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" className="mt-1 w-full rounded-xl border border-white/15 bg-[#141414] p-3 text-lg tracking-widest text-white focus:border-[#f26a21] focus:outline-none" />
       </label>
-      <label className="text-sm text-neutral-300">
+      <label className="text-sm font-semibold text-neutral-300">
         PIN
-        <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} inputMode="numeric" type="password" autoComplete="off" className="mt-1 w-full rounded-xl bg-neutral-800 p-3 text-lg tracking-widest text-white" />
+        <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} inputMode="numeric" type="password" autoComplete="off" className="mt-1 w-full rounded-xl border border-white/15 bg-[#141414] p-3 text-lg tracking-widest text-white focus:border-[#f26a21] focus:outline-none" />
       </label>
       {error && <p className="rounded-xl bg-red-900 p-3 text-sm" role="alert">{error}</p>}
-      <button disabled={busy || code.length < 3 || pin.length < 4} className="rounded-xl bg-[#f26a21] p-3 text-lg font-semibold text-black disabled:opacity-50">
+      <button disabled={busy || code.length < 3 || pin.length < 4} className="rounded-xl bg-[#f26a21] p-3 text-lg font-bold text-black hover:bg-[#ff7a1a] disabled:opacity-50">
         {busy ? "Bezig…" : "Inloggen"}
       </button>
       <a href="/login?callbackUrl=/scan" className="text-center text-sm text-neutral-400 underline">
