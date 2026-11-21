@@ -17,7 +17,7 @@ export default async function SupportSearchPage() {
       <Card>
         <CardContent className="flex items-center gap-3 p-6 text-sm">
           <Info className="h-5 w-5 shrink-0 text-muted-foreground" />
-          <span>De zoektool werkt zodra HHC Tickets aan staat.</span>
+          <span>De zoektool werkt zodra Tickets aan staat.</span>
         </CardContent>
       </Card>
     );

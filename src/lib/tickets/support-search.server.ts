@@ -28,7 +28,7 @@ import {
 // Zoektool in Klantenservice: klanten en tickets in het HHC-ticketsysteem én in Fullhouse.
 //
 // Privacy en rechten:
-//  - Alleen met het recht "support:search" (HHC Tickets-rol). E-mailadressen alleen voluit met
+//  - Alleen met het recht "support:search" (Tickets-rol). E-mailadressen alleen voluit met
 //    "tickets:personal"; anders gemaskeerd. Fullhouse-barcodes altijd gemaskeerd (laatste 4).
 //  - De zoekterm gaat in de body van een POST, nooit in een URL (geen logs, geen browsergeschiedenis).
 //  - Elke zoekopdracht komt in het auditlog met soort, gemaskeerde term en aantallen.

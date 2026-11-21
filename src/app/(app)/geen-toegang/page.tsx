@@ -18,7 +18,7 @@ export default async function GeenToegangPage() {
     const session = await auth();
     if (session?.user && (await loadCommercialAccess(session.user.id)).isMember) redirect("/commercieel");
   }
-  // Idem voor wie alleen HHC Tickets heeft (bv. een scanner of ticketuitgever).
+  // Idem voor wie alleen Tickets heeft (bv. een scanner of ticketuitgever).
   if (isTicketsEnabled()) {
     const session = await auth();
     if (session?.user && (await loadTicketsAccess(session.user.id)).hasAccess) redirect("/tickets");

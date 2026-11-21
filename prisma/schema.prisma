@@ -127,7 +127,7 @@ model AccessRole {
   // Toegang tot Commerciële Zaken; de bevoegdheden staan in de gekoppelde CommercialRole.
   commercialRoleId   String?         @unique
   commercialRole     CommercialRole? @relation(fields: [commercialRoleId], references: [id], onDelete: SetNull)
-  // Toegang tot HHC Tickets met deze bevoegdheden (zie src/lib/tickets/permissions.ts).
+  // Toegang tot Tickets met deze bevoegdheden (zie src/lib/tickets/permissions.ts).
   ticketsAccess      Boolean         @default(false)
   ticketsPermissions String[]        @default([])
   // Standaardrol uit src/lib/access/presets.ts (bv. "ks-medewerker"); null = zelf gemaakt.
@@ -1816,7 +1816,7 @@ model KnownDevice {
 }
 
 // ---------------------------------------------------------------------------
-// HHC Tickets: eigen interne tickets naast Fullhouse (docs/hhc-tickets/architectuur.md).
+// Tickets: eigen interne tickets naast Fullhouse (docs/hhc-tickets/architectuur.md).
 // Alleen additieve tabellen met het voorvoegsel tickets_.
 // ---------------------------------------------------------------------------
 
@@ -2121,7 +2121,7 @@ model TicketSettings {
   @@map("tickets_settings")
 }
 
-/// Auditlog van HHC Tickets. Geen persoonsgegevens in meta: alleen id's.
+/// Auditlog van Tickets. Geen persoonsgegevens in meta: alleen id's.
 model TicketAuditEvent {
   id        String   @id @default(cuid())
   at        DateTime @default(now())
@@ -2147,7 +2147,7 @@ model TicketAuditEvent {
   @@map("tickets_audit_events")
 }
 
-// ── HHC Tickets, fase 2 t/m 5 (alleen additief) ─────────────────────────────
+// ── Tickets, fase 2 t/m 5 (alleen additief) ─────────────────────────────
 
 /// Verzendlog van tickets: wie, welk kanaal, uitkomst. Geen adres of inhoud (privacy).
 model TicketDelivery {

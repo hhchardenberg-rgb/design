@@ -7,12 +7,12 @@ import { formatDayTime } from "@/lib/date-format";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Auditlog – HHC Tickets" };
+export const metadata: Metadata = { title: "Auditlog – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<{ actie?: string; pagina?: string }> }) {
   const a = await ticketsPageAccess("audit:read");
-  if (!a.allowed) return <NoAccess what="het auditlog van HHC Tickets" />;
+  if (!a.allowed) return <NoAccess what="het auditlog van Tickets" />;
   const sp = await searchParams;
   const action = sp.actie && sp.actie in TICKET_AUDIT_ACTIONS ? sp.actie : undefined;
   const page = Math.max(1, Number(sp.pagina) || 1);
@@ -23,7 +23,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
     <div className="space-y-4">
       <div>
         <h1 className="page-title">Auditlog</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Alle belangrijke handelingen in HHC Tickets. Inloggen staat in het auditlog van de Hub (Beheer).</p>
+        <p className="mt-1 text-sm text-muted-foreground">Alle belangrijke handelingen in Tickets. Inloggen staat in het auditlog van de Hub (Beheer).</p>
       </div>
       <form className="flex flex-wrap gap-2 text-sm">
         <select name="actie" defaultValue={action ?? ""} className="h-10 rounded-md border border-border bg-surface px-3" aria-label="Soort handeling">

@@ -320,6 +320,33 @@ export async function migrateToCompactRoles(tx: Tx): Promise<{ adopted: number; 
   return stats;
 }
 
+const TICKETS_RENAME_MARKER = "_hernoem-hhc-tickets";
+
+/**
+ * Eenmalig: "HHC Tickets" heet sinds 21/11/2026 "Tickets". Standaardrollen die nog de oude
+ * naam dragen, krijgen de nieuwe naam (en "HHC Tickets" in de omschrijving wordt "Tickets").
+ * Alleen naam en omschrijving; rechten en toewijzingen blijven precies gelijk. Een rol die
+ * iemand zelf een andere naam gaf, blijft ongemoeid.
+ */
+async function renameHhcTicketsRoles(tx: Tx): Promise<number> {
+  if (await tx.accessRolePreset.findUnique({ where: { key: TICKETS_RENAME_MARKER } })) return 0;
+  let renamed = 0;
+  for (const s of STANDARD_ROLES) {
+    if (s.section !== "Tickets") continue;
+    const oldName = `HHC Tickets – ${s.short.toLowerCase()}`;
+    const r = await tx.accessRole.findFirst({ where: { presetKey: s.key }, select: { id: true, name: true, description: true } });
+    if (!r) continue;
+    const name = r.name === oldName ? await freeName(tx, s.name) : r.name;
+    const description = r.description?.replaceAll("HHC Tickets", "Tickets") ?? r.description;
+    if (name === r.name && description === r.description) continue;
+    await tx.accessRole.update({ where: { id: r.id }, data: { name, description } });
+    await audit(tx, null, { action: "access.role.update", entity: "role", entityId: r.id, before: { name: r.name }, after: { name, rights: "ongewijzigd" } });
+    renamed++;
+  }
+  await tx.accessRolePreset.create({ data: { key: TICKETS_RENAME_MARKER, roleId: null } });
+  return renamed;
+}
+
 /** Wat de oude velden over deze gebruiker zeggen. */
 function legacySnapshotOf(u: { role: string; roles: string[]; commercialMembership: { roleId: string | null } | null }): LegacySnapshot {
   return {
@@ -360,6 +387,7 @@ export async function reconcileAccess(): Promise<{ firstRun: boolean; rebuilt: n
     for (const u of users) if (await reconcileUserRow(tx, u)) rebuilt++;
     // Pas na het toewijzen: het overzetten naar de compacte indeling kijkt wie welke rol heeft.
     await migrateToCompactRoles(tx);
+    await renameHhcTicketsRoles(tx);
     await ensureStandardRoles(tx);
     if (isFirst || rebuilt > 0) {
       await audit(tx, null, { action: isFirst ? "access.migrated" : "access.reconciled", entity: "role", after: { users: rebuilt } });
@@ -574,7 +602,7 @@ export interface RoleInput {
   ticketingLevel: SectionLevel;
   /** null = geen toegang tot Commerciële Zaken. */
   commercial: string[] | null;
-  /** null/ontbreekt = geen toegang tot HHC Tickets. */
+  /** null/ontbreekt = geen toegang tot Tickets. */
   tickets?: string[] | null;
 }
 
@@ -648,7 +676,7 @@ export async function updateAccessRole(actor: AccessActor, roleId: string, input
       const role = await tx.accessRole.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
       if (!role || isHiddenRole(role)) throw new ApiError(404, NOT_FOUND_ROLE);
       const before = grantOf(role);
-      // Oudere clients sturen `tickets` niet mee: dan blijft de HHC Tickets-toegang ongewijzigd.
+      // Oudere clients sturen `tickets` niet mee: dan blijft de Tickets-toegang ongewijzigd.
       const nextTickets = input.tickets === undefined ? (before.tickets ?? null) : tickets;
       const after: RoleGrant = {
         isAdmin: role.isAdmin,

@@ -16,10 +16,10 @@ function authorized(req: Request): boolean {
   return given.length === wanted.length && timingSafeEqual(given, wanted);
 }
 
-/** Dagelijks: Fullhouse-synchronisatie (alleen lezen) en bewaartermijnen. Doet niets als HHC Tickets uit staat. */
+/** Dagelijks: Fullhouse-synchronisatie (alleen lezen) en bewaartermijnen. Doet niets als Tickets uit staat. */
 export async function GET(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Niet toegestaan." }, { status: 401 });
-  if (!isTicketsEnabled()) return NextResponse.json({ skipped: "HHC Tickets staat uit." });
+  if (!isTicketsEnabled()) return NextResponse.json({ skipped: "Tickets staat uit." });
   const out: Record<string, unknown> = {};
   try {
     out.sync = await syncUpcoming();

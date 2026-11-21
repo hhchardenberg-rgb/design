@@ -6,7 +6,7 @@ Er komen geen nieuwe codes of tokens bij; Fullhouse-codes blijven onaangeroerd.
 
 ## Voor beheerders (kort)
 
-**Seizoensstandaard instellen.** Ga naar HHC Tickets → Inrichting → *Ticketontwerp en standaarden*, kies
+**Seizoensstandaard instellen.** Ga naar Tickets → Inrichting → *Ticketontwerp en standaarden*, kies
 bovenaan **Seizoen** en het seizoen (of klik bij *Tickettypes, vakken en seizoenen* achter een seizoen op
 *Ticketontwerp*). Pas de onderdelen aan; alles wordt automatisch als concept bewaard. Wil je iets alleen voor
 één tickettype, kies dan rechts *Alleen <tickettype>*.

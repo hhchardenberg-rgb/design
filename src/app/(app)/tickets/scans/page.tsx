@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { scanHistory, scanStats } from "@/lib/tickets/scan.server";
 
-export const metadata: Metadata = { title: "Scanhistorie – HHC Tickets" };
+export const metadata: Metadata = { title: "Scanhistorie – Tickets" };
 export const dynamic = "force-dynamic";
 
 const RESULT = { VALID: "Geldig", WARNING: "Waarschuwing", INVALID: "Afgewezen", VOIDED: "Ongedaan gemaakt" } as const;
@@ -15,7 +15,7 @@ const TONE = { VALID: "text-success", WARNING: "text-amber-600", INVALID: "text-
 
 export default async function ScansPage({ searchParams }: { searchParams: Promise<{ wedstrijd?: string; uitslag?: string; pagina?: string }> }) {
   const a = await ticketsPageAccess("scan:history");
-  if (!a.allowed) return <NoAccess what="de scanhistorie van HHC Tickets" />;
+  if (!a.allowed) return <NoAccess what="de scanhistorie van Tickets" />;
   const sp = await searchParams;
   const events = await prisma.ticketEvent.findMany({ orderBy: { startsAt: "desc" }, take: 40, select: { id: true, title: true, startsAt: true } });
   const eventId = sp.wedstrijd && events.some((e) => e.id === sp.wedstrijd) ? sp.wedstrijd : events[0]?.id;

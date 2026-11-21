@@ -5,7 +5,7 @@ import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { ResendCard } from "./resend-card";
 import { TicketList } from "./ticket-list";
 
-export const metadata: Metadata = { title: "Ticketoverzicht – HHC Tickets" };
+export const metadata: Metadata = { title: "Ticketoverzicht – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {

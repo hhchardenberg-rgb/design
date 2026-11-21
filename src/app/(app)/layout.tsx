@@ -18,7 +18,7 @@ import { pwaMetadata } from "@/lib/pwa-apps";
 // statisch geprerenderd worden.
 export const dynamic = "force-dynamic";
 
-// Standaard is dit de app "Communicatie"; Commerciële Zaken, Klantenservice en HHC Tickets
+// Standaard is dit de app "Communicatie"; Commerciële Zaken, Klantenservice en Tickets
 // zetten in hun eigen layout hun eigen manifest (zie src/lib/pwa-apps.ts).
 export const metadata = pwaMetadata("communicatie");
 

@@ -7,7 +7,7 @@ import type { TicketsActor } from "./authz.server";
 import { computeValidUntil, defaultEndsAt, type ValidityMode } from "./rules";
 import { eventSchema, fullhouseEventSchema, removeEventSchema, seasonSchema, typeSchema, zoneSchema } from "./schemas";
 
-// Inrichting van HHC Tickets: seizoenen, vakken, wedstrijden en tickettypes.
+// Inrichting van Tickets: seizoenen, vakken, wedstrijden en tickettypes.
 
 const actorOf = (a: TicketsActor) => ({ id: a.id, name: a.name });
 

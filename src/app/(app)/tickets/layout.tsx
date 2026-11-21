@@ -11,14 +11,14 @@ export const dynamic = "force-dynamic";
 // Eigen app op het beginscherm (manifest, icoon, naam): zie src/lib/pwa-apps.ts.
 export const metadata = pwaMetadata("tickets");
 
-// Toegangspoort voor heel HHC Tickets. Flag uit: de sectie bestaat niet (404).
-// Zonder rol met HHC Tickets-toegang: duidelijke weigering.
+// Toegangspoort voor heel Tickets. Flag uit: de sectie bestaat niet (404).
+// Zonder rol met Tickets-toegang: duidelijke weigering.
 export default async function TicketsLayout({ children }: { children: React.ReactNode }) {
   if (!isTicketsEnabled()) notFound();
   const session = await auth();
   if (!session?.user) notFound();
   // De routebewaking leest de tweestapsplicht uit het sessiecookie; dat kan nog van vóór de plicht zijn
-  // (rol net uitgebreid, of HHC Tickets net aangezet). auth() leest hem hier vers uit de database.
+  // (rol net uitgebreid, of Tickets net aangezet). auth() leest hem hier vers uit de database.
   if (session.user.mfaSetupRequired) redirect(`${MFA_SETUP_PATH}?verplicht=1`);
   const access = await loadTicketsAccess(session.user.id);
   if (!access.hasAccess) {
@@ -29,13 +29,13 @@ export default async function TicketsLayout({ children }: { children: React.Reac
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-muted-foreground">
               <ShieldOff className="h-6 w-6" />
             </div>
-            <h1 className="text-lg font-semibold">Geen toegang tot HHC Tickets</h1>
-            <p className="text-sm text-muted-foreground">Je account heeft geen rol met toegang tot HHC Tickets. Vraag de hoofdadmin om toegang als je die nodig hebt.</p>
+            <h1 className="text-lg font-semibold">Geen toegang tot Tickets</h1>
+            <p className="text-sm text-muted-foreground">Je account heeft geen rol met toegang tot Tickets. Vraag de hoofdadmin om toegang als je die nodig hebt.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
-  // Het menu van HHC Tickets staat in de zijbalk van de Hub (zie app-shell.tsx).
+  // Het menu van Tickets staat in de zijbalk van de Hub (zie app-shell.tsx).
   return <>{children}</>;
 }

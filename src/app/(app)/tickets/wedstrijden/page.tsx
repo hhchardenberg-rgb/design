@@ -3,11 +3,11 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { EventsManager } from "./events-manager";
 
-export const metadata: Metadata = { title: "Wedstrijden – HHC Tickets" };
+export const metadata: Metadata = { title: "Wedstrijden – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function EventsPage() {
   const a = await ticketsPageAccess("events:read");
-  if (!a.allowed) return <NoAccess what="de wedstrijden van HHC Tickets" />;
+  if (!a.allowed) return <NoAccess what="de wedstrijden van Tickets" />;
   return <EventsManager canManage={a.can("events:manage")} canMail={a.can("tickets:resend")} canDelete={a.can("events:delete")} canSeasons={a.can("types:manage")} />;
 }

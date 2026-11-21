@@ -7,7 +7,7 @@ import type { NextMatch } from "@/components/shell/types";
  * Eerstvolgende wedstrijden voor de wedstrijdband en -chip.
  *
  * Wedstrijden staan op drie plekken: de wedstrijden van de designtool (Beheer > Wedstrijden),
- * de wedstrijden van HHC Tickets en de clubagenda (Google Agenda, met de KNVB-koppeling).
+ * de wedstrijden van Tickets en de clubagenda (Google Agenda, met de KNVB-koppeling).
  * Alleen de designtool-tabel gebruiken gaf "geen wedstrijd gepland" terwijl de agenda vol stond.
  * We voegen ze samen; staan er twee binnen drie uur van elkaar, dan is het dezelfde wedstrijd en
  * houden we de designtool-versie (die kan de templates direct vullen).

@@ -23,7 +23,7 @@ export interface RoleGrant {
   ticketingLevel: SectionLevel;
   /** null = geen toegang tot Commerciële Zaken. */
   commercial: string[] | null;
-  /** null/ontbreekt = geen toegang tot HHC Tickets; anders de bevoegdheden (src/lib/tickets/permissions.ts). */
+  /** null/ontbreekt = geen toegang tot Tickets; anders de bevoegdheden (src/lib/tickets/permissions.ts). */
   tickets?: string[] | null;
 }
 
@@ -88,7 +88,7 @@ export function describeRole(r: RoleGrant): string[] {
   }
   if (r.tickets) {
     const n = r.tickets.length;
-    parts.push(`HHC Tickets: ${n === 0 ? "toegang, nog geen bevoegdheden" : n === 1 ? "1 bevoegdheid" : `${n} bevoegdheden`}`);
+    parts.push(`Tickets: ${n === 0 ? "toegang, nog geen bevoegdheden" : n === 1 ? "1 bevoegdheid" : `${n} bevoegdheden`}`);
   }
   return parts.length > 0 ? parts : ["Geeft (nog) nergens toegang toe"];
 }
@@ -106,7 +106,7 @@ export interface ManagerScope {
   commercialManage: boolean;
   /** De bevoegdheden binnen Commerciële Zaken die deze beheerder zelf heeft (en dus kan doorgeven). */
   commercialGrantable: ReadonlySet<string>;
-  /** De HHC Tickets-bevoegdheden die deze beheerder zelf heeft (een Klantenservice-beheerder geeft alleen die door). */
+  /** De Tickets-bevoegdheden die deze beheerder zelf heeft (een Klantenservice-beheerder geeft alleen die door). */
   ticketsGrantable?: ReadonlySet<string>;
 }
 
@@ -126,12 +126,12 @@ export function roleWithinScope(m: ManagerScope, r: RoleGrant): Decision {
   if (r.hubLevel === "ADMIN" || r.ticketingLevel === "ADMIN") return no("Beheerders van een onderdeel wijst de hoofdadmin aan.");
   if (r.hubLevel === "USER" && !m.hubAdmin) return no("Deze rol geeft toegang tot Communicatie; dat beheer je niet.");
   if (r.ticketingLevel === "USER" && !m.ticketingAdmin) return no("Deze rol geeft toegang tot Klantenservice; dat beheer je niet.");
-  // HHC Tickets-rechten: een Klantenservice-beheerder geeft Klantenservice-rollen door met alleen
-  // bevoegdheden die hij zelf heeft; pure HHC Tickets-rollen deelt de hoofdadmin uit.
+  // Tickets-rechten: een Klantenservice-beheerder geeft Klantenservice-rollen door met alleen
+  // bevoegdheden die hij zelf heeft; pure Tickets-rollen deelt de hoofdadmin uit.
   if (r.tickets) {
-    if (r.ticketingLevel === "NONE" || !m.ticketingAdmin) return no("Toegang tot HHC Tickets geeft de hoofdadmin.");
+    if (r.ticketingLevel === "NONE" || !m.ticketingAdmin) return no("Toegang tot Tickets geeft de hoofdadmin.");
     const beyond = r.tickets.filter((p) => !m.ticketsGrantable?.has(p));
-    if (beyond.length > 0) return no("Deze rol bevat HHC Tickets-bevoegdheden die je zelf niet hebt.");
+    if (beyond.length > 0) return no("Deze rol bevat Tickets-bevoegdheden die je zelf niet hebt.");
   }
   if (r.commercial) {
     if (!m.commercialManage) return no("Deze rol geeft toegang tot Commerciële Zaken; dat beheer je niet.");

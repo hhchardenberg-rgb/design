@@ -5,7 +5,7 @@ import { requireTickets, type TicketsActor } from "./authz.server";
 import type { TicketPermission } from "./permissions";
 
 /**
- * Standaard omhulsel voor HHC Tickets-API's: flag, sessie, toegang en de genoemde
+ * Standaard omhulsel voor Tickets-API's: flag, sessie, toegang en de genoemde
  * bevoegdheden centraal; de service controleert daarna wat specifiek is. Fouten uniform.
  */
 export async function handleTickets(permissions: TicketPermission[], fn: (actor: TicketsActor) => Promise<unknown>) {

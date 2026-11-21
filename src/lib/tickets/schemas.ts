@@ -2,7 +2,7 @@ import { z } from "zod";
 import { LOCALES, type Locale } from "./i18n";
 import { TICKET_CATEGORY_KEYS, VALIDITY_MODES } from "./rules";
 
-// Invoercontrole voor alle HHC Tickets-API's (server-side; de client mag niets afdwingen).
+// Invoercontrole voor alle Tickets-API's (server-side; de client mag niets afdwingen).
 
 const text = (max: number) => z.string().trim().max(max);
 const optText = (max: number) =>

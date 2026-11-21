@@ -14,7 +14,7 @@ export interface TicketingModule {
   href: string;
   status: "available" | "soon";
   icon: LucideIcon;
-  /** Alleen zichtbaar met dit HHC Tickets-recht (server-side bepaald). */
+  /** Alleen zichtbaar met dit Tickets-recht (server-side bepaald). */
   requires?: "support:search";
 }
 

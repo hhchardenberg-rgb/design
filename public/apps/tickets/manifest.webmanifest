@@ -1,7 +1,7 @@
 {
   "id": "/tickets",
-  "name": "HHC Tickets",
-  "short_name": "HHC Tickets",
+  "name": "Tickets",
+  "short_name": "Tickets",
   "description": "Tickets, wedstrijden, gastenlijsten en scans van HHC Hardenberg.",
   "lang": "nl",
   "dir": "ltr",

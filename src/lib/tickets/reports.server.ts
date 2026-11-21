@@ -96,7 +96,7 @@ async function reportPdf(rep: Awaited<ReturnType<typeof eventReport>>): Promise<
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   page.drawRectangle({ x: 0, y: 782, width: 595, height: 60, color: rgb(0.949, 0.416, 0.129) });
-  page.drawText("HHC Tickets - wedstrijdrapport", { x: 40, y: 806, size: 18, font: bold, color: rgb(1, 1, 1) });
+  page.drawText("Tickets - wedstrijdrapport", { x: 40, y: 806, size: 18, font: bold, color: rgb(1, 1, 1) });
   let y = 750;
   const line = (text: string, size = 11, f = font) => {
     page.drawText(pdfSafe(text), { x: 40, y, size, font: f, color: rgb(0.1, 0.1, 0.1), maxWidth: 515 });

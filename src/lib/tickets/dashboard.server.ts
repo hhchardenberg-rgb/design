@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { TICKET_CATEGORY_KEYS } from "./rules";
 
-// Dashboard van HHC Tickets: eigen tickets, Fullhouse-tickets en de scans van de wedstrijd die nu
+// Dashboard van Tickets: eigen tickets, Fullhouse-tickets en de scans van de wedstrijd die nu
 // bezig is (of anders de eerstvolgende / de laatst gespeelde).
 
 export async function dashboardData() {

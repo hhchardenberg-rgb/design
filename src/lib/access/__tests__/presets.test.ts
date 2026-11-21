@@ -55,6 +55,6 @@ test("matchesStandard en indeling per onderdeel", () => {
   };
   assert.equal(roleGroup(view("ks-teamleider")), "Klantenservice");
   assert.equal(shortName(view("ks-teamleider")), "Teamleider");
-  assert.equal(roleGroup(view("tickets-ontwerper")), "HHC Tickets");
+  assert.equal(roleGroup(view("tickets-ontwerper")), "Tickets");
   assert.equal(roleGroup({ ...view("ks-teamleider"), presetKey: null }), "Eigen rollen");
 });

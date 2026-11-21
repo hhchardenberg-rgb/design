@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-// Auditlog van HHC Tickets. Schrijven mag een handeling nooit laten mislukken, behalve
+// Auditlog van Tickets. Schrijven mag een handeling nooit laten mislukken, behalve
 // binnen een transactie (dan gaat het mee in dezelfde transactie). Geen persoonsgegevens
 // in `meta` of `summary`: alleen id's, statussen en redenen.
 

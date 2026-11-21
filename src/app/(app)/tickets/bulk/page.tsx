@@ -3,7 +3,7 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { BulkIssue } from "./bulk-issue";
 
-export const metadata: Metadata = { title: "Bulkuitgifte – HHC Tickets" };
+export const metadata: Metadata = { title: "Bulkuitgifte – Tickets" };
 export const dynamic = "force-dynamic";
 
 export default async function BulkPage() {

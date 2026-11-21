@@ -15,7 +15,7 @@ import { SyncStatus } from "@/components/tickets/sync-status";
 import { TICKET_CATEGORIES, EVENT_STATUS_LABELS, type EventStatus, type TicketCategory } from "@/lib/tickets/rules";
 import type { TicketPermission } from "@/lib/tickets/permissions";
 
-export const metadata: Metadata = { title: "HHC Tickets" };
+export const metadata: Metadata = { title: "Tickets" };
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
@@ -34,7 +34,7 @@ export default async function TicketsDashboard() {
   const a = await ticketsPageAccess("dashboard:read");
   if (!a.allowed) {
     // Een scanner heeft geen dashboard; die werkt in /scan.
-    return <NoAccess what="het dashboard van HHC Tickets" />;
+    return <NoAccess what="het dashboard van Tickets" />;
   }
   const showSync = a.can("sync:read");
   const [d, health] = await Promise.all([dashboardData(), showSync ? syncHealth() : null]);
@@ -59,7 +59,7 @@ export default async function TicketsDashboard() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        eyebrow="HHC Tickets"
+        eyebrow="Tickets"
         title="Dashboard"
         description="Eigen tickets van HHC Hardenberg, naast de betaalde tickets van Fullhouse."
       >

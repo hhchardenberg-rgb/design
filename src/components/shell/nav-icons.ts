@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 
 // Iconen voor menu-items die als platte data van de server komen (Commerciële
-// Zaken en HHC Tickets bepalen hun menu server-side op basis van rechten; een
+// Zaken en Tickets bepalen hun menu server-side op basis van rechten; een
 // icooncomponent kan niet van server naar client). Onbekend pad: geen icoon,
 // de zijbalk toont dan een neutraal puntje zodat alles op één lijn blijft.
 const ICONS: Record<string, LucideIcon> = {
