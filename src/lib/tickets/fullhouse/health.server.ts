@@ -5,12 +5,12 @@ import { ticketProvider } from "./index";
 // synchronisatie, komen er webhooks binnen en is er een storing. Gebruikt door het dashboard en de Fullhouse-pagina.
 
 /** Hoe vaak de geplande synchronisatie (GitHub Actions, zie .github/workflows/fullhouse-sync.yml) draait. */
-export const SCHEDULE_MINUTES = 10;
+export const SCHEDULE_MINUTES = 5;
 
 /** Namen in de synchronisatielijst voor automatische rondes. */
 export const AUTO_NAMES = {
   cron: "Dagelijkse ronde",
-  schedule: "Automatisch (elke 10 min)",
+  schedule: "Automatisch (gepland)",
   page: "Automatisch (bij openen)",
   ticket: "Automatisch",
 } as const;

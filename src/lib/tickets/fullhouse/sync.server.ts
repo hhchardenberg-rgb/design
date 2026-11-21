@@ -120,7 +120,7 @@ export async function syncEventTickets(who: { id: string | null; name: string },
     let removed = 0;
     if (full && fetched >= total) removed = (await prisma.ticketExternalTicket.updateMany({ where: { eventExtId, syncedAt: { lt: run.startedAt }, status: { not: "INVALID" } }, data: { status: "INVALID" } })).count;
     await prisma.ticketSyncRun.update({ where: { id: run.id }, data: { status: "OK", fetched, upserted, finishedAt: new Date() } });
-    // Automatische synchronisaties zonder wijzigingen komen niet in het auditlog (anders elke 10 minuten een regel per wedstrijd).
+    // Automatische synchronisaties zonder wijzigingen komen niet in het auditlog (anders elke 5 minuten een regel per wedstrijd).
     if (!opts.quiet || fetched > 0 || removed > 0) await ticketAudit({ action: "sync.completed", actor: { id: who.id, name: who.name }, summary: `Fullhouse-tickets gesynchroniseerd (${full ? "volledig" : "wijzigingen"})`, meta: { eventExtId, fetched, upserted, removed } });
     return { fetched, upserted, removed, full };
   } catch (e) {

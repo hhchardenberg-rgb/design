@@ -25,7 +25,7 @@ Zie `architectuur.md` voor het ontwerp van het hele product. Dit bestand beschri
 | `FULLHOUSE_WEBHOOK_SECRET` | 4 | HMAC-sleutel van de webhook |
 | `FULLHOUSE_ALLOW_WRITES` | 4 | Standaard uit. Zet nooit aan zonder overleg (schrijfacties naar Fullhouse zijn nog niet aangesloten). |
 | `CRON_SECRET` | 4 | Staat al ingesteld voor de andere crons |
-| `FULLHOUSE_SYNC_SECRET` | 4 | Sleutel (minstens 16 tekens) voor de synchronisatie elke 10 minuten; dezelfde waarde als GitHub-geheim. Zie `fullhouse-sync.md` |
+| `FULLHOUSE_SYNC_SECRET` | 4 | Sleutel (minstens 16 tekens) voor de synchronisatie elke 5 minuten; dezelfde waarde als GitHub-geheim. Zie `fullhouse-sync.md` |
 | Apple/Google Wallet | later | Zie `architectuur.md` §11 |
 
 Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja/nee, nooit de waarde).
@@ -60,7 +60,7 @@ Onder HHC Tickets > Instellingen zie je welke sleutels zijn ingesteld (alleen ja
 - Standaard draait alles op de testprovider. Voor een echte koppeling: `FULLHOUSE_MODE=sandbox` (eerst!) of `production`, en `FULLHOUSE_API_KEY` (alleen lezen). Een access-user-token (`FULLHOUSE_ACCESS_TOKEN`) is een alternatief.
 - Onder **Fullhouse**: koppeling controleren (toont alleen veldnamen), evenementen ophalen (komen als concept binnen; activeer ze bij Wedstrijden), tickets synchroniseren (volledig of alleen wijzigingen) en het synchronisatielog.
 - Webhook-URL voor Fullhouse: `https://<domein>/api/webhooks/fullhouse`, met `FULLHOUSE_WEBHOOK_SECRET` als sleutel. Een gebeurtenis start alleen een gerichte, alleen-lezen synchronisatie.
-- Dagelijks om 04:00 draait `/api/cron/tickets` (met `CRON_SECRET`): nieuwe Fullhouse-evenementen worden als concept opgehaald, de tickets van alle wedstrijden van gisteren tot 120 dagen vooruit worden gesynchroniseerd (alleen lezen), en de bewaartermijnen lopen (anonimiseren, oude scans en logs wissen). Vaker synchroniseren: zie `fullhouse-sync.md` (elke 10 minuten via GitHub Actions, extra rondes bij het openen van het dashboard of Wedstrijddag live, en de webhook).
+- Dagelijks om 04:00 draait `/api/cron/tickets` (met `CRON_SECRET`): nieuwe Fullhouse-evenementen worden als concept opgehaald, de tickets van alle wedstrijden van gisteren tot 120 dagen vooruit worden gesynchroniseerd (alleen lezen), en de bewaartermijnen lopen (anonimiseren, oude scans en logs wissen). Vaker synchroniseren: zie `fullhouse-sync.md` (elke 5 minuten via GitHub Actions, extra rondes bij het openen van het dashboard of Wedstrijddag live, en de webhook).
 - De Hub bewaart van Fullhouse-tickets alleen een hash van de barcode en initialen van de naam.
 
 ## Rapportages en CZ (fase 5)

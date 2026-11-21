@@ -7,7 +7,7 @@ import { AUTO_NAMES } from "./health.server";
 
 // Automatische synchronisatie met Fullhouse (alleen lezen). Eén "ronde" haalt per wedstrijd in beeld
 // alleen de wijzigingen sinds de vorige keer op, en af en toe ook nieuwe evenementen. Wordt aangeroepen door:
-//  - de geplande taak elke 10 minuten (GitHub Actions -> /api/cron/fullhouse-sync),
+//  - de geplande taak elke 5 minuten (GitHub Actions -> /api/cron/fullhouse-sync),
 //  - de dagelijkse Vercel-cron (/api/cron/tickets) als vangnet,
 //  - het openen van het dashboard, de Fullhouse-pagina of Wedstrijddag live (hooguit eens per paar minuten),
 //  - de knop "Nu synchroniseren".

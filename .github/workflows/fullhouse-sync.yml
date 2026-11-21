@@ -1,5 +1,5 @@
 # Frequente synchronisatie met Fullhouse (alleen lezen). Vercel Hobby staat cron maar eens per dag toe,
-# daarom geeft GitHub elke 10 minuten het startsein. De Hub doet het werk zelf (/api/cron/fullhouse-sync).
+# daarom geeft GitHub elke 5 minuten het startsein. De Hub doet het werk zelf (/api/cron/fullhouse-sync).
 # Nodig: repository-geheim FULLHOUSE_SYNC_SECRET (Settings > Secrets and variables > Actions), met
 # dezelfde waarde als de Vercel-variabele FULLHOUSE_SYNC_SECRET. Zonder geheim doet deze taak niets.
 # Uitleg: docs/hhc-tickets/fullhouse-sync.md
@@ -7,7 +7,7 @@ name: Fullhouse-synchronisatie
 
 on:
   schedule:
-    - cron: "3-59/10 * * * *" # elke 10 minuten (GitHub kan bij drukte een paar minuten later starten)
+    - cron: "*/5 * * * *" # elke 5 minuten, het minimum van GitHub (bij drukte kan een start later komen of overgeslagen worden)
   workflow_dispatch:
 
 permissions: {}

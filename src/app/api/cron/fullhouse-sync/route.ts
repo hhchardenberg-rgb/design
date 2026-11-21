@@ -18,7 +18,7 @@ function authorized(req: Request): boolean {
 }
 
 /**
- * Frequente Fullhouse-synchronisatie (alleen lezen), elke 10 minuten aangeroepen door de geplande
+ * Frequente Fullhouse-synchronisatie (alleen lezen), elke 5 minuten aangeroepen door de geplande
  * GitHub-taak (.github/workflows/fullhouse-sync.yml). Vercel Hobby staat cron maar eens per dag toe;
  * daarom komt de klok van buiten. Haalt per wedstrijd alleen wijzigingen op en draait nooit dubbel.
  */
