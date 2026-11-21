@@ -80,7 +80,7 @@ export function Matchday({ events, defaultId, canCheckIn }: { events: { id: stri
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Card>
               <CardContent className="p-4">
-                <p className="text-3xl font-bold tabular-nums">{data.inside}</p>
+                <p className="stat-number mt-1 text-[2.5rem]">{data.inside}</p>
                 <p className="text-xs text-muted-foreground">{data.capacity ? `Binnen van ${data.capacity}` : "Personen binnen"}</p>
                 {pct !== null && (
                   <div className="mt-2 h-2 rounded bg-surface-muted" aria-label={`${pct}% van de capaciteit`}>
@@ -91,19 +91,19 @@ export function Matchday({ events, defaultId, canCheckIn }: { events: { id: stri
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-3xl font-bold tabular-nums">{data.valid}</p>
+                <p className="stat-number mt-1 text-[2.5rem]">{data.valid}</p>
                 <p className="text-xs text-muted-foreground">Geldige scans</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-3xl font-bold tabular-nums">{data.refused}</p>
+                <p className="stat-number mt-1 text-[2.5rem]">{data.refused}</p>
                 <p className="text-xs text-muted-foreground">Afgewezen of waarschuwing</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-3xl font-bold tabular-nums">{data.expectedExternal}</p>
+                <p className="stat-number mt-1 text-[2.5rem]">{data.expectedExternal}</p>
                 <p className="text-xs text-muted-foreground">Geldige Fullhouse-tickets</p>
               </CardContent>
             </Card>

@@ -73,7 +73,7 @@ export function CounterpartPlan({ canUpdate }: { canUpdate: boolean }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Tegenprestaties</h1>
+        <h1 className="page-title">Tegenprestaties</h1>
         <p className="text-sm text-muted-foreground">Wat HHC aan sponsoren heeft toegezegd en nog moet leveren. Vink af wat geleverd is.</p>
       </div>
       <div className="flex flex-wrap items-end gap-4">

@@ -15,29 +15,29 @@ export interface QuickLink {
 // Vaste klassen (Tailwind kan geen samengestelde klassennamen vinden).
 const columns: Record<number, string> = { 1: "sm:grid-cols-1", 2: "sm:grid-cols-2", 3: "sm:grid-cols-3" };
 
-const itemClass = "flex items-center gap-3 p-4 transition-colors hover:bg-surface-muted";
+const itemClass = "group flex items-center gap-3.5 p-4 transition-colors hover:bg-[#fafaf8] sm:p-5";
 
 /** De "Snelle links"-balk bovenaan een startpagina (Klantenservice, Communicatie). */
 export function QuickLinks({ links, children }: { links: QuickLink[]; children?: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-3 text-lg font-semibold">Snelle links</h2>
+      <h2 className="mb-3 text-[1.0625rem] font-bold leading-tight">Snelle links</h2>
       <Card>
         <CardContent className={`grid divide-y divide-border p-0 sm:divide-x sm:divide-y-0 ${columns[Math.min(links.length, 3)] ?? "sm:grid-cols-3"}`}>
           {links.map((link) => {
             const content = (
               <>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
-                  <link.icon className="h-5 w-5" />
-                </div>
+                <span className="icon-tile">
+                  <link.icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.85} />
+                </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{link.title}</p>
-                  <p className="text-sm text-muted-foreground">{link.description}</p>
+                  <p className="font-semibold leading-snug">{link.title}</p>
+                  <p className="text-sm leading-snug text-muted-foreground">{link.description}</p>
                 </div>
                 {link.external ? (
                   <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
                 ) : (
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ArrowRight className="h-4 w-4 shrink-0 text-border-strong transition-all group-hover:translate-x-0.5 group-hover:text-foreground" />
                 )}
               </>
             );

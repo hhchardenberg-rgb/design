@@ -68,7 +68,7 @@ export function Goals({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Doelen en prognose</h1>
+        <h1 className="page-title">Doelen en prognose</h1>
         <p className="text-sm text-muted-foreground">Het sponsordoel per seizoen, in totaal en per sponsorvorm: wat al loopt, wat er nog ontbreekt en wat de pijplijn naar verwachting nog oplevert. Bedragen zijn exclusief btw en alleen zichtbaar met bedragenrechten.</p>
       </div>
 

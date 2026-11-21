@@ -17,28 +17,43 @@
  */
 :root {
   --hhc-orange: #ff6f00;
-  --hhc-orange-dark: #cc5900;
+  /* Functionele afgeleide voor oranje TEKST op licht vlak en hover: haalt
+     WCAG AA (4,5:1) op wit, wat de volle huisstijlkleur bij kleine tekst niet doet. */
+  --hhc-orange-dark: #b34d00;
   --hhc-orange-light: #ffb266;
+  --hhc-orange-soft: #fff2e8;
   --hhc-black: #000000;
   --hhc-white: #ffffff;
 
-  --background: #f7f6f4;
-  --foreground: var(--hhc-black);
+  /* Richting "Dug-out" (designonderzoek 21/11/2026): neutraal licht werkvlak,
+     witte vlakken, haarlijnen in plaats van schaduwen. */
+  --background: #f5f5f3;
+  --foreground: #111111;
   --surface: #ffffff;
-  --surface-muted: #f1efec;
-  --border: #e4e1db;
-  --muted-foreground: #6b6659;
+  --surface-muted: #f1f0ec;
+  --border: #e6e5e1;
+  --border-strong: #d4d2cb;
+  --muted-foreground: #66645e;
+
+  /* Zijbalk ("dug-out"): het officiële HHC-zwart als drager van de identiteit. */
+  --sidebar: #0b0b0b;
+  --sidebar-foreground: #f2f1ee;
+  --sidebar-muted: #8f8d87;
+  --sidebar-border: #1f1f1f;
+  --sidebar-hover: #161616;
+  --sidebar-active: #1c1c1c;
 
   --primary: var(--hhc-orange);
   --primary-foreground: var(--hhc-white);
-  --secondary: var(--hhc-black);
+  --secondary: #111111;
   --secondary-foreground: var(--hhc-white);
-  --destructive: #d63a3a;
+  --destructive: #c8312c;
   --destructive-foreground: #ffffff;
-  --success: #1e8a4c;
+  --success: #1c7a45;
+  --warning: #9a6200;
   --ring: var(--hhc-orange);
 
-  --radius: 0.75rem;
+  --radius: 0.625rem;
 }
 
 @theme inline {
@@ -47,6 +62,15 @@
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-warning: var(--warning);
+  --color-hhc-orange-soft: var(--hhc-orange-soft);
   --color-muted-foreground: var(--muted-foreground);
 
   --color-primary: var(--primary);
@@ -128,7 +152,7 @@ select:not([multiple]):not([size]) {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b6659' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2366645e' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px 16px;
@@ -138,6 +162,8 @@ select:not([multiple]):not([size]) {
   padding-bottom: 0;
   line-height: normal;
   text-overflow: ellipsis;
+  /* Lange opties mogen de pagina op mobiel niet breder maken. */
+  max-width: 100%;
 }
 
 /* Keuzelijst op een donkere achtergrond (scanner): wit pijltje. */
@@ -150,12 +176,104 @@ h1,
 h2,
 h3 {
   font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.005em;
+}
+
+/*
+ * Vaste bouwstenen van de huisstijl in de Hub. In @layer components, zodat
+ * losse utility-klassen ze per plek nog kunnen bijsturen.
+ */
+@layer components {
+  /* Paginatitel: DIN, stevig maar niet schreeuwerig; schaalt mee met het scherm. */
+  .page-title {
+    font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.625rem, 1.25rem + 1.1vw, 2.125rem);
+    line-height: 1.08;
+    letter-spacing: -0.012em;
+  }
+  /* Klein label boven titels en groepen: DIN, hoofdletters, ruime spatiëring. */
+  .eyebrow {
+    font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  /* Cijfers die je vergelijkt (KPI's, aantallen, bedragen): DIN, gelijke breedte. */
+  .stat-number {
+    font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Icoonvak bij onderdelen: HHC-zwart met wit icoon; oranje bij aanwijzen. */
+  .icon-tile {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    background: var(--secondary);
+    color: #fff;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .group:hover .icon-tile {
+    background: var(--hhc-orange);
+    color: #000;
+  }
+}
+
+/* Tabellen in de hele Hub: rustige kop, haarlijnen, gelijke cijferbreedte. */
+table {
+  font-variant-numeric: tabular-nums;
+}
+thead th {
+  font-weight: 600;
 }
 
 ::selection {
   background: var(--hhc-orange);
   color: var(--hhc-white);
 }
+
+/* Zichtbare focus voor toetsenbordgebruikers, ook op links en eigen knoppen. */
+:where(a, button, [role="button"], summary):focus-visible {
+  outline: 2px solid var(--hhc-orange);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Bewegingsgevoelige gebruikers: geen animaties. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+.animate-fade-in { animation: fade-in 0.15s ease-out; }
+.animate-panel-in { animation: panel-in 0.16s ease-out; }
+.animate-drawer-in { animation: drawer-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 @keyframes toast-in {
   from {

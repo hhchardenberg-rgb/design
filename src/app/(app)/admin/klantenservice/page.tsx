@@ -36,7 +36,7 @@ export default function AdminTicketingOverviewPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Klantenservice</h1>
+        <h1 className="page-title">Klantenservice</h1>
         <p className="mt-1 text-muted-foreground">Beheer de inhoud van het afgeschermde Klantenservice-gedeelte.</p>
       </div>
 
@@ -45,7 +45,7 @@ export default function AdminTicketingOverviewPage() {
           <Link key={s.href} href={s.href}>
             <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
               <CardHeader>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
+                <div className="icon-tile">
                   <s.icon className="h-5 w-5" />
                 </div>
                 <CardTitle className="mt-1">{s.title}</CardTitle>

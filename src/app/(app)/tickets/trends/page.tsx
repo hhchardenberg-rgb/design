@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const Stat = ({ label, value, hint }: { label: string; value: number | string; hint?: string }) => (
   <Card>
     <CardContent className="p-4">
-      <p className="text-2xl font-bold tabular-nums">{value}</p>
+      <p className="stat-number mt-1 text-[1.875rem]">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </CardContent>
@@ -32,7 +32,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Trends per seizoen</h1>
+        <h1 className="page-title">Trends per seizoen</h1>
         <p className="mt-1 text-sm text-muted-foreground">Opkomst per duel: hoeveel tickets er waren en hoeveel mensen zijn binnengekomen. Alleen aantallen, geen persoonsgegevens. Verkocht telt HHC-tickets en tickets uit Fullhouse (alleen geldige).</p>
       </div>
       <form className="flex flex-wrap gap-2 text-sm">

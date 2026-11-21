@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { ModuleIndex } from "@/components/module-index";
 import { visibleTicketingModules, ticketingQuickLinks } from "@/lib/ticketing-modules";
 import { auth } from "@/lib/auth";
 import { isTicketsEnabled } from "@/lib/tickets/flag";
@@ -21,56 +21,25 @@ export default async function TicketingPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="rounded-xl bg-hhc-black p-8 text-hhc-white">
-        <h1 className="text-2xl font-bold">Klantenservice</h1>
-        <p className="mt-1 text-white/70">
-          Handleidingen, procedures en belangrijke informatie over het ticketingsysteem.
-        </p>
-      </section>
+      <PageHeader
+        eyebrow="Klantenservice"
+        title="Klantenservice"
+        description="Handleidingen, procedures en belangrijke informatie over het ticketingsysteem, en alles om supporters snel te helpen."
+      />
 
       <QuickLinks links={ticketingQuickLinks} />
 
       {newsPosts.length > 0 && (
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Nieuws</h2>
-            <Link href="/klantenservice/nieuws" className="text-sm font-medium text-hhc-orange-dark hover:underline">
-              Alle berichten
-            </Link>
-          </div>
+          <SectionHeader title="Nieuws" action={<Link href="/klantenservice/nieuws" className="font-semibold text-hhc-orange-dark hover:underline">Alle berichten</Link>} />
           <NewsPosts variant="dashboard" posts={newsPosts} />
         </section>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {modules.map((mod) => {
-          const Icon = mod.icon;
-          const card = (
-            <Card className={mod.status === "available" ? "h-full transition-all hover:-translate-y-0.5 hover:shadow-md" : "h-full opacity-60"}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  {mod.status === "soon" && <Badge variant="outline">Binnenkort</Badge>}
-                </div>
-                <CardTitle className="mt-1">{mod.title}</CardTitle>
-                <CardDescription>{mod.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          );
-
-          return mod.status === "available" ? (
-            <Link key={mod.id} href={mod.href}>
-              {card}
-            </Link>
-          ) : (
-            <div key={mod.id} className="cursor-not-allowed">
-              {card}
-            </div>
-          );
-        })}
-      </div>
+      <section>
+        <SectionHeader title="Onderdelen" />
+        <ModuleIndex items={modules.map((m) => ({ key: m.id, title: m.title, description: m.description, href: m.href, icon: m.icon, status: m.status }))} />
+      </section>
     </div>
   );
 }

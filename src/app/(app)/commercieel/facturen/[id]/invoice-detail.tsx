@@ -124,7 +124,7 @@ export function InvoiceDetail({ id, permissions }: { id: string; permissions: st
     <div className="space-y-5">
       <div>
         <Link href="/commercieel/facturen" className="text-sm underline">← Facturen</Link>
-        <h1 className="mt-1 text-2xl font-bold">{credit ? "Creditnota" : "Factuur"} {doc.number ?? "(concept)"}</h1>
+        <h1 className="page-title mt-1">{credit ? "Creditnota" : "Factuur"} {doc.number ?? "(concept)"}</h1>
         <p className="text-sm text-muted-foreground">
           <Link className="underline" href={`/commercieel/sponsoren/${doc.companyId}`}>{doc.companyName}</Link>
           {doc.issuedOn && <> · datum {formatDate(doc.issuedOn)}</>}{doc.dueOn && !credit && <> · vervaldatum {formatDate(doc.dueOn)}</>}

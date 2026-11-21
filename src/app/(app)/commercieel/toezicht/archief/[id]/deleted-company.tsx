@@ -77,7 +77,7 @@ export function DeletedCompanyDetail({ id }: { id: string }) {
     <div className="space-y-5">
       {back}
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">{c.name}</h1>
+        <h1 className="page-title">{c.name}</h1>
         <Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>
         {c.sponsorTier && <TierBadge tier={c.sponsorTier} />}
         <Badge variant="outline"><Lock className="mr-1 inline h-3 w-3" /> Verwijderd</Badge>

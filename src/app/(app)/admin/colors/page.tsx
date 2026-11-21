@@ -78,7 +78,7 @@ export default function AdminColorsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Huisstijlkleuren</h1>
+        <h1 className="page-title">Huisstijlkleuren</h1>
         <p className="mt-1 text-muted-foreground">
           Deze kleuren zijn de enige kleuren die gebruikers mogen kiezen voor COLOR:-velden.
         </p>

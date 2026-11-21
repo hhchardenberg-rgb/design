@@ -43,7 +43,7 @@ export function PassDetail({ id, canTransfer, canPersonal }: { id: string; canTr
         <ArrowLeft className="h-4 w-4" /> Seizoenspassen
       </Link>
       <div>
-        <h1 className="text-2xl font-bold">{d.name}</h1>
+        <h1 className="page-title">{d.name}</h1>
         <p className="text-sm text-muted-foreground">
           {d.type}
           {d.zone ? ` · ${d.zone}` : ""} · {d.publicId} · geweest bij {came} van {past.length} gespeelde duels ·{" "}

@@ -65,7 +65,7 @@ export function InvoiceSettingsForm({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Facturatie-instellingen</h1>
+        <h1 className="page-title">Facturatie-instellingen</h1>
         <p className="text-sm text-muted-foreground">Deze gegevens komen op facturen en creditnota&apos;s. Bij het definitief maken worden ze vastgelegd op het document; latere wijzigingen veranderen eerdere facturen niet.</p>
       </div>
       {missing.length > 0 && (

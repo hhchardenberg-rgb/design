@@ -62,7 +62,7 @@ export function SeasonPackageManager({ canManage, canAmounts }: { canManage: boo
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Seizoenen en pakketten</h1>
+        <h1 className="page-title">Seizoenen en pakketten</h1>
         <p className="text-sm text-muted-foreground">Een pakket is een sjabloon. Bij het afsluiten van een contract wordt vastgelegd wat het pakket toen bevatte; latere wijzigingen werken niet door in bestaande contracten.</p>
       </div>
       <Card>

@@ -82,7 +82,7 @@ export function ProfileForm() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Profiel</h1>
+        <h1 className="page-title">Profiel</h1>
         <p className="mt-1 text-muted-foreground">Je gegevens, voorkeuren en wachtwoord.</p>
       </div>
 

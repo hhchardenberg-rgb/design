@@ -91,7 +91,7 @@ export default function AdminMatchesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Wedstrijden</h1>
+        <h1 className="page-title">Wedstrijden</h1>
         <p className="mt-1 text-muted-foreground">
           Eén wedstrijd kan voor meerdere visuals gebruikt worden (matchday, opstelling, uitslag, ...).
         </p>

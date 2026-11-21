@@ -272,7 +272,7 @@ export default function AccountSecurityPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Beveiliging</h1>
+        <h1 className="page-title">Beveiliging</h1>
         <p className="mt-1 text-muted-foreground">Beheer tweestapsverificatie en passkeys voor je account.</p>
       </div>
 

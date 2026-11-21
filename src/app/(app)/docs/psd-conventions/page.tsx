@@ -50,7 +50,7 @@ export default function PsdConventionsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold">PSD-naamgevingsconventie voor designers</h1>
+        <h1 className="page-title">PSD-naamgevingsconventie voor designers</h1>
         <p className="mt-2 text-muted-foreground">
           Om een PSD-ontwerp automatisch om te zetten in een bruikbare template, moet de importer weten welke lagen
           door de eindgebruiker ingevuld mogen worden en welke vast onderdeel zijn van het ontwerp. Dat wordt bepaald

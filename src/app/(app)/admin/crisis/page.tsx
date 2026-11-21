@@ -93,7 +93,7 @@ export default function AdminCrisisPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Crisiscommunicatie</h1>
+        <h1 className="page-title">Crisiscommunicatie</h1>
         <p className="mt-1 text-muted-foreground">
           Protocollen per incidenttype: wie bellen, en wie mag hierover communiceren. Vul dit zorgvuldig en actueel
           in — dit is wat vrijwilligers raadplegen tijdens een echte crisis.

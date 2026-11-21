@@ -235,7 +235,7 @@ export function SupportSearch({ canResend, canView, personal, testMode }: { canR
   return (
     <div className="flex flex-col gap-6">
       <section className="rounded-xl bg-hhc-black p-6 text-hhc-white sm:p-8">
-        <h1 className="text-2xl font-bold">Klant of ticket zoeken</h1>
+        <h1 className="page-title">Klant of ticket zoeken</h1>
         <p className="mt-1 text-white/70">Zoek tegelijk in het HHC-ticketsysteem en in Fullhouse, op naam, e-mailadres, ticket- of kaartnummer of ordernummer.</p>
         <form onSubmit={(e) => void search(e)} className="mt-5 flex flex-col gap-2 sm:flex-row">
           <Input

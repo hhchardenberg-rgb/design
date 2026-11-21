@@ -69,7 +69,7 @@ export function PipelineBoard({ canCreate, canUpdate, canArchive, canContract, c
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Pijplijn</h1>
+          <h1 className="page-title">Pijplijn</h1>
           <p className="text-sm text-muted-foreground">Acquisitiekansen per fase. Een gewonnen kans wordt een concept-contract.</p>
         </div>
         {canCreate && <Button onClick={() => setCreating((v) => !v)}>Nieuwe kans</Button>}

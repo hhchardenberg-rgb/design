@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { ModuleIndex } from "@/components/module-index";
+import { StatStrip, type StatItem } from "@/components/dashboard/stat-strip";
+import { iconForHref } from "@/components/shell/nav-icons";
 import { loadCommercialAccess } from "@/lib/commercial/authz.server";
 import { buildRecordCtx } from "@/lib/commercial/ctx.server";
 import { loadDashboard } from "@/lib/commercial/dashboard.server";
@@ -25,117 +28,90 @@ export default async function CommercialHome() {
     newsEnabled ? listNewsPosts("commercial", 3) : [],
   ]);
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Commerciële Zaken</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sponsorbeheer van HHC Hardenberg. Kies hieronder waar je mee aan de slag wilt, of gebruik het menu links.</p>
-      </div>
+  const stats: StatItem[] = [];
+  if (dash?.tasks) stats.push({ label: "Mijn open taken", value: dash.tasks.total, hint: dash.overdueTasks ? `${dash.overdueTasks} achterstallig` : "niets achterstallig", tone: dash.overdueTasks ? "danger" : "default", href: "/commercieel/taken" });
+  if (dash?.contracts) stats.push({ label: "Aflopende contracten", value: dash.contracts.total, hint: "binnen 90 dagen", href: "/commercieel/contracten" });
+  if (dash?.invoices) stats.push({ label: "Openstaande facturen", value: dash.invoices.count, hint: dash.invoices.outstandingCents != null ? `${formatEuro(dash.invoices.outstandingCents)} te ontvangen` : undefined, href: "/commercieel/facturen" });
+  if (dash?.pipeline) stats.push({ label: "Pijplijn", value: dash.pipeline.count, hint: "open kansen", href: "/commercieel/pijplijn" });
+  if (dash?.contactGaps) stats.push({ label: "Contactmoment nodig", value: dash.contactGaps.total, hint: "al lang niet gesproken", tone: dash.contactGaps.total ? "attention" : "default", href: "/commercieel/contactmomenten" });
+  if (dash?.counterparts) stats.push({ label: "Tegenprestaties", value: dash.counterparts.open, hint: dash.counterparts.overdue > 0 ? `${dash.counterparts.overdue} te laat` : "te leveren", tone: dash.counterparts.overdue > 0 ? "danger" : "default", href: "/commercieel/tegenprestaties" });
 
-      {dash && (
-        <section aria-labelledby="dash-h">
-          <h2 id="dash-h" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overzicht</h2>
-          <div className="grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {dash.tasks && (
-              <Card className="flex h-full flex-col">
-                <CardHeader><CardTitle className="text-base">Mijn open taken</CardTitle></CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.tasks.total}</span>{dash.overdueTasks ? <span className="ml-2 text-destructive">{dash.overdueTasks} achterstallig</span> : null}</p>
-                  <ul className="divide-y divide-border">
-                    {dash.tasks.rows.map((t) => <li key={t.id} className="py-1.5"><span className="font-medium">{t.title}</span><span className="block text-xs text-muted-foreground">{[t.companyName, t.dueAt && formatDate(t.dueAt)].filter(Boolean).join(" · ")}</span></li>)}
-                  </ul>
-                  <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/taken">Alle taken</Link>
-                </CardContent>
-              </Card>
-            )}
-            {dash.contracts && (
-              <Card className="flex h-full flex-col">
-                <CardHeader><CardTitle className="text-base">Aflopende contracten</CardTitle></CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.contracts.total}</span><span className="ml-2 text-muted-foreground">binnen 90 dagen</span></p>
-                  <ul className="divide-y divide-border">
-                    {dash.contracts.rows.map((c) => <li key={c.id} className="py-1.5"><Link className="font-medium underline" href={`/commercieel/sponsoren/${c.companyId}`}>{c.companyName}</Link><span className="block text-xs text-muted-foreground">{c.seasonName} · einde {formatDate(c.endsOn)}{c.noticeUntil ? ` · opzeggen vóór ${formatDate(c.noticeUntil)}` : ""}</span></li>)}
-                  </ul>
-                  <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/contracten">Alle contracten</Link>
-                </CardContent>
-              </Card>
-            )}
-            {dash.invoices && (
-              <Card className="flex h-full flex-col">
-                <CardHeader><CardTitle className="text-base">Openstaande facturen</CardTitle></CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.invoices.count}</span>{dash.invoices.outstandingCents != null ? <span className="ml-2 text-muted-foreground">{formatEuro(dash.invoices.outstandingCents)} te ontvangen</span> : null}</p>
-                  <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/facturen">Naar facturen</Link>
-                </CardContent>
-              </Card>
-            )}
-            {dash.pipeline && (
-              <Card className="flex h-full flex-col">
-                <CardHeader><CardTitle className="text-base">Pijplijn</CardTitle></CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.pipeline.count}</span><span className="ml-2 text-muted-foreground">open kansen</span></p>
-                  <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/pijplijn">Naar de pijplijn</Link>
-                </CardContent>
-              </Card>
-            )}
-            {dash.contactGaps && (
-              <Card className="flex h-full flex-col">
-                <CardHeader><CardTitle className="text-base">Contactmoment nodig</CardTitle></CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.contactGaps.total}</span><span className="ml-2 text-muted-foreground">van jouw sponsoren al lang niet gesproken</span></p>
-                  <ul className="divide-y divide-border">
-                    {dash.contactGaps.rows.map((g) => <li key={g.companyId} className="py-1.5"><Link className="font-medium underline" href={`/commercieel/sponsoren/${g.companyId}`}>{g.companyName}</Link><span className="block text-xs text-muted-foreground">{g.lastContactOn ? `laatst gesproken ${formatDate(g.lastContactOn)} (${g.daysSince} dagen)` : "nog geen contactmoment vastgelegd"}</span></li>)}
-                  </ul>
-                  <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/contactmomenten">Alle contactmomenten</Link>
-                </CardContent>
-              </Card>
-            )}
-            {dash.counterparts && (
-              <Card className="flex h-full flex-col">
-                <CardHeader><CardTitle className="text-base">Tegenprestaties</CardTitle></CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
-                  <p><span className="text-2xl font-bold">{dash.counterparts.open}</span><span className="ml-2 text-muted-foreground">te leveren</span>{dash.counterparts.overdue > 0 ? <span className="ml-2 text-destructive">{dash.counterparts.overdue} te laat</span> : null}</p>
-                  <Link className="mt-auto pt-1 text-hhc-orange-dark underline" href="/commercieel/tegenprestaties">Naar de planning</Link>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </section>
+  const lists = [
+    dash?.tasks && {
+      key: "tasks",
+      title: "Mijn open taken",
+      href: "/commercieel/taken",
+      more: "Alle taken",
+      empty: "Geen open taken. Lekker bezig.",
+      rows: dash.tasks.rows.map((t) => ({ id: t.id, title: t.title, href: "/commercieel/taken", meta: [t.companyName, t.dueAt && formatDate(t.dueAt)].filter(Boolean).join(" · ") })),
+    },
+    dash?.contracts && {
+      key: "contracts",
+      title: "Aflopende contracten",
+      href: "/commercieel/contracten",
+      more: "Alle contracten",
+      empty: "Geen contracten die binnen 90 dagen aflopen.",
+      rows: dash.contracts.rows.map((c) => ({ id: c.id, title: c.companyName, href: `/commercieel/sponsoren/${c.companyId}`, meta: `${c.seasonName} · einde ${formatDate(c.endsOn)}${c.noticeUntil ? ` · opzeggen vóór ${formatDate(c.noticeUntil)}` : ""}` })),
+    },
+    dash?.contactGaps && {
+      key: "gaps",
+      title: "Contactmoment nodig",
+      href: "/commercieel/contactmomenten",
+      more: "Alles bekijken",
+      empty: "Je hebt al je sponsoren recent gesproken.",
+      rows: dash.contactGaps.rows.map((g) => ({ id: g.companyId, title: g.companyName, href: `/commercieel/sponsoren/${g.companyId}`, meta: g.lastContactOn ? `laatst gesproken ${formatDate(g.lastContactOn)} (${g.daysSince} dagen)` : "nog geen contactmoment vastgelegd" })),
+    },
+  ].filter((x): x is NonNullable<typeof x> => !!x);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader eyebrow="Commerciële Zaken" title="Startpagina" description="Sponsorbeheer van HHC Hardenberg: wat vandaag aandacht vraagt, en alle onderdelen op één plek." />
+
+      {stats.length > 0 && <StatStrip items={stats} />}
+
+      {lists.length > 0 && (
+        <div className={`grid gap-5 ${lists.length >= 3 ? "xl:grid-cols-3" : lists.length === 2 ? "lg:grid-cols-2" : ""}`}>
+          {lists.map((l) => (
+            <section key={l.key} aria-labelledby={`l-${l.key}`} className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface">
+              <div className="flex items-baseline justify-between gap-3 border-b border-border px-5 py-3.5">
+                <h2 id={`l-${l.key}`} className="text-[0.9375rem] font-bold">{l.title}</h2>
+                <Link className="shrink-0 text-sm font-semibold text-hhc-orange-dark hover:underline" href={l.href}>{l.more}</Link>
+              </div>
+              {l.rows.length === 0 ? (
+                <p className="px-5 py-6 text-sm text-muted-foreground">{l.empty}</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {l.rows.map((r) => (
+                    <li key={r.id}>
+                      <Link href={r.href} className="block px-5 py-3 transition-colors hover:bg-[#fafaf8]">
+                        <span className="block truncate text-sm font-semibold">{r.title}</span>
+                        {r.meta && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{r.meta}</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
       )}
 
       {newsPosts.length > 0 && (
-        <section aria-labelledby="news-h">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 id="news-h" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nieuws</h2>
-            <Link className="text-sm text-hhc-orange-dark underline" href="/commercieel/nieuws">Alle berichten</Link>
-          </div>
+        <section>
+          <SectionHeader title="Nieuws" action={<Link className="font-semibold text-hhc-orange-dark hover:underline" href="/commercieel/nieuws">Alle berichten</Link>} />
           <NewsPosts variant="dashboard" posts={newsPosts} />
         </section>
       )}
 
       {!hasPermissions ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Je hebt toegang tot de sectie, maar nog geen bevoegdheden voor onderdelen. Vraag een beheerder om een rol.
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-dashed border-border-strong bg-surface p-6 text-sm text-muted-foreground">
+          Je hebt toegang tot Commerciële Zaken, maar nog geen bevoegdheden voor onderdelen. Vraag een beheerder om een rol.
+        </div>
       ) : (
         groups.map((g) => (
-          <section key={g.id} aria-labelledby={`grp-${g.id}`}>
-            <h2 id={`grp-${g.id}`} className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-hhc-orange-dark">
-              <span aria-hidden className="h-2 w-2 rounded-full bg-hhc-orange" />
-              {g.label}
-            </h2>
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {g.items.map((i) => (
-                <li key={i.href}>
-                  <Link href={i.href} className="block h-full rounded-lg border border-l-4 border-border border-l-hhc-orange bg-surface p-4 shadow-sm transition-colors hover:bg-surface-muted">
-                    <span className="font-semibold">{i.label}</span>
-                    <span className="mt-1 block text-sm text-muted-foreground">{i.description}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          <section key={g.id}>
+            <SectionHeader title={g.label} />
+            <ModuleIndex items={g.items.map((i) => ({ key: i.href, title: i.label, description: i.description, href: i.href, icon: iconForHref(i.href) }))} />
           </section>
         ))
       )}

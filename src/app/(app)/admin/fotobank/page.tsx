@@ -97,7 +97,7 @@ export default function AdminFotobankPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Fotobank</h1>
+        <h1 className="page-title">Fotobank</h1>
         <p className="mt-1 text-muted-foreground">
           Standaardfoto&apos;s die alle vrijwilligers kunnen bekijken en downloaden via de fotobank in de hub.
         </p>

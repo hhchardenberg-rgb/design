@@ -21,7 +21,7 @@ export default async function TicketingExcelPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold">Excel-sjablonen</h1>
+        <h1 className="page-title">Excel-sjablonen</h1>
         <p className="mt-1 text-muted-foreground">Standaard Excel-bestanden om te gebruiken bij het ticketingsysteem.</p>
       </div>
 
@@ -43,7 +43,7 @@ export default async function TicketingExcelPage() {
                 <Card key={t.id}>
                   <CardContent className="flex items-start justify-between gap-3 p-4">
                     <div className="flex min-w-0 items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
+                      <div className="icon-tile mt-0.5 shrink-0">
                         <FileSpreadsheet className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">

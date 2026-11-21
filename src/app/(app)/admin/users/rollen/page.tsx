@@ -192,7 +192,7 @@ export default function RolesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Gebruikers en rechten</h1>
+          <h1 className="page-title">Gebruikers en rechten</h1>
           <p className="mt-1 text-muted-foreground">
             Per onderdeel zijn er een paar niveaus (elk niveau kan alles van het vorige) en losse taken. Wijs ze toe bij Gebruikers. Lukt het niet met de standaardrollen, maak dan een eigen rol. Een wijziging aan een rol geldt meteen voor iedereen die hem heeft.
           </p>

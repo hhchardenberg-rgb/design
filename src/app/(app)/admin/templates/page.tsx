@@ -27,7 +27,7 @@ export default async function AdminTemplatesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Templates</h1>
+          <h1 className="page-title">Templates</h1>
           <p className="mt-1 text-muted-foreground">Beheer PSD-templates, versies en publicatiestatus.</p>
         </div>
         <Link href="/admin/templates/new">

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Activity, CalendarDays, ChartColumn, Clock, Layers, ListChecks, Plus, QrCode, ScanLine, ShieldAlert, Ticket, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatStrip } from "@/components/dashboard/stat-strip";
 import { NoAccess } from "@/components/commercial/no-access";
 import { formatDayTime } from "@/lib/date-format";
 import { dashboardData } from "@/lib/tickets/dashboard.server";
@@ -12,23 +14,6 @@ import type { TicketPermission } from "@/lib/tickets/permissions";
 
 export const metadata: Metadata = { title: "HHC Tickets" };
 export const dynamic = "force-dynamic";
-
-function Stat({ label, value, icon: Icon, hint }: { label: string; value: string | number; icon: typeof Ticket; hint?: string }) {
-  return (
-    <Card>
-      <CardContent className="flex items-start gap-3 p-4">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-hhc-orange/10 text-hhc-orange-dark">
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold tabular-nums">{value}</p>
-          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // De belangrijkste acties, als compacte rij knoppen bovenaan. De rest staat in het menu.
 const QUICK_ACTIONS: { href: string; label: string; icon: typeof Ticket; requires: TicketPermission; primary?: boolean }[] = [
@@ -49,64 +34,75 @@ export default async function TicketsDashboard() {
   }
   const d = await dashboardData();
   const quickActions = QUICK_ACTIONS.filter((q) => a.can(q.requires));
+  const focusWhen = d.focus ? (d.focus.live ? "Nu bezig" : new Date(d.focus.startsAt) > new Date() ? "Eerstvolgende wedstrijd" : "Laatst gespeeld") : null;
+  const focusStats = d.focus
+    ? [
+        { label: "Fullhouse-tickets", value: d.focus.fullhouse ?? d.fullhouseUpcoming, hint: d.focus.fullhouse != null ? "geldig voor deze wedstrijd" : "in de komende wedstrijden" },
+        { label: "Binnen", value: d.focus.inside, hint: d.focus.capacity ? `van ${d.focus.capacity} plaatsen` : "unieke geldige eerste scans" },
+        { label: "Dubbel / ongeldig", value: `${d.focus.warnings} / ${d.focus.invalid}`, hint: "waarschuwing / geweigerd" },
+        {
+          label: "Scans per ingang",
+          value: d.focus.byEntrance.reduce((n, e) => n + e.count, 0),
+          hint: d.focus.byEntrance.length ? d.focus.byEntrance.slice(0, 3).map((e) => `${e.name} ${e.count}`).join(" · ") : "nog geen scans",
+        },
+      ]
+    : [];
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">HHC Tickets</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Eigen tickets van HHC Hardenberg, naast de betaalde tickets van Fullhouse.</p>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow="HHC Tickets"
+        title="Dashboard"
+        description="Eigen tickets van HHC Hardenberg, naast de betaalde tickets van Fullhouse."
+      >
         {quickActions.length > 0 && (
-          <nav aria-label="Snelle acties" className="mt-4 flex flex-wrap gap-2">
-            {quickActions.map(({ href, label, icon: Icon, primary }) => (
-              <Link key={href} href={href} className={buttonVariants({ variant: primary ? "primary" : "outline", size: "sm" })}>
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </Link>
-            ))}
-          </nav>
+            <nav aria-label="Snelle acties" className="flex flex-wrap gap-2">
+              {quickActions.map(({ href, label, icon: Icon, primary }) => (
+                <Link key={href} href={href} className={buttonVariants({ variant: primary ? "primary" : "outline", size: "sm" })}>
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </Link>
+              ))}
+            </nav>
         )}
-      </div>
+      </PageHeader>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Uitgegeven HHC-tickets (geldig)" value={d.tickets.active} icon={Ticket} />
-        <Stat label="Seizoenskaarten (geldig)" value={d.tickets.seasonCards} icon={QrCode} />
-        <Stat label="Geblokkeerd / geannuleerd" value={`${d.tickets.blocked} / ${d.tickets.cancelled}`} icon={ShieldAlert} />
-        <Stat label="Verlopen" value={d.tickets.expired} icon={Clock} />
-      </section>
+      <StatStrip
+        items={[
+          { label: "Uitgegeven HHC-tickets", value: d.tickets.active, hint: "geldig" },
+          { label: "Seizoenskaarten", value: d.tickets.seasonCards, hint: "geldig" },
+          { label: "Geblokkeerd / geannuleerd", value: `${d.tickets.blocked} / ${d.tickets.cancelled}` },
+          { label: "Verlopen", value: d.tickets.expired },
+        ]}
+      />
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold">
-            {d.focus ? (
-              <>
-                {d.focus.live ? "Nu bezig" : new Date(d.focus.startsAt) > new Date() ? "Eerstvolgende wedstrijd" : "Laatst gespeeld"}: {d.focus.title}{" "}
-                <span className="font-normal text-muted-foreground">({formatDayTime(d.focus.startsAt)})</span>
-              </>
-            ) : (
-              "Geen wedstrijd in de komende of afgelopen 14 dagen"
-            )}
-          </h2>
+      <section aria-label="Wedstrijd in beeld" className="relative overflow-hidden rounded-xl bg-secondary text-white">
+        <div className="relative flex flex-wrap items-end justify-between gap-4 border-b border-white/10 px-6 pt-6 pb-5 sm:px-8">
+          <div className="min-w-0">
+            <p className="eyebrow flex items-center gap-2 text-[#8f8d87]">
+              {d.focus?.live && <span className="h-2 w-2 animate-pulse rounded-full bg-hhc-orange" aria-hidden />}
+              {focusWhen ?? "Wedstrijd in beeld"}
+            </p>
+            <p className="mt-2 font-heading text-[1.625rem] leading-tight font-bold">{d.focus ? d.focus.title : "Geen wedstrijd in de komende of afgelopen 14 dagen"}</p>
+            {d.focus && <p className="mt-1 text-sm text-white/65">{formatDayTime(d.focus.startsAt)}</p>}
+          </div>
           {d.focus && a.can("scan:history") && (
-            <Link href="/tickets/wedstrijddag" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Wedstrijddag live openen
+            <Link href="/tickets/wedstrijddag" className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-3.5 text-sm font-semibold text-black transition-colors hover:bg-hhc-orange">
+              <Activity className="h-4 w-4" /> Wedstrijddag live
             </Link>
           )}
+          <span aria-hidden className="absolute bottom-0 left-0 h-[3px] w-1/3 bg-hhc-orange" />
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat
-            label="Fullhouse-tickets (geldig)"
-            value={d.focus?.fullhouse ?? d.fullhouseUpcoming}
-            icon={Ticket}
-            hint={d.focus?.fullhouse != null ? "voor deze wedstrijd" : "in de komende wedstrijden"}
-          />
-          <Stat label="Binnen (unieke tickets)" value={d.focus ? d.focus.inside : "–"} icon={ScanLine} hint={d.focus?.capacity ? `van ${d.focus.capacity} plaatsen` : "geldige eerste scans"} />
-          <Stat label="Dubbele / ongeldige scans" value={d.focus ? `${d.focus.warnings} / ${d.focus.invalid}` : "–"} icon={ShieldAlert} hint="waarschuwing / geweigerd" />
-          <Stat
-            label="Scans per ingang"
-            value={d.focus?.byEntrance.length ? d.focus.byEntrance.reduce((n, e) => n + e.count, 0) : 0}
-            icon={Users}
-            hint={d.focus?.byEntrance.length ? d.focus.byEntrance.slice(0, 3).map((e) => `${e.name} ${e.count}`).join(" · ") : "nog geen scans"}
-          />
-        </div>
+        {d.focus && (
+          <div className="relative grid grid-cols-2 lg:grid-cols-4">
+            {focusStats.map((f, i) => (
+              <div key={f.label} className={`px-6 py-5 sm:px-8 ${i % 2 === 1 ? "border-l border-white/10" : ""} ${i >= 2 ? "border-t border-white/10 lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
+                <p className="text-[0.8125rem] text-white/60">{f.label}</p>
+                <p className="stat-number mt-2 text-[2rem]">{f.value}</p>
+                <p className="mt-1 truncate text-xs text-white/50">{f.hint}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {d.pendingBatches > 0 && a.can("bulk:approve") && (

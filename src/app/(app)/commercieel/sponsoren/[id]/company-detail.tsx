@@ -112,7 +112,7 @@ export function CompanyDetail({ id, permissions, ticketsOn = false }: { id: stri
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`/api/commercial/files/${company.logoFileId}/preview`} alt={`Logo ${company.name}`} className="h-12 max-w-32 rounded border border-border bg-white object-contain p-1" />
         )}
-        <h1 className="text-2xl font-bold">{company.name}</h1>
+        <h1 className="page-title">{company.name}</h1>
         <Badge variant={company.status === "ACTIVE" ? "success" : company.status === "PROSPECT" ? "primary" : "outline"}>{STATUS[company.status] ?? company.status}</Badge>
         {company.sponsorTier && <TierBadge tier={company.sponsorTier} />}
         {company.archivedAt && <Badge variant="outline">Gearchiveerd</Badge>}

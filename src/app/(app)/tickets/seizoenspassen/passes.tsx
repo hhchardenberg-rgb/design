@@ -73,7 +73,7 @@ export function Passes({ canRenew }: { canRenew: boolean }) {
           ].map(([l, v]) => (
             <Card key={String(l)}>
               <CardContent className="p-4">
-                <p className="text-2xl font-bold tabular-nums">{v}</p>
+                <p className="stat-number mt-1 text-[1.875rem]">{v}</p>
                 <p className="text-xs text-muted-foreground">{l}</p>
               </CardContent>
             </Card>

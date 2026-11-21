@@ -117,7 +117,7 @@ export default function AdminTicketingExcelPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           Klantenservice
         </Link>
-        <h1 className="text-2xl font-bold">Excel-sjablonen</h1>
+        <h1 className="page-title">Excel-sjablonen</h1>
         <p className="mt-1 text-muted-foreground">
           Standaard Excel-bestanden om te downloaden en te gebruiken bij het ticketingsysteem, zichtbaar voor
           iedereen met de rol Klantenservice.
@@ -178,7 +178,7 @@ export default function AdminTicketingExcelPage() {
               ) : (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-hhc-orange-dark">
+                    <div className="icon-tile mt-0.5 shrink-0">
                       <FileSpreadsheet className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">

@@ -44,7 +44,7 @@ export function ContactMoments({ canManage, permissions }: { canManage: boolean;
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Contactmomenten</h1>
+        <h1 className="page-title">Contactmomenten</h1>
         <p className="text-sm text-muted-foreground">Sponsoren waarmee langer dan de ingestelde termijn geen contactmoment is vastgelegd. De eigenaar van het dossier krijgt hierover een herinnering per mail (hoe vaak kies je in je profiel). Zet een sponsor op stil als je er zelf geen meldingen meer over wilt.</p>
       </div>
 

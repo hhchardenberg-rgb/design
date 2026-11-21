@@ -91,7 +91,7 @@ export default function AdminKennisbankPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Kennisbank</h1>
+        <h1 className="page-title">Kennisbank</h1>
         <p className="mt-1 text-muted-foreground">
           Handleidingen en werkwijzen voor Team Communicatie — de interne HHC Communicatie-wiki.
         </p>

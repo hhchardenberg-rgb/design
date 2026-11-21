@@ -39,7 +39,7 @@ export function DeletedArchive() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold"><Lock className="h-5 w-5" /> Gesloten archief</h1>
+        <h1 className="page-title flex items-center gap-2"><Lock className="h-5 w-5" /> Gesloten archief</h1>
         <p className="text-sm text-muted-foreground">
           Verwijderde sponsordossiers, met alles wat eraan vastzat. Alleen beheerders zien deze pagina. Er is niets gewist: open een dossier om het te bekijken of terug te zetten.
         </p>
