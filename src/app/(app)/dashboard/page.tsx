@@ -4,10 +4,11 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DesignDeleteButton } from "@/components/design-delete-button";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 
 const QUICK_ACTION_SLUGS = ["matchday", "opstelling", "eindstand", "social-media-story"];
 
@@ -40,40 +41,38 @@ export default async function DashboardPage() {
   const quickActionTemplates = templates.filter((t) => QUICK_ACTION_SLUGS.includes(t.slug));
 
   return (
-    <div className="flex flex-col gap-10">
-      <section className="flex flex-col items-start gap-4 rounded-xl bg-hhc-black p-8 text-hhc-white sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Link href="/hub" className="text-xs font-medium text-white/60 hover:text-white hover:underline">
-            ← Hub
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow="Communicatie"
+        title="Designtool"
+        description="Maak in een paar klikken een professionele clubafbeelding."
+        actions={
+          <Link href="/templates">
+            <Button>Nieuwe afbeelding maken</Button>
           </Link>
-          <h1 className="page-title mt-1">Designtool</h1>
-          <p className="mt-1 text-white/70">Maak in een paar klikken een professionele clubafbeelding.</p>
-        </div>
-        <Link href="/templates">
-          <Button size="lg">Nieuwe afbeelding maken</Button>
-        </Link>
-      </section>
+        }
+      />
 
       {upcomingMatches.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Aankomende wedstrijden</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SectionHeader title="Aankomende wedstrijden" />
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
             {upcomingMatches.map((match) => (
-              <Card key={match.id}>
-                <CardHeader>
-                  <Badge variant="primary" className="w-fit">
-                    {match.competition ?? "Wedstrijd"}
-                  </Badge>
-                  <CardTitle className="mt-2">
+              <li key={match.id} className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <p className="eyebrow text-muted-foreground">
+                    {match.competition ?? "Wedstrijd"} · {match.isHome ? "Thuis" : "Uit"}
+                  </p>
+                  <p className="mt-1 font-heading text-lg font-bold">
                     {match.isHome ? match.team.shortName ?? match.team.name : match.opponent.shortName ?? match.opponent.name}
                     {" – "}
                     {match.isHome ? match.opponent.shortName ?? match.opponent.name : match.team.shortName ?? match.team.name}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
+                  </p>
+                  <p className="tabular text-sm text-muted-foreground">
                     {format(match.date, "EEEE dd/MM/yyyy, HH:mm", { locale: nl })}
                   </p>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
+                </div>
+                <div className="flex flex-wrap gap-2">
                   {quickActionTemplates.length > 0
                     ? quickActionTemplates.map((t) => (
                         <Link key={t.id} href={`/templates/${t.slug}/create?matchId=${match.id}`}>
@@ -87,24 +86,19 @@ export default async function DashboardPage() {
                         <Button size="sm" variant="outline">Maak afbeelding</Button>
                       </Link>
                     )}
-                </CardContent>
-              </Card>
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Favoriete templates</h2>
-          <Link href="/templates" className="text-sm font-medium text-hhc-orange-dark hover:underline">
-            Alle templates
-          </Link>
-        </div>
+        <SectionHeader title="Favoriete templates" action={<Link href="/templates" className="font-semibold text-hhc-orange-dark hover:underline">Alle templates</Link>} />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {templates.map((t) => (
             <Link key={t.id} href={`/templates/${t.slug}/create`}>
-              <Card className="group overflow-hidden transition-shadow hover:shadow-md">
+              <Card className="group overflow-hidden transition-colors hover:border-border-strong">
                 <div className="aspect-[4/5] bg-surface-muted bg-cover bg-center" style={t.thumbnailUrl ? { backgroundImage: `url(${t.thumbnailUrl})` } : undefined} />
                 <CardContent className="p-3">
                   <p className="truncate text-sm font-medium">{t.name}</p>
@@ -116,12 +110,7 @@ export default async function DashboardPage() {
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Recente ontwerpen</h2>
-          <Link href="/designs" className="text-sm font-medium text-hhc-orange-dark hover:underline">
-            Alles bekijken
-          </Link>
-        </div>
+        <SectionHeader title="Recente ontwerpen" action={<Link href="/designs" className="font-semibold text-hhc-orange-dark hover:underline">Alles bekijken</Link>} />
         {recentDesigns.length === 0 ? (
           <p className="text-sm text-muted-foreground">Je hebt nog geen ontwerpen gemaakt.</p>
         ) : (
@@ -130,7 +119,7 @@ export default async function DashboardPage() {
               <div key={d.id} className="relative">
                 <DesignDeleteButton designId={d.id} />
                 <Link href={`/templates/${d.templateVersion.template.slug}/create?designId=${d.id}`}>
-                  <Card className="overflow-hidden transition-shadow hover:shadow-md">
+                  <Card className="overflow-hidden transition-colors hover:border-border-strong">
                     <div
                       className="aspect-[4/5] bg-surface-muted bg-cover bg-center"
                       style={d.exportUrl ? { backgroundImage: `url(${d.exportUrl})` } : undefined}

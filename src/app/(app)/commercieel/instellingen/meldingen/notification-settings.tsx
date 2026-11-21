@@ -79,7 +79,7 @@ export function NotificationSettings({ canEdit }: { canEdit: boolean }) {
           )}
           {canEdit && data ? (
             <div className="grid gap-4 lg:grid-cols-2">
-              <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (userId) void add({ userId }, () => setUserId("")); }}>
+              <form className="min-w-0 space-y-2" onSubmit={(e) => { e.preventDefault(); if (userId) void add({ userId }, () => setUserId("")); }}>
                 <Label htmlFor="nr-user">Hub-gebruiker toevoegen</Label>
                 <div className="flex gap-2">
                   <select id="nr-user" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-surface px-2 text-sm" value={userId} onChange={(e) => setUserId(e.target.value)}>
@@ -89,7 +89,7 @@ export function NotificationSettings({ canEdit }: { canEdit: boolean }) {
                   <Button type="submit" disabled={busy || !userId}>Toevoegen</Button>
                 </div>
               </form>
-              <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void add({ email, name }, () => { setEmail(""); setName(""); }); }}>
+              <form className="min-w-0 space-y-2" onSubmit={(e) => { e.preventDefault(); void add({ email, name }, () => { setEmail(""); setName(""); }); }}>
                 <Label htmlFor="nr-email">Los e-mailadres toevoegen</Label>
                 <div className="flex flex-wrap gap-2">
                   <Input id="nr-email" type="email" required placeholder="naam@voorbeeld.nl" className="min-w-48 flex-1" value={email} onChange={(e) => setEmail(e.target.value)} />

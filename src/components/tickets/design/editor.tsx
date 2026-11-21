@@ -498,7 +498,7 @@ export function DesignEditor({ initialScope }: { initialScope: string }) {
           <p className="text-xs text-muted-foreground">
             Voorbeeldticket met fictieve gegevens en een testcode die geen toegang geeft{data.event ? ` · wedstrijdgegevens van ${data.event.title}` : ""}. Klik op een blok in het voorbeeld om de tekst of het onderdeel te bewerken.
           </p>
-          <div className={`grid gap-4 ${preview === "both" ? "lg:grid-cols-2" : ""}`}>
+          <div className={`grid min-w-0 gap-4 [&>*]:min-w-0 ${preview === "both" ? "lg:grid-cols-2" : ""}`}>
             {preview !== "a4" && (
               <PhoneFrame device={device} bigText={bigText}>
                 <MobileTicket view={computed.mobileView} onSelectBlock={(id) => { const g = groupForBlock(id); const el = group === "teksten" ? document.getElementById(`tekst-${g}`) : null; if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.querySelector<HTMLElement>("input, textarea")?.focus({ preventScroll: true }); } else setGroup(g); }} selectedBlock={GROUPS.find((g) => g.key === group)?.block ?? null} />

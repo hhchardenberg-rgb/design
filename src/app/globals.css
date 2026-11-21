@@ -162,6 +162,8 @@ select:not([multiple]):not([size]) {
   padding-bottom: 0;
   line-height: normal;
   text-overflow: ellipsis;
+  /* Lange opties mogen de pagina op mobiel niet breder maken. */
+  max-width: 100%;
 }
 
 /* Keuzelijst op een donkere achtergrond (scanner): wit pijltje. */

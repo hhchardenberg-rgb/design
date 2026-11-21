@@ -75,7 +75,7 @@ export function InvoiceList({ canCreate }: { canCreate: boolean }) {
       <Card>
         <CardContent className="pt-5">
           {rows.length === 0 ? <p className="text-sm text-muted-foreground">Nog geen facturen.</p> : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full min-w-[34rem] text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="py-1">Nummer</th><th className="py-1">Sponsor</th><th className="py-1">Datum</th><th className="py-1 text-right">Bedrag</th><th className="py-1 text-right">Openstaand</th></tr></thead>
               <tbody className="divide-y divide-border">
                 {rows.map((r) => (
@@ -88,7 +88,7 @@ export function InvoiceList({ canCreate }: { canCreate: boolean }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </CardContent>
       </Card>

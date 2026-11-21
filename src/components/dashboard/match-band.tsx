@@ -49,7 +49,7 @@ export function MatchBand({ match, actions, emptyHref }: { match: NextMatch | nu
   return (
     <section aria-label="Eerstvolgende wedstrijd" className="relative grid overflow-hidden rounded-xl bg-secondary text-white lg:grid-cols-[1.35fr_1fr_1fr]">
       {/* Middencirkel als subtiele veldlijn */}
-      <span aria-hidden className="pointer-events-none absolute -right-36 -bottom-44 h-80 w-80 rounded-full border border-white/[0.06]" />
+      <span aria-hidden className="pointer-events-none absolute -right-36 -bottom-44 hidden h-80 w-80 lg:block rounded-full border border-white/[0.06]" />
       <div className="relative px-6 pt-6 pb-7 sm:px-8 lg:py-7">
         <p className="eyebrow text-[#8f8d87]">
           Eerstvolgende wedstrijd · {match.isHome ? "Thuis" : "Uit"}

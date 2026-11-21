@@ -12,7 +12,7 @@ export interface StatItem {
 
 /** Kerncijfers op één rij, gescheiden door haarlijnen; cijfers in DIN met gelijke breedte. */
 export function StatStrip({ items, className }: { items: StatItem[]; className?: string }) {
-  const cols = items.length >= 4 ? "lg:grid-cols-4" : items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2";
+  const cols = items.length >= 6 ? "lg:grid-cols-3 2xl:grid-cols-6" : items.length === 5 ? "lg:grid-cols-5" : items.length === 4 ? "lg:grid-cols-4" : items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2";
   return (
     <div className={cn("grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border", cols, className)}>
       {items.map((s, i) => {
