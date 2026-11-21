@@ -31,9 +31,19 @@ export function sinceText(value: string | Date | null, now: number): string {
   return formatDayTime(value);
 }
 
-export function SyncStatus({ health, compact = false }: { health: SyncHealthView; compact?: boolean }) {
+export function SyncStatus({ health, compact = false, quietWhenOk = false }: { health: SyncHealthView; compact?: boolean; quietWhenOk?: boolean }) {
   const now = new Date(health.checkedAt).getTime();
   const problem = health.state === "failing" || health.state === "late" || health.state === "warning";
+  const when = `${sinceText(health.lastOkAt, now)}${health.lastOkAt && new Date(health.lastOkAt).getTime() > now - 86_400_000 ? ` (${formatDayTime(health.lastOkAt)})` : ""}`;
+  // Dashboard: als alles goed gaat alleen het tijdstip, zonder uitleg.
+  if (quietWhenOk && health.state === "ok") {
+    return (
+      <div role="status" className="flex items-center gap-2.5 text-sm text-muted-foreground">
+        <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${DOT.ok}`} />
+        <span>Fullhouse laatst gesynchroniseerd: {when}</span>
+      </div>
+    );
+  }
   return (
     <div role={problem ? "alert" : "status"} className={`flex items-start gap-2.5 text-sm ${compact ? "" : "rounded-lg border p-3"} ${!compact && health.state === "failing" ? "border-destructive/40 bg-destructive/5" : !compact && problem ? "border-warning/40 bg-warning/5" : !compact ? "border-border" : ""}`}>
       <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${DOT[health.state]}`} />
@@ -41,8 +51,7 @@ export function SyncStatus({ health, compact = false }: { health: SyncHealthView
         <p className={problem ? "font-medium" : ""}>{health.message}</p>
         {health.state !== "test" && (
           <p className="text-xs text-muted-foreground">
-            Laatst gelukt: {sinceText(health.lastOkAt, now)}
-            {health.lastOkAt && new Date(health.lastOkAt).getTime() > now - 86_400_000 ? ` (${formatDayTime(health.lastOkAt)})` : ""}
+            Laatst gelukt: {when}
             {!compact && ` · Laatste webhook: ${sinceText(health.lastWebhookAt, now)}`}
             {health.lastError && ` · Fout: ${health.lastError}`}
           </p>
