@@ -6,6 +6,7 @@ import { featuredModule, hubModuleGroups } from "@/lib/hub-modules";
 import { NewsPosts } from "@/components/news-posts";
 import { SocialIcon } from "@/components/social-icons";
 import { getMergedAgendaEvents } from "@/lib/agenda";
+import { loadUpcomingMatches } from "@/lib/next-match.server";
 import { isNewsEnabled, listNewsPosts } from "@/lib/news.server";
 import { SOCIAL_PLATFORM_LABELS } from "@/lib/social-channels";
 import { listSocialChannels } from "@/lib/social-channels.server";
@@ -38,12 +39,11 @@ export default async function HubPage() {
 
   const session = await auth();
   const userId = session!.user.id;
-  const [agenda, newsEnabled, socialChannels, nextMatchRow, matches30, designsWeek, myDesigns, templateCount, matchdayTemplates, recentDesigns] = await Promise.all([
+  const [agenda, newsEnabled, socialChannels, upcoming, designsWeek, myDesigns, templateCount, matchdayTemplates, recentDesigns] = await Promise.all([
     getMergedAgendaEvents({ limit: 5 }),
     isNewsEnabled("hub"),
     listSocialChannels(),
-    prisma.match.findFirst({ where: { date: { gte: startOfToday }, status: { not: "CANCELLED" } }, orderBy: { date: "asc" }, include: { team: true, opponent: true } }),
-    prisma.match.count({ where: { date: { gte: startOfToday, lte: in30 }, status: { not: "CANCELLED" } } }),
+    loadUpcomingMatches({ from: startOfToday, to: in30 }),
     prisma.generatedDesign.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.generatedDesign.count({ where: { userId } }),
     prisma.template.count({ where: { status: "PUBLISHED", activeVersionId: { not: null } } }),
@@ -52,19 +52,11 @@ export default async function HubPage() {
   ]);
   const newsPosts = newsEnabled ? await listNewsPosts("hub", 3) : [];
 
-  const nextMatch = nextMatchRow
-    ? {
-        id: nextMatchRow.id,
-        home: nextMatchRow.isHome ? (nextMatchRow.team.shortName ?? nextMatchRow.team.name) : (nextMatchRow.opponent.shortName ?? nextMatchRow.opponent.name),
-        away: nextMatchRow.isHome ? (nextMatchRow.opponent.shortName ?? nextMatchRow.opponent.name) : (nextMatchRow.team.shortName ?? nextMatchRow.team.name),
-        isHome: nextMatchRow.isHome,
-        date: nextMatchRow.date.toISOString(),
-        competition: nextMatchRow.competition,
-      }
-    : null;
+  const nextMatch = upcoming[0] ?? null;
+  const matches30 = upcoming.length;
   const matchActions = nextMatch
     ? [
-        ...matchdayTemplates.map((t) => ({ label: t.name, href: `/templates/${t.slug}/create?matchId=${nextMatch.id}` })),
+        ...matchdayTemplates.map((t) => ({ label: t.name, href: nextMatch.designMatchId ? `/templates/${t.slug}/create?matchId=${nextMatch.designMatchId}` : `/templates/${t.slug}/create` })),
         ...(matchdayTemplates.length < 3 ? [{ label: "Alle templates", href: "/templates" }] : []),
       ]
     : [];
