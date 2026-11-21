@@ -76,7 +76,7 @@ export default async function TicketsDashboard() {
       {health && (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <SyncStatus health={health} compact={health.state === "ok" || health.state === "test"} />
+            <SyncStatus health={health} compact={health.state === "ok" || health.state === "test"} quietWhenOk />
           </div>
           <Link href="/tickets/fullhouse" className="shrink-0 text-sm font-semibold text-hhc-orange-dark hover:underline">
             Fullhouse-koppeling
