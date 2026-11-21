@@ -29,6 +29,10 @@ export interface SyncHealth {
   lastWebhookAt: Date | null;
   /** Draait de frequente (geplande) synchronisatie de afgelopen 7 dagen? */
   frequent: boolean;
+  /** Laatste start van de geplande taak (GitHub Actions of externe cron), of null. */
+  lastScheduledAt: Date | null;
+  /** De geplande taak is ingesteld, maar al ruim te lang niet gestart (GitHub vertraagt of slaat over). */
+  scheduleStalled: boolean;
   /** Na hoeveel minuten zonder geslaagde synchronisatie het dashboard waarschuwt. */
   lateAfterMinutes: number;
   /** Moment van deze meting, voor "x min geleden" in de weergave. */
@@ -40,16 +44,25 @@ export async function syncHealth(now = new Date(), opts: { allowMock?: boolean }
   const [lastOk, autos, scheduled, webhook] = await Promise.all([
     prisma.ticketSyncRun.findFirst({ where: { status: "OK", kind: { in: ["tickets", "auto"] } }, orderBy: { finishedAt: "desc" }, select: { finishedAt: true } }),
     prisma.ticketSyncRun.findMany({ where: { kind: "auto", status: { not: "RUNNING" } }, orderBy: { startedAt: "desc" }, take: 2, select: { status: true, error: true, startedAt: true } }),
-    prisma.ticketSyncRun.findFirst({ where: { kind: "auto", startedBy: AUTO_NAMES.schedule, startedAt: { gte: new Date(now.getTime() - 7 * 86_400_000) } }, select: { id: true } }),
+    prisma.ticketSyncRun.findFirst({ where: { kind: "auto", startedBy: AUTO_NAMES.schedule, startedAt: { gte: new Date(now.getTime() - 7 * 86_400_000) } }, orderBy: { startedAt: "desc" }, select: { startedAt: true } }),
     prisma.ticketSyncRun.findFirst({ where: { kind: { startsWith: "webhook:" } }, orderBy: { startedAt: "desc" }, select: { startedAt: true } }),
   ]);
   const frequent = !!scheduled;
   const lateAfterMinutes = frequent ? SCHEDULE_MINUTES * 3 + 5 : 26 * 60;
-  const base = { lastOkAt: lastOk?.finishedAt ?? null, lastAutoAt: autos[0]?.startedAt ?? null, lastError: autos[0]?.status === "FAILED" ? autos[0].error : null, lastWebhookAt: webhook?.startedAt ?? null, frequent, lateAfterMinutes, checkedAt: now };
+  const lastScheduledAt = scheduled?.startedAt ?? null;
+  const scheduleStalled = !!lastScheduledAt && now.getTime() - lastScheduledAt.getTime() > lateAfterMinutes * 60_000;
+  const base = { lastOkAt: lastOk?.finishedAt ?? null, lastAutoAt: autos[0]?.startedAt ?? null, lastError: autos[0]?.status === "FAILED" ? autos[0].error : null, lastWebhookAt: webhook?.startedAt ?? null, frequent, lastScheduledAt, scheduleStalled, lateAfterMinutes, checkedAt: now };
   if (mode === "mock") return { ...base, state: "test", message: "Testmodus: er is geen echte koppeling met Fullhouse, dus er wordt niet automatisch gesynchroniseerd." };
   const ageMin = base.lastOkAt ? (now.getTime() - base.lastOkAt.getTime()) / 60_000 : Infinity;
   if (autos.length === 2 && autos.every((a) => a.status === "FAILED")) return { ...base, state: "failing", message: "Storing: de automatische synchronisatie met Fullhouse mislukt herhaaldelijk. Nieuwe aankopen worden bij het scannen nog wel live bij Fullhouse opgezocht." };
-  if (ageMin > lateAfterMinutes) return { ...base, state: "late", message: base.lastOkAt ? "De synchronisatie met Fullhouse loopt achter: de laatste geslaagde ronde is te lang geleden." : "Er is nog geen geslaagde synchronisatie met Fullhouse." };
+  if (ageMin > lateAfterMinutes) {
+    const message = !base.lastOkAt
+      ? "Er is nog geen geslaagde synchronisatie met Fullhouse."
+      : scheduleStalled
+        ? `De geplande synchronisatie (elke ${SCHEDULE_MINUTES} minuten) is al een tijd niet gestart, dus de kopie van Fullhouse loopt achter. Bij het openen van deze pagina wordt hij nu bijgewerkt.`
+        : "De synchronisatie met Fullhouse loopt achter: de laatste geslaagde ronde is te lang geleden.";
+    return { ...base, state: "late", message };
+  }
   if (base.lastError) return { ...base, state: "warning", message: "De laatste automatische ronde ging deels mis; de volgende ronde probeert het opnieuw." };
   return { ...base, state: "ok", message: frequent ? `Fullhouse wordt elke ${SCHEDULE_MINUTES} minuten automatisch gesynchroniseerd.` : "Fullhouse wordt automatisch gesynchroniseerd (dagelijks en bij het openen van het dashboard)." };
 }

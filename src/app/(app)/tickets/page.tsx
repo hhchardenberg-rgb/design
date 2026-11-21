@@ -10,7 +10,7 @@ import { formatDayTime } from "@/lib/date-format";
 import { dashboardData } from "@/lib/tickets/dashboard.server";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
 import { syncHealth } from "@/lib/tickets/fullhouse/health.server";
-import { syncFullhouseInBackground } from "@/lib/tickets/fullhouse/background.server";
+import { BACKGROUND_INTERVAL_MS, syncFullhouseInBackground } from "@/lib/tickets/fullhouse/background.server";
 import { SyncStatus } from "@/components/tickets/sync-status";
 import { TICKET_CATEGORIES, EVENT_STATUS_LABELS, type EventStatus, type TicketCategory } from "@/lib/tickets/rules";
 import type { TicketPermission } from "@/lib/tickets/permissions";
@@ -40,6 +40,8 @@ export default async function TicketsDashboard() {
   const [d, health] = await Promise.all([dashboardData(), showSync ? syncHealth() : null]);
   // Dashboard open = kopie van Fullhouse even bijwerken (na het antwoord, hooguit eens per 3 minuten).
   syncFullhouseInBackground();
+  // Start die achtergrondronde nu echt (vorige automatische ronde > 3 min geleden)? Dan ververst een achterlopende status zichzelf.
+  const refreshing = !!health && (!health.lastAutoAt || health.checkedAt.getTime() - health.lastAutoAt.getTime() > BACKGROUND_INTERVAL_MS);
   const quickActions = QUICK_ACTIONS.filter((q) => a.can(q.requires));
   const focusWhen = d.focus ? (d.focus.live ? "Nu bezig" : new Date(d.focus.startsAt) > new Date() ? "Eerstvolgende wedstrijd" : "Laatst gespeeld") : null;
   const focusStats = d.focus
@@ -76,7 +78,7 @@ export default async function TicketsDashboard() {
       {health && (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <SyncStatus health={health} compact={health.state === "ok" || health.state === "test"} quietWhenOk />
+            <SyncStatus health={health} compact={health.state === "ok" || health.state === "test"} quietWhenOk refreshing={refreshing} />
           </div>
           <Link href="/tickets/fullhouse" className="shrink-0 text-sm font-semibold text-hhc-orange-dark hover:underline">
             Fullhouse-koppeling

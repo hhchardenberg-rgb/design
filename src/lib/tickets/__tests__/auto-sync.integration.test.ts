@@ -108,6 +108,10 @@ test("achterstand: zonder geslaagde ronde binnen de termijn waarschuwt de status
   const h = await health.syncHealth(later, M);
   assert.equal(h.state, "late");
   assert.equal(h.lateAfterMinutes, 20);
+  assert.equal(h.scheduleStalled, true, "geplande taak al een uur niet gestart");
+  assert.match(h.message, /niet gestart/);
+  const fresh = await health.syncHealth(undefined, M);
+  assert.equal(fresh.scheduleStalled, false);
 });
 
 test("bewaartermijn ruimt automatische rondes zonder wijzigingen na 2 dagen op, de rest blijft", { skip }, async () => {

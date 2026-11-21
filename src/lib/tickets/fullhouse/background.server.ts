@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { runAutoSync } from "./auto-sync.server";
 
-const PAGE_INTERVAL_MS = 3 * 60_000;
+export const BACKGROUND_INTERVAL_MS = 3 * 60_000;
 
 /**
  * Na het antwoord (de gebruiker wacht er niet op) een automatische ronde starten als de vorige
@@ -11,7 +11,7 @@ const PAGE_INTERVAL_MS = 3 * 60_000;
 export function syncFullhouseInBackground() {
   after(async () => {
     try {
-      await runAutoSync({ trigger: "page", minIntervalMs: PAGE_INTERVAL_MS });
+      await runAutoSync({ trigger: "page", minIntervalMs: BACKGROUND_INTERVAL_MS });
     } catch (e) {
       console.error("[fullhouse] achtergrondsynchronisatie mislukt", e instanceof Error ? e.message : e);
     }

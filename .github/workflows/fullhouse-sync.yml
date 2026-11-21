@@ -7,7 +7,10 @@ name: Fullhouse-synchronisatie
 
 on:
   schedule:
-    - cron: "*/5 * * * *" # elke 5 minuten, het minimum van GitHub (bij drukte kan een start later komen of overgeslagen worden)
+    # Elke 5 minuten (het minimum van GitHub), net naast de drukke hele en halve uren. Let op: GitHub start
+    # geplande taken op gratis repositories vaak uren te laat of helemaal niet. Gebruik daarom bij voorkeur ook
+    # een externe klok (cron-job.org), zie docs/hhc-tickets/fullhouse-sync.md.
+    - cron: "2-59/5 * * * *"
   workflow_dispatch:
 
 permissions: {}

@@ -5,7 +5,8 @@ kunnen scannen, tellen en zoeken. Fullhouse blijft de bron. Deze kopie wordt op 
 
 | Hoe | Wanneer | Wat |
 | --- | --- | --- |
-| Geplande taak (GitHub Actions, `.github/workflows/fullhouse-sync.yml`) | Elke 5 minuten | Ronde: per wedstrijd in beeld alleen de wijzigingen; eens per uur ook nieuwe evenementen |
+| Externe klok (cron-job.org, aanbevolen) | Elke 3 of 5 minuten | Ronde: per wedstrijd in beeld alleen de wijzigingen; eens per uur ook nieuwe evenementen |
+| Geplande taak (GitHub Actions, `.github/workflows/fullhouse-sync.yml`) | Elke 5 minuten, als GitHub hem start | Dezelfde ronde |
 | Openen van dashboard, Fullhouse-pagina of Wedstrijddag live | Hooguit eens per 3 minuten, na het laden | Dezelfde ronde, op de achtergrond |
 | Webhook van Fullhouse (`/api/webhooks/fullhouse`) | Direct bij aankoop of wijziging | Wijzigingen van die ene wedstrijd |
 | Vercel-cron (`/api/cron/tickets`) | Elke nacht | Volledige ronde als vangnet, plus bewaartermijnen |
@@ -20,14 +21,27 @@ Een betaald abonnement (Pro) kan elke minuut; dan kan de geplande taak naar `ver
 (`{ "path": "/api/cron/fullhouse-sync", "schedule": "*/5 * * * *" }`). Zolang dat niet nodig is, geeft GitHub het
 startsein. De repository is openbaar, dus GitHub Actions kost niets.
 
-Kanttekeningen bij GitHub: een geplande taak kan bij drukte een paar minuten later starten, en GitHub zet geplande
-taken uit in een repository waar 60 dagen niets is gebeurd (dan krijgt de eigenaar een mail; met één klik weer aan).
-De extra rondes bij het openen van het dashboard en de nachtelijke ronde vangen dat op, en het dashboard waarschuwt.
+Kanttekeningen bij GitHub, gezien in de praktijk (21/11/2026): de taak van elke 5 minuten is na de livegang
+uren lang geen enkele keer vanzelf gestart, en de nachtelijke Neon-taak startte 7,5 uur te laat. GitHub geeft
+geen garantie voor geplande taken op gratis repositories en slaat ze bij drukte over. Ook zet GitHub geplande
+taken uit in een repository waar 60 dagen niets is gebeurd. De extra rondes bij het openen van het dashboard en
+de nachtelijke ronde vangen dat deels op; het dashboard meldt het als de geplande taak niet meer start, en werkt
+zichzelf dan bij.
 
-Nog vaker (bijv. elke 2 of 3 minuten) kan met een gratis externe cron-dienst, zoals cron-job.org: laat die
-`POST https://hub.hhc-hardenberg.nl/api/cron/fullhouse-sync` aanroepen met de header
-`Authorization: Bearer <FULLHOUSE_SYNC_SECRET>`. De Hub laat hooguit één ronde per minuut toe en draait nooit dubbel,
-dus GitHub en zo'n dienst kunnen naast elkaar blijven bestaan.
+## Betrouwbare klok: cron-job.org (gratis)
+
+1. Maak een gratis account op https://cron-job.org en kies "Create cronjob".
+2. URL: `https://hub.hhc-hardenberg.nl/api/cron/fullhouse-sync`
+3. Schema: elke 5 minuten (of elke 3 minuten op wedstrijddagen).
+4. Tabblad "Advanced": Request method `POST`; bij Headers een header toevoegen met naam `Authorization` en
+   waarde `Bearer ` gevolgd door de waarde van `FULLHOUSE_SYNC_SECRET` (dezelfde als in Vercel en GitHub).
+   Timeout: 60 seconden.
+5. Opslaan en "Test run": antwoord 200 met iets als `{"ok":13,"failed":0,...}` = gelukt. Een 401 betekent dat
+   de sleutel niet klopt.
+6. Zet bij "Notifications" een mail aan bij mislukken, dan hoor je het als de Hub of Fullhouse plat ligt.
+
+De Hub laat hooguit één ronde per minuut toe en draait nooit dubbel, dus GitHub en cron-job.org kunnen naast
+elkaar blijven bestaan.
 
 ## Eenmalig instellen (eigenaar)
 
@@ -48,7 +62,8 @@ De Fullhouse-pagina toont wanneer de laatste webhook binnenkwam.
 
 - Het dashboard van HHC Tickets en de Fullhouse-pagina tonen wanneer de laatste geslaagde synchronisatie was.
 - Oranje: de laatste ronde ging deels mis, of de laatste geslaagde ronde is te lang geleden (20 minuten als de
-  geplande taak draait, anders 26 uur).
+  geplande taak draait, anders 26 uur). Is de geplande taak zelf al een tijd niet gestart, dan zegt de melding dat.
+  Het openen van het dashboard start dan een ronde, en de melding ververst zichzelf na een halve minuut.
 - Rood: de laatste twee automatische rondes zijn mislukt. Het begin van een storing komt ook in het auditlog
   (herhalingen niet).
 - "Nu synchroniseren" (recht `sync:manage`) start direct een ronde.
