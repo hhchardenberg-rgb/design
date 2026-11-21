@@ -107,6 +107,8 @@ export function pwaAppForSection(sectionKey: string | undefined | null): PwaApp 
   return Object.values(PWA_APPS).find((a) => a.sectionKey === sectionKey) ?? null;
 }
 
+// Scanner: "black" (dichte zwarte statusbalk), niet "black-translucent": anders loopt de pagina onder
+// de statusbalk door en legt iOS er een vervaging overheen.
 /** Metadata voor een layout: koppelt het juiste manifest en de iconen (ook voor iPhone) aan dat onderdeel. */
 export function pwaMetadata(key: PwaAppKey): Pick<Metadata, "manifest" | "icons" | "appleWebApp"> {
   const app = PWA_APPS[key];
@@ -118,6 +120,6 @@ export function pwaMetadata(key: PwaAppKey): Pick<Metadata, "manifest" | "icons"
       icon: [{ url: "/icon.png", type: "image/png" }],
       apple: [{ url: `${b}/apple-touch-icon.png`, sizes: "180x180", type: "image/png" }],
     },
-    appleWebApp: { capable: true, title: app.shortName, statusBarStyle: app.dark ? "black-translucent" : "default" },
+    appleWebApp: { capable: true, title: app.shortName, statusBarStyle: app.dark ? "black" : "default" },
   };
 }
