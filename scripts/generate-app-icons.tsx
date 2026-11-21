@@ -70,7 +70,7 @@ async function main() {
       lang: "nl",
       dir: "ltr",
       start_url: app.startUrl,
-      scope: "/",
+      scope: app.scope,
       display: "standalone",
       ...(app.orientation ? { orientation: app.orientation } : {}),
       background_color: app.dark ? BLACK : "#f5f5f3",

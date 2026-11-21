@@ -6,7 +6,7 @@
   "lang": "nl",
   "dir": "ltr",
   "start_url": "/scan",
-  "scope": "/",
+  "scope": "/scan",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0b0b0b",

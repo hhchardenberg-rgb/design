@@ -4,10 +4,11 @@ import type { Metadata } from "next";
  * De onderdelen van de Hub die je los als app op je telefoon kunt zetten (PWA).
  *
  * Elke app heeft een eigen manifest (public/apps/<key>/manifest.webmanifest), eigen naam,
- * eigen icoon en eigen startpagina. De scope is bewust "/" (de hele Hub): inloggen (/login)
- * en tweestapsverificatie (/account/security) liggen buiten de onderdelen, en moeten binnen
- * het app-venster blijven. Het `id` onderscheidt de apps, zodat je er meerdere naast elkaar
- * kunt installeren. Iconen en manifesten maak je opnieuw met scripts/generate-app-icons.tsx.
+ * eigen icoon, eigen startpagina en een eigen scope: de app hoort alleen bij zijn eigen
+ * onderdeel (de Scanner alleen /scan). Communicatie heeft scope "/", omdat dat onderdeel over
+ * veel paden verspreid is (/hub, /templates, /kalender, ...). Inloggen en tweestapsverificatie
+ * liggen buiten een smalle scope; de telefoon toont die pagina's dan even met een balk
+ * bovenin en keert daarna terug naar de app. Het `id` onderscheidt de apps. Iconen en manifesten maak je opnieuw met scripts/generate-app-icons.tsx.
  */
 export type PwaAppKey = "communicatie" | "commercieel" | "klantenservice" | "tickets" | "scanner";
 
@@ -19,6 +20,8 @@ export interface PwaApp {
   shortName: string;
   description: string;
   startUrl: string;
+  /** Welk deel van de Hub bij deze app hoort; alles daarbuiten is "buiten de app". */
+  scope: string;
   /** Vaste identiteit van de app; verandert nooit (anders ziet de telefoon hem als nieuwe app). */
   id: string;
   /** Sleutel van het onderdeel in de app-shell (zijbalk). */
@@ -38,6 +41,7 @@ export const PWA_APPS: Record<PwaAppKey, PwaApp> = {
     shortName: "Communicatie",
     description: "Team Communicatie van HHC Hardenberg: ontwerpen, nieuws, agenda en huisstijl.",
     startUrl: "/hub",
+    scope: "/",
     id: "/hub",
     sectionKey: "hub",
     manifest: `${base("communicatie")}/manifest.webmanifest`,
@@ -49,6 +53,7 @@ export const PWA_APPS: Record<PwaAppKey, PwaApp> = {
     shortName: "Commercieel",
     description: "Sponsorbeheer, contracten, facturen en taken van HHC Hardenberg.",
     startUrl: "/commercieel",
+    scope: "/commercieel",
     id: "/commercieel",
     sectionKey: "commercial",
     manifest: `${base("commercieel")}/manifest.webmanifest`,
@@ -60,6 +65,7 @@ export const PWA_APPS: Record<PwaAppKey, PwaApp> = {
     shortName: "Klantenservice",
     description: "Handleidingen, standaardmails en de zoektool van Klantenservice van HHC Hardenberg.",
     startUrl: "/klantenservice",
+    scope: "/klantenservice",
     id: "/klantenservice",
     sectionKey: "ticketing",
     manifest: `${base("klantenservice")}/manifest.webmanifest`,
@@ -71,6 +77,7 @@ export const PWA_APPS: Record<PwaAppKey, PwaApp> = {
     shortName: "HHC Tickets",
     description: "Tickets, wedstrijden, gastenlijsten en scans van HHC Hardenberg.",
     startUrl: "/tickets",
+    scope: "/tickets",
     id: "/tickets",
     sectionKey: "tickets",
     manifest: `${base("tickets")}/manifest.webmanifest`,
@@ -83,6 +90,7 @@ export const PWA_APPS: Record<PwaAppKey, PwaApp> = {
     description: "Tickets scannen bij de poort van HHC Hardenberg.",
     // Zelfde id als de eerdere scanner-app, zodat al geïnstalleerde scanners gewoon bijwerken.
     startUrl: "/scan",
+    scope: "/scan",
     id: "/scan",
     sectionKey: null,
     manifest: `${base("scanner")}/manifest.webmanifest`,
