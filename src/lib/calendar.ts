@@ -15,7 +15,12 @@ export interface CalendarEvent {
   isFullDay: boolean;
   location: string | null;
   description: string | null;
+  /** Competitie uit de KNVB-omschrijving (bv. "Tweede Divisie"), alleen bij wedstrijden uit de koppeling. */
+  competition?: string | null;
 }
+
+// "<Competitie> 2026/27." aan het begin van de ruwe omschrijving = wedstrijd uit de KNVB-koppeling.
+const COMPETITION_PREFIX = /^\s*(\S.*?)\s+\d{4}\/\d{2}\./;
 
 function toText(value: unknown): string | null {
   if (value == null) return null;
@@ -71,6 +76,7 @@ export async function fetchUpcomingCalendarEvents(
         isFullDay: instance.isFullDay,
         location: toText(vevent.location),
         description: stripCompetitionBoilerplate(toText(vevent.description)),
+        competition: toText(vevent.description)?.match(COMPETITION_PREFIX)?.[1] ?? null,
       });
     }
   }

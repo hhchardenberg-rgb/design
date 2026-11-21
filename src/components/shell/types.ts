@@ -40,4 +40,6 @@ export interface NextMatch {
   isHome: boolean;
   date: string;
   competition: string | null;
+  /** Wedstrijd in de designtool (vult templates direct); leeg als hij alleen in Tickets of de agenda staat. */
+  designMatchId?: string | null;
 }

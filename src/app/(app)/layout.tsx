@@ -1,3 +1,4 @@
+import { loadNextMatch } from "@/lib/next-match.server";
 import { AppShell, type CommercialShellState } from "@/components/app-shell";
 import type { NextMatch, PlainNavGroup } from "@/components/shell/types";
 import { auth } from "@/lib/auth";
@@ -36,17 +37,6 @@ async function ticketsState(userId: string | undefined): Promise<{ hasAccess: bo
 }
 
 // De eerstvolgende wedstrijd (van vandaag of later) voor de wedstrijdchip in de kopbalk.
-async function loadNextMatch(): Promise<NextMatch | null> {
-  const since = new Date(Date.now() - 2 * 3600_000);
-  const m = await prisma.match
-    .findFirst({ where: { date: { gte: since }, status: { not: "CANCELLED" } }, orderBy: { date: "asc" }, include: { team: true, opponent: true } })
-    .catch(() => null);
-  if (!m) return null;
-  const club = m.team.shortName ?? m.team.name;
-  const opp = m.opponent.shortName ?? m.opponent.name;
-  return { id: m.id, home: m.isHome ? club : opp, away: m.isHome ? opp : club, isHome: m.isHome, date: m.date.toISOString(), competition: m.competition };
-}
-
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const userId = session?.user?.id;

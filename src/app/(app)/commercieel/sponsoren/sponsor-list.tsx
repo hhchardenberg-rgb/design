@@ -130,7 +130,7 @@ export function SponsorList({ canCreate, canExportContacts = false }: { canCreat
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const sortHead = (s: Sort, children: React.ReactNode) => (
     <th scope="col" className="px-3 py-2 text-left font-medium" aria-sort={sort === s ? (dir === "asc" ? "ascending" : "descending") : "none"}>
-      <button className="inline-flex items-center gap-1" onClick={() => toggleSort(s)}>
+      <button className="inline-flex items-center gap-1 uppercase tracking-wide" onClick={() => toggleSort(s)}>
         {children}
         {sort === s && (dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
       </button>

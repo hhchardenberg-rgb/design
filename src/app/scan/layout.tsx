@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: "HHC Scanner", statusBarStyle: "black-translucent" },
 };
-export const viewport: Viewport = { themeColor: "#f26a21", width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { themeColor: "#0b0b0b", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function ScanLayout({ children }: { children: React.ReactNode }) {
   if (!isTicketsEnabled()) notFound();
-  return <div className="min-h-dvh bg-neutral-950 text-white">{children}</div>;
+  return <div className="min-h-dvh bg-[#0b0b0b] text-white">{children}</div>;
 }
