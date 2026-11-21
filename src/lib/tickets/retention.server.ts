@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getTicketSettings } from "./settings.server";
+import { QUIET_RUN } from "./fullhouse/health.server";
 
 // Bewaartermijnen (AVG): persoonsgegevens worden na de vervaldatum + termijn geanonimiseerd
 // (totalen blijven), oude scans, verzendlogs en technische logs worden verwijderd.
@@ -18,6 +19,9 @@ export async function runTicketRetention(now = new Date()) {
   }
   const scanBefore = new Date(now.getTime() - s.retentionScanMonths * MONTH);
   const technicalBefore = new Date(now.getTime() - s.retentionTechnicalDays * 86_400_000);
+  // Automatische synchronisaties zonder wijzigingen (elke 5 minuten per wedstrijd) na 2 dagen opruimen. Gaat er daarna
+  // een wedstrijd zonder geslaagde ronde verder, dan wordt die gewoon één keer volledig ingelezen.
+  await prisma.ticketSyncRun.deleteMany({ where: { ...QUIET_RUN, startedAt: { lt: new Date(now.getTime() - 2 * 86_400_000) } } });
   const [scans, deliveries, runs] = await Promise.all([
     prisma.ticketScan.deleteMany({ where: { scannedAt: { lt: scanBefore } } }),
     prisma.ticketDelivery.deleteMany({ where: { createdAt: { lt: scanBefore } } }),

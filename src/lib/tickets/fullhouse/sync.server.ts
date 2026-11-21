@@ -6,6 +6,7 @@ import { codeHash, initialsFromFullName } from "../scan.server";
 import { fullhouseConfigured, ticketProvider } from "./index";
 import { FullhouseError } from "./types";
 import { catalogNameMap, nameKey, syncFullhouseCatalog } from "./catalog.server";
+import { QUIET_RUN, SCHEDULE_MINUTES, syncHealth } from "./health.server";
 
 // Synchronisatie met Fullhouse (alleen lezen). Fullhouse blijft de bron: de Hub bewaart een
 // lokale kopie (barcode alleen als hash, naam alleen als initialen) om te kunnen scannen.
@@ -18,7 +19,7 @@ export async function fullhouseOverview(actor: TicketsActor) {
   need(actor, "sync:read");
   const [events, runs, counts, kinds, names] = await Promise.all([
     prisma.ticketEvent.findMany({ where: { source: "FULLHOUSE", archivedAt: null }, orderBy: { startsAt: "desc" }, take: 50 }),
-    prisma.ticketSyncRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 }),
+    prisma.ticketSyncRun.findMany({ where: { NOT: QUIET_RUN }, orderBy: { startedAt: "desc" }, take: 30 }),
     prisma.ticketExternalTicket.groupBy({ by: ["eventExtId", "status"], _count: { _all: true } }),
     prisma.ticketExternalTicket.groupBy({ by: ["eventExtId", "ticketName", "categoryRef", "area"], where: { status: "VALID" }, _count: { _all: true } }),
     catalogNameMap(),
@@ -44,6 +45,8 @@ export async function fullhouseOverview(actor: TicketsActor) {
         .sort((a, b) => b.count - a.count),
     })),
     runs,
+    health: await syncHealth(),
+    schedule: { minutes: SCHEDULE_MINUTES },
   };
 }
 
@@ -53,7 +56,7 @@ export async function importFullhouseEvents(actor: TicketsActor) {
   return importEventsAs({ id: actor.id, name: actor.name });
 }
 
-async function importEventsAs(actor: { id: string | null; name: string }) {
+export async function importEventsAs(actor: { id: string | null; name: string }) {
   const run = await prisma.ticketSyncRun.create({ data: { kind: "events", status: "RUNNING", mode: ticketProvider().mode, startedBy: actor.name } });
   try {
     const list = await ticketProvider().listEvents();
@@ -83,7 +86,7 @@ async function importEventsAs(actor: { id: string | null; name: string }) {
 }
 
 /** Tickets van één Fullhouse-evenement ophalen: volledig, of alleen wat sinds de vorige geslaagde synchronisatie wijzigde. */
-export async function syncEventTickets(who: { id: string | null; name: string }, eventExtId: string, opts: { full?: boolean } = {}) {
+export async function syncEventTickets(who: { id: string | null; name: string }, eventExtId: string, opts: { full?: boolean; quiet?: boolean } = {}) {
   const provider = ticketProvider();
   const last = opts.full ? null : await prisma.ticketSyncRun.findFirst({ where: { kind: "tickets", eventExtId, status: "OK" }, orderBy: { startedAt: "desc" } });
   const full = !last;
@@ -117,11 +120,14 @@ export async function syncEventTickets(who: { id: string | null; name: string },
     let removed = 0;
     if (full && fetched >= total) removed = (await prisma.ticketExternalTicket.updateMany({ where: { eventExtId, syncedAt: { lt: run.startedAt }, status: { not: "INVALID" } }, data: { status: "INVALID" } })).count;
     await prisma.ticketSyncRun.update({ where: { id: run.id }, data: { status: "OK", fetched, upserted, finishedAt: new Date() } });
-    await ticketAudit({ action: "sync.completed", actor: { id: who.id, name: who.name }, summary: `Fullhouse-tickets gesynchroniseerd (${full ? "volledig" : "wijzigingen"})`, meta: { eventExtId, fetched, upserted, removed } });
+    // Automatische synchronisaties zonder wijzigingen komen niet in het auditlog (anders elke 5 minuten een regel per wedstrijd).
+    if (!opts.quiet || fetched > 0 || removed > 0) await ticketAudit({ action: "sync.completed", actor: { id: who.id, name: who.name }, summary: `Fullhouse-tickets gesynchroniseerd (${full ? "volledig" : "wijzigingen"})`, meta: { eventExtId, fetched, upserted, removed } });
     return { fetched, upserted, removed, full };
   } catch (e) {
     await prisma.ticketSyncRun.update({ where: { id: run.id }, data: { status: "FAILED", error: errMsg(e).slice(0, 300), finishedAt: new Date() } });
-    await ticketAudit({ action: "sync.failed", actor: { id: who.id, name: who.name }, summary: "Fullhouse-tickets synchroniseren mislukt", reason: errMsg(e), meta: { eventExtId } });
+    // Bij automatische synchronisaties alleen de eerste fout van een reeks vastleggen.
+    const previous = opts.quiet ? await prisma.ticketSyncRun.findFirst({ where: { kind: "tickets", eventExtId, id: { not: run.id }, status: { not: "RUNNING" } }, orderBy: { startedAt: "desc" }, select: { status: true } }) : null;
+    if (previous?.status !== "FAILED") await ticketAudit({ action: "sync.failed", actor: { id: who.id, name: who.name }, summary: "Fullhouse-tickets synchroniseren mislukt", reason: errMsg(e), meta: { eventExtId } });
     throw e;
   }
 }
@@ -184,35 +190,8 @@ export async function diagnoseFullhouse(actor: TicketsActor) {
   return out;
 }
 
-/** Voor de cron: alle Fullhouse-wedstrijden van gisteren tot 120 dagen vooruit (ook concepten) en alle seizoenspassen, stil bij fouten per evenement. */
+/** Voor de dagelijkse cron: volledige ronde (evenementen + alle wedstrijden in beeld), zonder minimale tussentijd. */
 export async function syncUpcoming() {
-  if (ticketProvider().mode === "mock") return { skipped: "testmodus" };
-  // Nieuwe Fullhouse-evenementen, kaartsoorten en vakken komen automatisch binnen; een fout hier stopt de ticketsynchronisatie niet.
-  let imported: { fetched: number; created: number } | { error: string };
-  try {
-    imported = await importEventsAs({ id: null, name: "Automatisch" });
-  } catch (e) {
-    imported = { error: errMsg(e) };
-  }
-  const events = await prisma.ticketEvent.findMany({
-    where: {
-      source: "FULLHOUSE",
-      externalId: { not: null },
-      archivedAt: null,
-      status: { not: "CANCELLED" },
-      // Seizoenspassen (titel met "seizoen") worden altijd gesynchroniseerd, ook als de datum voorbij is.
-      OR: [{ startsAt: { lte: new Date(Date.now() + 120 * 86_400_000) }, endsAt: { gte: new Date(Date.now() - 86_400_000) } }, { title: { contains: "seizoen", mode: "insensitive" } }],
-    },
-    select: { externalId: true },
-  });
-  const results: { ok: number; failed: number } = { ok: 0, failed: 0 };
-  for (const e of events) {
-    try {
-      await syncEventTickets({ id: null, name: "Automatisch" }, e.externalId!);
-      results.ok++;
-    } catch {
-      results.failed++;
-    }
-  }
-  return { ...results, events: imported };
+  const { runAutoSync } = await import("./auto-sync.server");
+  return runAutoSync({ trigger: "cron" });
 }

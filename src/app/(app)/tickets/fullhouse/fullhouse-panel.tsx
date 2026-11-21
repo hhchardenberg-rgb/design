@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useStableToast } from "@/lib/commercial/use-stable-toast";
 import { formatDayTime } from "@/lib/date-format";
 import { api, errorText, PageTitle } from "@/components/tickets/parts";
+import { SyncStatus, type SyncHealthView } from "@/components/tickets/sync-status";
 import { CatalogCard } from "./catalog-card";
 
 interface Overview {
@@ -13,8 +14,12 @@ interface Overview {
   provider: string;
   writesEnabled: boolean;
   events: { id: string; title: string; startsAt: string; status: string; externalId: string | null; counts: Record<string, number>; kinds?: { type: string | null; zone: string | null; hhcType?: string | null; hhcZone?: string | null; count: number }[] }[];
+  health: SyncHealthView;
+  schedule: { minutes: number };
   runs: { id: string; kind: string; eventExtId: string | null; status: string; mode: string; fetched: number; upserted: number; error: string | null; startedAt: string; finishedAt: string | null; startedBy: string | null }[];
 }
+
+const KIND_LABELS: Record<string, string> = { auto: "Automatische ronde", tickets: "Tickets van één wedstrijd", events: "Evenementen" };
 
 export function FullhousePanel({ canManage, canCreate = false }: { canManage: boolean; canCreate?: boolean }) {
   const toast = useStableToast();
@@ -58,15 +63,29 @@ export function FullhousePanel({ canManage, canCreate = false }: { canManage: bo
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
+          <SyncStatus health={d.health} />
+          {!mock && (
+            <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
+              <li>Elke {d.schedule.minutes} minuten een automatische ronde (geplande taak){d.health.frequent ? "" : " — nog niet actief: zie de handleiding in docs/hhc-tickets/fullhouse-sync.md"}.</li>
+              <li>Extra ronde bij het openen van het dashboard, deze pagina of Wedstrijddag live (hooguit eens per 3 minuten).</li>
+              <li>Direct bij een aankoop of wijziging als Fullhouse een webhook stuurt{d.config.webhookSecret ? "" : " (webhooksleutel ontbreekt nog)"}.</li>
+              <li>Elke nacht een volledige ronde als vangnet. Nieuwe aankopen worden bij het scannen altijd live bij Fullhouse opgezocht.</li>
+            </ul>
+          )}
           <p>
             API-sleutel: <b>{d.config.apiKey ? "ingesteld" : "ontbreekt"}</b> · Scanapparaat-token (alternatief): <b>{d.config.accessToken ? "ingesteld" : "niet nodig"}</b> · Webhooksleutel: <b>{d.config.webhookSecret ? "ingesteld" : "ontbreekt"}</b> · Schrijven naar Fullhouse: <b>{d.writesEnabled ? "aan" : "uit (alleen lezen)"}</b>
           </p>
           {canManage && (
             <div className="flex flex-wrap gap-2">
+              {!mock && (
+                <Button size="sm" disabled={!!busy} onClick={() => run("auto", async () => { const r = await api<{ skipped?: string; ok?: number; failed?: number; postponed?: number; fetched?: number }>("/api/tickets/fullhouse/auto", { body: {} }); if (r.skipped) return r.skipped; return `${r.ok ?? 0} wedstrijden bijgewerkt, ${r.fetched ?? 0} gewijzigde tickets${r.failed ? `, ${r.failed} mislukt` : ""}${r.postponed ? `, ${r.postponed} volgende keer` : ""}.`; })}>
+                  {busy === "auto" ? "Bezig…" : "Nu synchroniseren"}
+                </Button>
+              )}
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run("diag", async () => { const r = await api<NonNullable<typeof diag>>("/api/tickets/fullhouse/diagnose", { body: {} }); setDiag(r); return "Koppeling gecontroleerd."; })}>
                 Controleer koppeling
               </Button>
-              <Button size="sm" disabled={!!busy} onClick={() => run("events", async () => { const r = await api<{ fetched: number; created: number; catalog: { types: number; zones: number } | null }>("/api/tickets/fullhouse/events", { body: {} }); return `${r.fetched} evenementen gelezen, ${r.created} nieuw${r.catalog ? `, ${r.catalog.types} kaartsoorten en ${r.catalog.zones} vakken bijgewerkt` : ""}.`; })}>
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run("events", async () => { const r = await api<{ fetched: number; created: number; catalog: { types: number; zones: number } | null }>("/api/tickets/fullhouse/events", { body: {} }); return `${r.fetched} evenementen gelezen, ${r.created} nieuw${r.catalog ? `, ${r.catalog.types} kaartsoorten en ${r.catalog.zones} vakken bijgewerkt` : ""}.`; })}>
                 Evenementen ophalen
               </Button>
             </div>
@@ -149,7 +168,7 @@ export function FullhousePanel({ canManage, canCreate = false }: { canManage: bo
               {d.runs.map((r) => (
                 <tr key={r.id}>
                   <td className="p-3 tabular-nums">{formatDayTime(r.startedAt)}</td>
-                  <td className="p-3">{r.kind}</td>
+                  <td className="p-3">{KIND_LABELS[r.kind] ?? (r.kind.startsWith("webhook:") ? `Webhook (${r.kind.slice(8)})` : r.kind)}</td>
                   <td className={`p-3 ${r.status === "FAILED" ? "text-destructive" : ""}`}>{r.status === "OK" ? "Gelukt" : r.status === "FAILED" ? `Mislukt: ${r.error ?? ""}` : "Bezig"}</td>
                   <td className="p-3">{r.fetched}</td>
                   <td className="p-3 text-muted-foreground">{r.startedBy ?? "–"}</td>

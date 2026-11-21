@@ -9,11 +9,15 @@ import { NoAccess } from "@/components/commercial/no-access";
 import { formatDayTime } from "@/lib/date-format";
 import { dashboardData } from "@/lib/tickets/dashboard.server";
 import { ticketsPageAccess } from "@/lib/tickets/page.server";
+import { syncHealth } from "@/lib/tickets/fullhouse/health.server";
+import { syncFullhouseInBackground } from "@/lib/tickets/fullhouse/background.server";
+import { SyncStatus } from "@/components/tickets/sync-status";
 import { TICKET_CATEGORIES, EVENT_STATUS_LABELS, type EventStatus, type TicketCategory } from "@/lib/tickets/rules";
 import type { TicketPermission } from "@/lib/tickets/permissions";
 
 export const metadata: Metadata = { title: "HHC Tickets" };
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // De belangrijkste acties, als compacte rij knoppen bovenaan. De rest staat in het menu.
 const QUICK_ACTIONS: { href: string; label: string; icon: typeof Ticket; requires: TicketPermission; primary?: boolean }[] = [
@@ -32,7 +36,10 @@ export default async function TicketsDashboard() {
     // Een scanner heeft geen dashboard; die werkt in /scan.
     return <NoAccess what="het dashboard van HHC Tickets" />;
   }
-  const d = await dashboardData();
+  const showSync = a.can("sync:read");
+  const [d, health] = await Promise.all([dashboardData(), showSync ? syncHealth() : null]);
+  // Dashboard open = kopie van Fullhouse even bijwerken (na het antwoord, hooguit eens per 3 minuten).
+  syncFullhouseInBackground();
   const quickActions = QUICK_ACTIONS.filter((q) => a.can(q.requires));
   const focusWhen = d.focus ? (d.focus.live ? "Nu bezig" : new Date(d.focus.startsAt) > new Date() ? "Eerstvolgende wedstrijd" : "Laatst gespeeld") : null;
   const focusStats = d.focus
@@ -65,6 +72,17 @@ export default async function TicketsDashboard() {
             </nav>
         )}
       </PageHeader>
+
+      {health && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <SyncStatus health={health} compact={health.state === "ok" || health.state === "test"} />
+          </div>
+          <Link href="/tickets/fullhouse" className="shrink-0 text-sm font-semibold text-hhc-orange-dark hover:underline">
+            Fullhouse-koppeling
+          </Link>
+        </div>
+      )}
 
       <StatStrip
         items={[
