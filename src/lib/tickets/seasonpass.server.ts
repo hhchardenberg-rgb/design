@@ -11,6 +11,9 @@ import { coversEvent, type RuleEvent, type RuleTicket, type TicketStatus, type V
 import { holderSchema, issueSchema } from "./schemas";
 import { issueTickets } from "./tickets.server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+import { fullhouseSeasonCards, seasonCardSources } from "./fullhouse-season.server";
+import { isSeasonCardSource } from "./season-cards";
 
 // Seizoenspassen: gebruik per houder en duel, no-show-overzicht, verlengen naar een volgend seizoen
 // en overdragen aan een andere houder.
@@ -71,6 +74,72 @@ export function missedStreak(pastEligibleIds: string[], attended: Set<string>): 
 
 export type PassFilter = "all" | "noshow" | "streak";
 
+// ── Houders: eigen seizoenskaarten (HHC) en seizoenskaarten/-passen uit Fullhouse ──
+
+/**
+ * Eén houder van een seizoenskaart, ongeacht de bron. `key` is waaronder scans worden gevonden: het ticket-id
+ * (HHC) of de hash van de barcode (Fullhouse). Van Fullhouse-houders kennen we alleen initialen.
+ */
+export type Holder = { key: string; id: string; publicId: string; name: string; type: string; zone: string | null; source: "HHC" | "FULLHOUSE"; card: CardRow };
+
+const FH_PREFIX = "fh_";
+const fhKey = (hash: string) => `h:${hash}`;
+
+/** Fullhouse-kaart als CardRow: geldig voor alle thuisduels van het seizoen, vanaf het verkoopmoment. Puur, dus testbaar. */
+export function fullhouseCardRow(c: { id: string; soldAt: Date | null }, seasonId: string): CardRow {
+  return { id: `${FH_PREFIX}${c.id}`, status: "ACTIVE", validityMode: "SEASON", validFrom: null, validUntil: null, seasonId, competitions: [], homeOnly: true, isSeasonCard: true, zoneId: null, createdAt: c.soldAt ?? undefined };
+}
+
+async function loadHolders(seasonId: string, personal: boolean): Promise<Holder[]> {
+  const [cards, fh] = await Promise.all([
+    prisma.ticket.findMany({ where: { isSeasonCard: true, source: "HHC", anonymizedAt: null, status: "ACTIVE", seasonId }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }], select: CARD_SELECT }),
+    fullhouseSeasonCards(seasonId),
+  ]);
+  const own: Holder[] = cards.map((c) => ({ key: c.id, id: c.id, publicId: c.publicId, name: personal ? `${c.firstName} ${c.lastName}` : initialsOf(c.firstName, c.lastName), type: c.type.name, zone: c.zone?.name ?? null, source: "HHC", card: c }));
+  const seen = new Set<string>();
+  const ext: Holder[] = [];
+  for (const c of fh) {
+    if (seen.has(c.codeHash)) continue;
+    seen.add(c.codeHash);
+    ext.push({ key: fhKey(c.codeHash), id: `${FH_PREFIX}${c.id}`, publicId: "Fullhouse", name: c.holderLabel || "Onbekend", type: c.ticketName ?? "Seizoenskaart", zone: c.area, source: "FULLHOUSE", card: fullhouseCardRow(c, seasonId) });
+  }
+  return [...own, ...ext];
+}
+
+type ScanHit = { key: string; eventId: string; scannedAt: Date; entranceId: string | null; reentry: boolean };
+
+/** Geldige scans van deze houders bij deze duels, met de houder-sleutel erbij. */
+async function loadScans(holders: Holder[], eventIds: string[]): Promise<ScanHit[]> {
+  if (!holders.length || !eventIds.length) return [];
+  const ids = holders.filter((h) => h.source === "HHC").map((h) => h.id);
+  const hashes = holders.filter((h) => h.source === "FULLHOUSE").map((h) => h.key.slice(2));
+  const rows = await prisma.ticketScan.findMany({
+    where: { eventId: { in: eventIds }, result: "VALID", OR: [...(ids.length ? [{ ticketId: { in: ids } }] : []), ...(hashes.length ? [{ codeHash: { in: hashes }, ticketId: null }] : [])] },
+    select: { ticketId: true, codeHash: true, eventId: true, scannedAt: true, entranceId: true, reentry: true },
+  });
+  return rows.flatMap((r) => {
+    const key = r.ticketId ?? (r.codeHash ? fhKey(r.codeHash) : null);
+    return key ? [{ key, eventId: r.eventId, scannedAt: r.scannedAt, entranceId: r.entranceId, reentry: r.reentry }] : [];
+  });
+}
+
+/** Eerste geldige scan per houder per duel ("sleutel|eventId"). Ongedaan gemaakte scans tellen niet. */
+function firstScans(scans: ScanHit[]) {
+  const first = new Map<string, ScanHit>();
+  for (const s of scans) {
+    const k = `${s.key}|${s.eventId}`;
+    const cur = first.get(k);
+    if (!cur || s.scannedAt < cur.scannedAt) first.set(k, s);
+  }
+  return first;
+}
+
+/** Duels van een seizoen, zonder de Fullhouse-evenementen waarop de seizoenskaarten zelf verkocht worden. */
+async function seasonEvents(seasonId: string, extra: Prisma.TicketEventWhereInput = {}) {
+  const rows = await prisma.ticketEvent.findMany({ where: { seasonId, ...extra }, orderBy: { startsAt: "asc" }, select: { ...EVENT_SELECT, source: true, seasonCardSource: true } });
+  return rows.filter((e) => !isSeasonCardSource(e));
+}
+
 export async function seasonPassOverview(actor: TicketsActor, opts: { seasonId?: string; q?: string; filter?: PassFilter }) {
   need(actor, "tickets:read");
   const personal = actor.access.can("tickets:personal");
@@ -79,45 +148,41 @@ export async function seasonPassOverview(actor: TicketsActor, opts: { seasonId?:
   const seasons = rawSeasons.map((x) => ({ id: x.id, name: x.name, label: labelOf(x) }));
   if (!season) return { seasons, season: null, summary: null, rows: [] as never[], personal };
 
-  const [events, cards] = await Promise.all([
-    prisma.ticketEvent.findMany({ where: { seasonId: season.id, status: { not: "CANCELLED" } }, select: EVENT_SELECT }),
-    prisma.ticket.findMany({ where: { isSeasonCard: true, source: "HHC", anonymizedAt: null, status: "ACTIVE", seasonId: season.id }, orderBy: { lastName: "asc" }, select: CARD_SELECT }),
-  ]);
-  const pastIds = events.filter((e) => e.startsAt <= now).map((e) => e.id);
-  const scans = cards.length && pastIds.length
-    ? await prisma.ticketScan.findMany({ where: { ticketId: { in: cards.map((c) => c.id) }, eventId: { in: pastIds }, result: "VALID" }, select: { ticketId: true, eventId: true, scannedAt: true } })
-    : [];
+  const [events, holders] = await Promise.all([seasonEvents(season.id, { status: { not: "CANCELLED" } }), loadHolders(season.id, personal)]);
+  const pastEvents = events.filter((e) => e.startsAt <= now);
+  const scans = await loadScans(holders, pastEvents.map((e) => e.id));
   const attendedBy = new Map<string, Set<string>>();
   const lastBy = new Map<string, Date>();
   for (const s of scans) {
-    if (!s.ticketId) continue;
-    (attendedBy.get(s.ticketId) ?? attendedBy.set(s.ticketId, new Set()).get(s.ticketId)!).add(s.eventId);
-    if (!lastBy.get(s.ticketId) || s.scannedAt > lastBy.get(s.ticketId)!) lastBy.set(s.ticketId, s.scannedAt);
+    (attendedBy.get(s.key) ?? attendedBy.set(s.key, new Set()).get(s.key)!).add(s.eventId);
+    if (!lastBy.get(s.key) || s.scannedAt > lastBy.get(s.key)!) lastBy.set(s.key, s.scannedAt);
   }
 
   const q = opts.q?.trim().toLowerCase();
-  let rows = cards.map((c) => {
-    const past = eligibleEvents(c, events.filter((e) => e.startsAt <= now));
-    const attended = attendedBy.get(c.id) ?? new Set<string>();
+  let rows = holders.map((h) => {
+    const past = eligibleEvents(h.card, pastEvents);
+    const attended = attendedBy.get(h.key) ?? new Set<string>();
     const came = past.filter((e) => attended.has(e.id)).length;
     return {
-      id: c.id,
-      publicId: c.publicId,
-      name: personal ? `${c.firstName} ${c.lastName}` : initialsOf(c.firstName, c.lastName),
-      type: c.type.name,
-      zone: c.zone?.name ?? null,
+      id: h.id,
+      publicId: h.publicId,
+      source: h.source,
+      name: h.name,
+      type: h.type,
+      zone: h.zone,
       eligible: past.length,
       attended: came,
       streak: missedStreak(past.map((e) => e.id), attended),
-      lastSeen: lastBy.get(c.id)?.toISOString() ?? null,
+      lastSeen: lastBy.get(h.key)?.toISOString() ?? null,
     };
   });
-  if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q) || r.publicId.toLowerCase().startsWith(q));
+  if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q) || r.type.toLowerCase().includes(q) || (r.source === "HHC" && r.publicId.toLowerCase().startsWith(q)));
   const withGames = rows.filter((r) => r.eligible > 0);
   const summary = {
     passes: rows.length,
-    pastGames: events.filter((e) => e.startsAt <= now).length,
-    upcomingGames: events.filter((e) => e.startsAt > now).length,
+    fullhouse: rows.filter((r) => r.source === "FULLHOUSE").length,
+    pastGames: pastEvents.length,
+    upcomingGames: events.length - pastEvents.length,
     averagePct: withGames.length ? Math.round((withGames.reduce((n, r) => n + r.attended / r.eligible, 0) / withGames.length) * 100) : null,
     noShow: rows.filter((r) => r.eligible >= 2 && r.attended === 0).length,
     streak3: rows.filter((r) => r.streak >= 3).length,
@@ -153,29 +218,10 @@ async function pickSeasonFor(seasonId: string | undefined, now: Date) {
 
 // ── Aanwezigheid per duel ──
 
-type ScanHit = { ticketId: string | null; eventId: string; scannedAt: Date; entranceId: string | null };
-
-/** Eerste geldige scan per pas per duel ("ticketId|eventId"). Ongedaan gemaakte scans tellen niet. */
-function firstScans(scans: ScanHit[]) {
-  const first = new Map<string, ScanHit>();
-  for (const s of scans) {
-    if (!s.ticketId) continue;
-    const k = `${s.ticketId}|${s.eventId}`;
-    const cur = first.get(k);
-    if (!cur || s.scannedAt < cur.scannedAt) first.set(k, s);
-  }
-  return first;
-}
-
-async function seasonData(seasonId: string) {
-  const [events, cards] = await Promise.all([
-    prisma.ticketEvent.findMany({ where: { seasonId }, orderBy: { startsAt: "asc" }, select: EVENT_SELECT }),
-    prisma.ticket.findMany({ where: { isSeasonCard: true, source: "HHC", anonymizedAt: null, status: "ACTIVE", seasonId }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }], select: CARD_SELECT }),
-  ]);
-  const scans = cards.length && events.length
-    ? await prisma.ticketScan.findMany({ where: { ticketId: { in: cards.map((c) => c.id) }, eventId: { in: events.map((e) => e.id) }, result: "VALID" }, select: { ticketId: true, eventId: true, scannedAt: true, entranceId: true } })
-    : [];
-  return { events, cards, first: firstScans(scans) };
+async function seasonData(seasonId: string, personal: boolean) {
+  const [events, holders] = await Promise.all([seasonEvents(seasonId), loadHolders(seasonId, personal)]);
+  const scans = await loadScans(holders, events.map((e) => e.id));
+  return { events, holders, first: firstScans(scans) };
 }
 
 /** Per duel van het seizoen: hoeveel houders erbij hoorden, hoeveel er waren en hoeveel niet. */
@@ -185,15 +231,15 @@ export async function seasonAttendanceByEvent(actor: TicketsActor, opts: { seaso
   const { seasons: rawSeasons, season } = await pickSeasonFor(opts.seasonId, now);
   const seasons = rawSeasons.map((x) => ({ id: x.id, name: x.name, label: labelOf(x) }));
   if (!season) return { seasons, season: null, events: [] as never[] };
-  const { events, cards, first } = await seasonData(season.id);
+  const { events, holders, first } = await seasonData(season.id, false);
   return {
     seasons,
     season: { id: season.id, name: season.name, label: labelOf(season) },
     events: events.map((e) => {
       let expected = 0;
       let present = 0;
-      for (const c of cards) {
-        const st = gameState(c, e, first.has(`${c.id}|${e.id}`), now);
+      for (const h of holders) {
+        const st = gameState(h.card, e, first.has(`${h.key}|${e.id}`), now);
         if (st === "ATTENDED") present++;
         if (st === "ATTENDED" || st === "MISSED" || st === "UPCOMING") expected++;
       }
@@ -218,39 +264,38 @@ export async function seasonAttendanceByEvent(actor: TicketsActor, opts: { seaso
 
 export type AttendanceFilter = "all" | "present" | "absent";
 
-/** Per duel: welke seizoenskaarthouders waren er wel en welke niet. */
+/** Per duel: welke seizoenskaarthouders (eigen en Fullhouse) waren er wel en welke niet. */
 export async function eventAttendance(actor: TicketsActor, eventId: string, opts: { filter?: AttendanceFilter; q?: string } = {}) {
   need(actor, "tickets:read");
   const personal = actor.access.can("tickets:personal");
   const now = new Date();
   await seasonMaintenance();
-  const event = await prisma.ticketEvent.findUnique({ where: { id: eventId }, select: { ...EVENT_SELECT, season: { select: { id: true, name: true, startsOn: true, endsOn: true } } } });
+  const event = await prisma.ticketEvent.findUnique({ where: { id: eventId }, select: { ...EVENT_SELECT, source: true, seasonCardSource: true, season: { select: { id: true, name: true, startsOn: true, endsOn: true } } } });
   if (!event) throw new ApiError(404, "Wedstrijd niet gevonden.");
-  const cards = event.seasonId
-    ? await prisma.ticket.findMany({ where: { isSeasonCard: true, source: "HHC", anonymizedAt: null, status: "ACTIVE", seasonId: event.seasonId }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }], select: CARD_SELECT })
-    : [];
-  const scans = cards.length ? await prisma.ticketScan.findMany({ where: { eventId, ticketId: { in: cards.map((c) => c.id) }, result: { in: ["VALID"] } }, select: { ticketId: true, eventId: true, scannedAt: true, entranceId: true, reentry: true } }) : [];
+  const holders = event.seasonId && !isSeasonCardSource(event) ? await loadHolders(event.seasonId, personal) : [];
+  const scans = await loadScans(holders, [eventId]);
   const first = firstScans(scans);
   const reentries = new Map<string, number>();
-  for (const s of scans) if (s.reentry && s.ticketId) reentries.set(s.ticketId, (reentries.get(s.ticketId) ?? 0) + 1);
+  for (const s of scans) if (s.reentry) reentries.set(s.key, (reentries.get(s.key) ?? 0) + 1);
   const entrances = new Map((await prisma.ticketEntrance.findMany({ select: { id: true, name: true } })).map((e) => [e.id, e.name]));
 
-  let rows = cards
-    .map((c) => {
-      const hit = first.get(`${c.id}|${eventId}`);
-      const state = gameState(c, event, !!hit, now);
+  let rows = holders
+    .map((h) => {
+      const hit = first.get(`${h.key}|${eventId}`);
+      const state = gameState(h.card, event, !!hit, now);
       if (!state) return null;
       return {
-        id: c.id,
-        publicId: c.publicId,
-        name: personal ? `${c.firstName} ${c.lastName}` : initialsOf(c.firstName, c.lastName),
-        type: c.type.name,
-        zone: c.zone?.name ?? null,
+        id: h.id,
+        publicId: h.publicId,
+        source: h.source,
+        name: h.name,
+        type: h.type,
+        zone: h.zone,
         state,
         stateLabel: GAME_STATE_LABELS[state],
         firstAt: hit?.scannedAt.toISOString() ?? null,
         entrance: (hit?.entranceId && entrances.get(hit.entranceId)) || null,
-        reentries: reentries.get(c.id) ?? 0,
+        reentries: reentries.get(h.key) ?? 0,
       };
     })
     .filter((r): r is NonNullable<typeof r> => !!r);
@@ -261,7 +306,7 @@ export async function eventAttendance(actor: TicketsActor, eventId: string, opts
     absent: rows.filter((r) => r.state === "MISSED").length,
   };
   const q = opts.q?.trim().toLowerCase();
-  if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q) || r.publicId.toLowerCase().startsWith(q));
+  if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q) || r.type.toLowerCase().includes(q) || (r.source === "HHC" && r.publicId.toLowerCase().startsWith(q)));
   if (opts.filter === "present") rows = rows.filter((r) => r.state === "ATTENDED");
   if (opts.filter === "absent") rows = rows.filter((r) => r.state !== "ATTENDED");
   const past = event.startsAt <= now;
@@ -279,8 +324,8 @@ export async function eventAttendance(actor: TicketsActor, eventId: string, opts
 const MARK: Record<GameState, string> = { ATTENDED: "✓", MISSED: "✗", UPCOMING: "", CANCELLED: "afgelast", EXCLUDED: "n.v.t.", NOT_ISSUED: "" };
 
 /**
- * Excel met de aanwezigheid van alle seizoenskaarthouders: één blad met houders × duels (✓ geweest, ✗ niet geweest),
- * één blad met de stand per duel, en per gespeeld duel een blad met wie er wel en niet was.
+ * Excel met de aanwezigheid van alle seizoenskaarthouders (eigen en Fullhouse): één blad met houders × duels
+ * (✓ geweest, ✗ niet geweest), één blad met de stand per duel, en per gespeeld duel een blad met wie er wel en niet was.
  */
 export async function seasonAttendanceExport(actor: TicketsActor, seasonId?: string) {
   need(actor, "tickets:read");
@@ -289,25 +334,26 @@ export async function seasonAttendanceExport(actor: TicketsActor, seasonId?: str
   const now = new Date();
   const { season } = await pickSeasonFor(seasonId, now);
   if (!season) throw new ApiError(404, "Er is nog geen seizoen aangemaakt.");
-  const { events, cards, first } = await seasonData(season.id);
+  const { events, holders, first } = await seasonData(season.id, personal);
   const entrances = new Map((await prisma.ticketEntrance.findMany({ select: { id: true, name: true } })).map((e) => [e.id, e.name]));
-  const nameOf = (c: (typeof cards)[number]) => (personal ? `${c.firstName} ${c.lastName}` : initialsOf(c.firstName, c.lastName));
+  const st = (h: Holder, e: (typeof events)[number]) => gameState(h.card, e, first.has(`${h.key}|${e.id}`), now);
   // Alleen duels die voor minstens één pas bedoeld zijn (geen uitduels of andere competities zonder kaarthouders).
-  const relevant = events.filter((e) => cards.some((c) => gameState(c, e, first.has(`${c.id}|${e.id}`), now) !== null));
+  const relevant = events.filter((e) => holders.some((h) => st(h, e) !== null));
   const label = (e: (typeof events)[number]) => `${e.title} (${formatDay(e.startsAt)})`;
+  const sourceLabel = (h: Holder) => (h.source === "FULLHOUSE" ? "Fullhouse" : "HHC");
 
-  const matrix: Cell[][] = [["Houder", "Ticketnummer", "Soort", "Vak", "Geweest", "Gespeelde duels", "Opkomst %", ...relevant.map(label)]];
-  for (const c of cards) {
-    const states = relevant.map((e) => gameState(c, e, first.has(`${c.id}|${e.id}`), now));
+  const matrix: Cell[][] = [["Houder", "Ticketnummer", "Bron", "Soort", "Vak", "Geweest", "Gespeelde duels", "Opkomst %", ...relevant.map(label)]];
+  for (const h of holders) {
+    const states = relevant.map((e) => st(h, e));
     const came = states.filter((x) => x === "ATTENDED").length;
     const played = states.filter((x) => x === "ATTENDED" || x === "MISSED").length;
-    matrix.push([nameOf(c), c.publicId, c.type.name, c.zone?.name ?? "", came, played, played ? Math.round((came / played) * 100) : "", ...states.map((x) => (x ? MARK[x] : "–"))]);
+    matrix.push([h.name, h.source === "HHC" ? h.publicId : "", sourceLabel(h), h.type, h.zone ?? "", came, played, played ? Math.round((came / played) * 100) : "", ...states.map((x) => (x ? MARK[x] : "–"))]);
   }
 
   const perEvent: Cell[][] = [["Duel", "Datum", "Status", "Seizoenskaarten", "Verwacht", "Aanwezig", "Niet aanwezig", "Opkomst %"]];
   const sheets: { name: string; rows: Cell[][] }[] = [];
   for (const e of relevant) {
-    const rows = cards.map((c) => ({ c, st: gameState(c, e, first.has(`${c.id}|${e.id}`), now), hit: first.get(`${c.id}|${e.id}`) })).filter((x) => x.st !== null);
+    const rows = holders.map((h) => ({ h, st: st(h, e), hit: first.get(`${h.key}|${e.id}`) })).filter((x) => x.st !== null);
     const expected = rows.filter((x) => x.st === "ATTENDED" || x.st === "MISSED" || x.st === "UPCOMING").length;
     const present = rows.filter((x) => x.st === "ATTENDED").length;
     const past = e.startsAt <= now && e.status !== "CANCELLED";
@@ -315,7 +361,7 @@ export async function seasonAttendanceExport(actor: TicketsActor, seasonId?: str
     if (past && !e.excludeSeasonCards) {
       sheets.push({
         name: `${formatDay(e.startsAt).slice(0, 5).replace("/", "-")} ${e.title}`,
-        rows: [["Houder", "Ticketnummer", "Soort", "Vak", "Aanwezig", "Binnen om", "Ingang"], ...rows.sort((a, b) => Number(b.st === "ATTENDED") - Number(a.st === "ATTENDED")).map(({ c, st, hit }): Cell[] => [nameOf(c), c.publicId, c.type.name, c.zone?.name ?? "", st === "ATTENDED" ? "Ja" : "Nee", hit ? formatDayTime(hit.scannedAt) : "", (hit?.entranceId && entrances.get(hit.entranceId)) || ""])],
+        rows: [["Houder", "Ticketnummer", "Bron", "Soort", "Vak", "Aanwezig", "Binnen om", "Ingang"], ...rows.sort((a, b) => Number(b.st === "ATTENDED") - Number(a.st === "ATTENDED")).map(({ h, st: s, hit }): Cell[] => [h.name, h.source === "HHC" ? h.publicId : "", sourceLabel(h), h.type, h.zone ?? "", s === "ATTENDED" ? "Ja" : "Nee", hit ? formatDayTime(hit.scannedAt) : "", (hit?.entranceId && entrances.get(hit.entranceId)) || ""])],
       });
     }
   }
@@ -325,24 +371,35 @@ export async function seasonAttendanceExport(actor: TicketsActor, seasonId?: str
   return { body, name: `aanwezigheid-seizoenskaarten-${slug}.xlsx` };
 }
 
-/** Gebruik van één pas per duel in het seizoen. */
+/** Gebruik van één pas (eigen of Fullhouse) per duel in het seizoen. */
 export async function seasonPassDetail(actor: TicketsActor, id: string) {
   need(actor, "tickets:read");
   const personal = actor.access.can("tickets:personal");
-  const card = await prisma.ticket.findUnique({ where: { id }, select: { ...CARD_SELECT, anonymizedAt: true } });
-  if (!card || !card.isSeasonCard) throw new ApiError(404, "Seizoenspas niet gevonden.");
   await seasonMaintenance();
-  const events = card.seasonId ? await prisma.ticketEvent.findMany({ where: { seasonId: card.seasonId }, orderBy: { startsAt: "asc" }, select: EVENT_SELECT }) : [];
-  const scans = await prisma.ticketScan.findMany({ where: { ticketId: id, result: "VALID" }, orderBy: { scannedAt: "asc" }, select: { eventId: true, scannedAt: true, entranceId: true } });
-  const entrances = new Map((await prisma.ticketEntrance.findMany({ select: { id: true, name: true } })).map((e) => [e.id, e.name]));
   const now = new Date();
+  const entrances = new Map((await prisma.ticketEntrance.findMany({ select: { id: true, name: true } })).map((e) => [e.id, e.name]));
+
+  let head: { id: string; publicId: string; source: "HHC" | "FULLHOUSE"; name: string; type: string; zone: string | null; status: string };
+  let card: CardRow;
+  let scanWhere: Prisma.TicketScanWhereInput;
+  if (id.startsWith(FH_PREFIX)) {
+    const ext = await prisma.ticketExternalTicket.findUnique({ where: { id: id.slice(FH_PREFIX.length) }, select: { id: true, eventExtId: true, codeHash: true, status: true, holderLabel: true, ticketName: true, area: true, soldAt: true } });
+    const source = ext ? (await seasonCardSources()).find((s) => s.externalId === ext.eventExtId) : null;
+    if (!ext || !source?.seasonId) throw new ApiError(404, "Seizoenspas niet gevonden.");
+    head = { id, publicId: "Fullhouse", source: "FULLHOUSE", name: ext.holderLabel || "Onbekend", type: ext.ticketName ?? "Seizoenskaart", zone: ext.area, status: ext.status === "VALID" ? "ACTIVE" : "CANCELLED" };
+    card = fullhouseCardRow(ext, source.seasonId);
+    scanWhere = { codeHash: ext.codeHash, ticketId: null };
+  } else {
+    const t = await prisma.ticket.findUnique({ where: { id }, select: { ...CARD_SELECT, anonymizedAt: true } });
+    if (!t || !t.isSeasonCard) throw new ApiError(404, "Seizoenspas niet gevonden.");
+    head = { id: t.id, publicId: t.publicId, source: "HHC", name: t.anonymizedAt ? "Geanonimiseerd" : personal ? `${t.firstName} ${t.lastName}` : initialsOf(t.firstName, t.lastName), type: t.type.name, zone: t.zone?.name ?? null, status: t.status };
+    card = t;
+    scanWhere = { ticketId: id };
+  }
+  const events = card.seasonId ? await seasonEvents(card.seasonId) : [];
+  const scans = await prisma.ticketScan.findMany({ where: { ...scanWhere, result: "VALID" }, orderBy: { scannedAt: "asc" }, select: { eventId: true, scannedAt: true, entranceId: true } });
   return {
-    id: card.id,
-    publicId: card.publicId,
-    name: card.anonymizedAt ? "Geanonimiseerd" : personal ? `${card.firstName} ${card.lastName}` : initialsOf(card.firstName, card.lastName),
-    type: card.type.name,
-    zone: card.zone?.name ?? null,
-    status: card.status,
+    ...head,
     games: events
       .map((e) => {
         const hits = scans.filter((s) => s.eventId === e.id);

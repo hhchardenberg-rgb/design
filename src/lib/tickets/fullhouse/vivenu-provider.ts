@@ -31,6 +31,7 @@ export function mapTicket(raw: unknown, fallbackEventId: string): FullhouseTicke
   const status = str(raw.status);
   if (!externalId || !barcode || !status) throw new FullhouseError("Een Fullhouse-ticket mist _id, barcode of status.", "bad_response");
   const updated = str(raw.updatedAt);
+  const sold = str(raw.createdAt);
   return {
     externalId,
     barcode,
@@ -44,6 +45,7 @@ export function mapTicket(raw: unknown, fallbackEventId: string): FullhouseTicke
     row: str(raw.row),
     seat: str(raw.seat),
     updatedAt: updated ? new Date(updated) : null,
+    soldAt: sold && !Number.isNaN(Date.parse(sold)) ? new Date(sold) : null,
   };
 }
 

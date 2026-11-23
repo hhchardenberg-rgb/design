@@ -13,6 +13,7 @@ import { formatDayTime } from "@/lib/date-format";
 interface Detail {
   id: string;
   publicId: string;
+  source?: "HHC" | "FULLHOUSE";
   name: string;
   type: string;
   zone: string | null;
@@ -46,11 +47,17 @@ export function PassDetail({ id, canTransfer, canPersonal }: { id: string; canTr
         <h1 className="page-title">{d.name}</h1>
         <p className="text-sm text-muted-foreground">
           {d.type}
-          {d.zone ? ` · ${d.zone}` : ""} · {d.publicId} · geweest bij {came} van {played} gespeelde duels ·{" "}
-          <Link className="underline" href={`/tickets/overzicht/${d.id}`}>
-            Ticket openen
-          </Link>
+          {d.zone ? ` · ${d.zone}` : ""} · {d.source === "FULLHOUSE" ? "Fullhouse" : d.publicId} · geweest bij {came} van {played} gespeelde duels
+          {d.source !== "FULLHOUSE" && (
+            <>
+              {" · "}
+              <Link className="underline" href={`/tickets/overzicht/${d.id}`}>
+                Ticket openen
+              </Link>
+            </>
+          )}
         </p>
+        {d.source === "FULLHOUSE" && <p className="mt-1 text-xs text-muted-foreground">Gekocht via Fullhouse. Naam, overdragen en annuleren regel je in Fullhouse; de Hub toont alleen initialen.</p>}
       </div>
       <Card>
         <CardHeader>
@@ -75,7 +82,7 @@ export function PassDetail({ id, canTransfer, canPersonal }: { id: string; canTr
           </ul>
         </CardContent>
       </Card>
-      {canTransfer && d.status === "ACTIVE" && <Transfer id={d.id} canPersonal={canPersonal} toast={toast} onDone={() => void load()} />}
+      {canTransfer && d.status === "ACTIVE" && d.source !== "FULLHOUSE" && <Transfer id={d.id} canPersonal={canPersonal} toast={toast} onDone={() => void load()} />}
     </div>
   );
 }

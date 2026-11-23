@@ -11,7 +11,8 @@ export interface OfflineCache {
   generatedAt: string;
   expiresAt: string;
   hhc: { p: string; v: number; l: string; z: string | null; r: boolean }[];
-  fullhouse: { h: string; l: string }[];
+  /** r: herintrede toegestaan (Fullhouse-seizoenskaart bij een duel met herintrede). */
+  fullhouse: { h: string; l: string; r?: boolean }[];
   used: { k: string | null; at: string }[];
 }
 
@@ -89,6 +90,7 @@ export function checkOffline(cache: OfflineCache, code: string, sha256Hex: strin
     if (!t) return invalid("NOT_FOUND");
     key = sha256Hex;
     label = t.l;
+    reentry = !!t.r;
   }
   if (!key || label === null) return invalid("NOT_FOUND");
   const prev = usedAt.get(key);

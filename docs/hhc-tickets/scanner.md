@@ -7,7 +7,7 @@ De scanner is een web-app voor de telefoon. De server beslist; zonder verbinding
 | Scherm | Betekenis | Wat doet de steward |
 |---|---|---|
 | Groen, vinkje, **GELDIG** | Naar binnen. Verdwijnt na 1,6 seconde (of tik). | Doorlaten. |
-| Groen, **OPNIEUW BINNEN** | Seizoenskaart die eerder binnen was, bij een wedstrijd met herintrede. Toont wanneer en waar. | Doorlaten. |
+| Groen, **OPNIEUW BINNEN** | Seizoenskaart (eigen of uit Fullhouse) die eerder binnen was, bij een wedstrijd met herintrede. Toont wanneer en waar. | Doorlaten. |
 | Blauw, dubbel vinkje, **NET AL GESCAND** | Hetzelfde ticket is binnen 2 minuten op **dit toestel** al goedgekeurd (dubbel gepiept). Telt niet als tweede binnenkomst. Op een ander toestel geldt dit niet (dan gewoon herintrede of "al gebruikt"). | Is het dezelfde persoon: doorlaten. |
 | Oranje, uitroepteken, **AL GEBRUIKT** | Ticket is al gescand. Toont wanneer en bij welke ingang. | Stoppen, navragen; alleen een supervisor kan met reden toelaten. |
 | Rood, kruis, **NIET GELDIG** | Met reden in gewone taal, en waar mogelijk de oplossing: voor welk vak of welke wedstrijd het ticket wel is. | Niet doorlaten. |
