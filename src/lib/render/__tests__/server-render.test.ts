@@ -102,3 +102,17 @@ test("transparante achtergrond: PNG houdt alfa, JPG krijgt de achtergrondkleur",
   assert.equal(meta.format, "webp");
   assert.equal(meta.hasAlpha, true);
 });
+
+test("voorbeeld: leeg fotokader krijgt de vulkleur, de export laat het leeg", async () => {
+  const schema = templateSchemaJson.parse({
+    width: 100,
+    height: 100,
+    backgroundColor: "#FFFFFF",
+    layers: [{ id: "f", type: "image", field: "foto", x: 0, y: 0, width: 100, height: 100 }],
+  });
+  const pixel = async (c: Awaited<ReturnType<typeof renderDesign>>) => (await raw(c)).data.subarray(0, 3);
+  const exported = await renderDesign(schema, {}, { strict: false, faces });
+  assert.deepEqual([...(await pixel(exported))], [255, 255, 255]);
+  const preview = await renderDesign(schema, {}, { strict: false, faces, emptyImageFill: "#7a7a7a" });
+  assert.deepEqual([...(await pixel(preview))], [0x7a, 0x7a, 0x7a]);
+});

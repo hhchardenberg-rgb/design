@@ -26,6 +26,12 @@ export interface RenderOptions {
   textTransforms?: Record<string, string>;
   /** Voor tests; standaard alle faces uit de database plus Inter. */
   faces?: FontFaceInfo[];
+  /**
+   * Alleen voor voorbeeldafbeeldingen in overzichten: vul een afbeeldingskader
+   * zonder foto met deze kleur, zodat (witte) tekst en de opbouw zichtbaar
+   * blijven. De echte export laat zo'n kader leeg.
+   */
+  emptyImageFill?: string;
 }
 
 const measureCanvas = createCanvas(16, 16);
@@ -86,7 +92,8 @@ export async function renderDesign(
             placeholderSrc: layer.src || undefined,
           },
           formData,
-          getImage
+          getImage,
+          options.emptyImageFill
         );
       } else if (layer.type === "background" || layer.type === "static_image") {
         if (layer.src) {
@@ -96,7 +103,7 @@ export async function renderDesign(
       } else if (layer.type === "text") {
         await drawTextLayer(ctx, layer, formData, faces, options, label, (schema.schemaVersion ?? 1) >= 2);
       } else if (layer.type === "image") {
-        await drawImageLayer(ctx, layer, formData, getImage);
+        await drawImageLayer(ctx, layer, formData, getImage, options.emptyImageFill);
       } else if (layer.type === "color") {
         drawColorLayer(ctx, layer, formData);
       }
@@ -192,11 +199,19 @@ async function drawImageLayer(
   ctx: SKRSContext2D,
   layer: Extract<Layer, { type: "image" }>,
   formData: DesignFormData,
-  getImage: (url: string) => Promise<Image>
+  getImage: (url: string) => Promise<Image>,
+  emptyFill?: string
 ) {
   const value = (formData[layer.field] ?? {}) as ImageFieldValue;
   const src = value.assetUrl || layer.placeholderSrc;
-  if (!src) return;
+  if (!src) {
+    if (emptyFill) {
+      clipLayerShape(ctx, layer, false);
+      ctx.fillStyle = emptyFill;
+      ctx.fill();
+    }
+    return;
+  }
 
   const img = await getImage(src);
   const draw = computeImageDraw(

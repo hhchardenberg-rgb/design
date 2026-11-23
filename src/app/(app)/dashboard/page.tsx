@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DesignDeleteButton } from "@/components/design-delete-button";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { DesignThumbnail, designPreviewSrc, templateThumbnailSrc } from "@/components/design-thumbnail";
 
 const QUICK_ACTION_SLUGS = ["matchday", "opstelling", "eindstand", "social-media-story"];
 
@@ -99,7 +100,7 @@ export default async function DashboardPage() {
           {templates.map((t) => (
             <Link key={t.id} href={`/templates/${t.slug}/create`}>
               <Card className="group overflow-hidden transition-colors hover:border-border-strong">
-                <div className="aspect-[4/5] bg-surface-muted bg-cover bg-center" style={t.thumbnailUrl ? { backgroundImage: `url(${t.thumbnailUrl})` } : undefined} />
+                <DesignThumbnail src={templateThumbnailSrc(t)} />
                 <CardContent className="p-3">
                   <p className="truncate text-sm font-medium">{t.name}</p>
                 </CardContent>
@@ -120,10 +121,7 @@ export default async function DashboardPage() {
                 <DesignDeleteButton designId={d.id} />
                 <Link href={`/templates/${d.templateVersion.template.slug}/create?designId=${d.id}`}>
                   <Card className="overflow-hidden transition-colors hover:border-border-strong">
-                    <div
-                      className="aspect-[4/5] bg-surface-muted bg-cover bg-center"
-                      style={d.exportUrl ? { backgroundImage: `url(${d.exportUrl})` } : undefined}
-                    />
+                    <DesignThumbnail src={designPreviewSrc(d)} />
                     <CardContent className="p-3">
                       <p className="truncate text-sm font-medium">{d.title ?? d.templateVersion.template.name}</p>
                       <Badge variant={d.status === "COMPLETED" ? "success" : "outline"} className="mt-1">
