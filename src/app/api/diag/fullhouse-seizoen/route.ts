@@ -37,8 +37,12 @@ export async function GET(req: Request) {
   };
 
   const events: Obj[] = [];
+  const first = await get(`/events?top=100&skip=0`);
+  const probe = {
+    eventsResponse: isObj(first) ? ("__status" in first ? { httpStatus: first.__status } : { keys: Object.keys(first), total: first.total ?? null }) : Array.isArray(first) ? { array: first.length } : typeof first,
+  };
   for (let skip = 0; skip < 1000; skip += 100) {
-    const rows = docs(await get(`/events?top=100&skip=${skip}`));
+    const rows = docs(skip === 0 ? first : await get(`/events?top=100&skip=${skip}`));
     events.push(...rows);
     if (rows.length < 100) break;
   }
@@ -97,6 +101,7 @@ export async function GET(req: Request) {
   }
   const multi = [...barcodeEvents.values()].filter((x) => x.size > 1).length;
   return NextResponse.json({
+    probe,
     totalEvents: events.length,
     eventTypes: count(events.map((e) => s(e.eventType))),
     events: evOut,
