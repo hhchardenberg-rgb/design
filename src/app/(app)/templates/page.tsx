@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TemplateLibrary } from "@/components/template-library";
+import { templateThumbnailSrc } from "@/lib/design/preview";
 
 export const metadata: Metadata = { title: "Nieuwe afbeelding" };
 
@@ -12,7 +13,7 @@ export default async function TemplateGalleryPage() {
     prisma.template.findMany({
       where: { status: "PUBLISHED", activeVersionId: { not: null } },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, slug: true, name: true, description: true, category: true, thumbnailUrl: true },
+      select: { id: true, slug: true, name: true, description: true, category: true, thumbnailUrl: true, activeVersionId: true },
     }),
     prisma.templateFavorite.findMany({ where: { userId }, select: { templateId: true } }),
     prisma.generatedDesign.findMany({
@@ -44,7 +45,7 @@ export default async function TemplateGalleryPage() {
           Er zijn nog geen templates gepubliceerd. Vraag een beheerder om een PSD-template te importeren.
         </p>
       ) : (
-        <TemplateLibrary templates={templates} favoriteIds={favorites.map((f) => f.templateId)} recentIds={recent} />
+        <TemplateLibrary templates={templates.map(({ activeVersionId, ...t }) => ({ ...t, thumbnailUrl: templateThumbnailSrc({ ...t, activeVersionId }) }))} favoriteIds={favorites.map((f) => f.templateId)} recentIds={recent} />
       )}
     </div>
   );

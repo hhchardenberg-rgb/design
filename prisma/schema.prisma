@@ -308,6 +308,9 @@ model Template {
   description  String?
   category     String
   thumbnailUrl String?
+  // Voor welke actieve versie + voorbeeldstijl thumbnailUrl gemaakt is; wijkt
+  // dit af, dan wordt de miniatuur bij het eerstvolgende bekijken vernieuwd.
+  thumbnailStamp String?
   status       TemplateStatus @default(DRAFT)
   sortOrder    Int            @default(0)
 
@@ -861,6 +864,13 @@ model GeneratedDesign {
   exportFormat String?
   width        Int?
   height       Int?
+
+  // Kleine voorbeeldafbeelding voor overzichten (dashboard, Mijn ontwerpen,
+  // Hub). Hoort bij previewRevision; bij een nieuwere revisie wordt hij
+  // opnieuw gemaakt, ook voor concepten zonder export.
+  previewUrl      String?
+  previewKey      String?
+  previewRevision Int?
 
   // Optimistische revisiecontrole: elke geslaagde opslag verhoogt dit getal.
   // Een opslag die op een oudere revisie is gebaseerd wordt geweigerd

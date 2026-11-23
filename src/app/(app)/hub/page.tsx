@@ -17,6 +17,7 @@ import { MatchBand } from "@/components/dashboard/match-band";
 import { StatStrip } from "@/components/dashboard/stat-strip";
 import { formatDay } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
+import { DesignThumbnail, designPreviewSrc } from "@/components/design-thumbnail";
 
 const TZ = "Europe/Amsterdam";
 // Matchday-templates die bij de eerstvolgende wedstrijd als snelle actie verschijnen.
@@ -192,9 +193,9 @@ export default async function HubPage() {
             <div className="grid grid-cols-4 gap-3">
               {recentDesigns.map((d) => (
                 <Link key={d.id} href={`/templates/${d.templateVersion.template.slug}/create?designId=${d.id}`} className="group" title={d.title ?? d.templateVersion.template.name}>
-                  <div
-                    className="aspect-[4/5] rounded-lg border border-border bg-surface-muted bg-cover bg-center transition-[border-color] group-hover:border-foreground/40"
-                    style={d.exportUrl ? { backgroundImage: `url(${d.exportUrl})` } : undefined}
+                  <DesignThumbnail
+                    src={designPreviewSrc(d)}
+                    className="rounded-lg border border-border transition-[border-color] group-hover:border-foreground/40"
                   />
                   <p className="mt-1.5 truncate text-xs font-medium">{d.title ?? d.templateVersion.template.name}</p>
                 </Link>

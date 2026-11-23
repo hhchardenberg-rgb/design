@@ -18,6 +18,7 @@ import {
 import { resolveDesignImages } from "./assets.server";
 import { carryOverFormData, fieldDefaults } from "./families";
 import { matchPrefill } from "./match-prefill";
+import { PREVIEW_EMPTY_IMAGE_FILL, PREVIEW_MAX_SIZE, PREVIEW_STYLE_VERSION } from "./preview";
 
 /**
  * Ontwerpen aanmaken, opslaan en exporteren, met alle controles die niet in
@@ -403,4 +404,65 @@ export async function createFormatVariant(user: DesignUser, id: string, template
     formData,
   });
   return { design: created, slug: target.slug };
+}
+
+
+/**
+ * Voorbeeldafbeelding van de opgeslagen revisie, voor overzichten. Werkt ook
+ * voor concepten (zonder export) en voor ontwerpen die na de laatste export
+ * zijn gewijzigd. Wordt eenmalig per revisie gerenderd en bewaard; lukt
+ * bewaren niet, dan komen de bytes direct terug.
+ */
+export async function designPreview(
+  user: DesignUser,
+  id: string
+): Promise<{ url: string } | { data: Buffer; contentType: string }> {
+  const design = await loadDesign(user, id);
+  // previewKey bevat de stijlversie, zodat een nieuwe voorbeeldstijl alles ververst.
+  const fresh = design.previewUrl && design.previewRevision === design.revision && design.previewKey?.includes(`-p${PREVIEW_STYLE_VERSION}-`);
+  if (fresh) return { url: design.previewUrl! };
+
+  const version = design.templateVersion;
+  const formData = (design.formData ?? {}) as Record<string, unknown>;
+  const schema = templateSchemaJson.parse(version.schemaJson);
+  // Niet strikt: een concept mag nog lege velden hebben. Een afbeelding die
+  // niet (meer) mag of bestaat valt weg, de rest van het ontwerp blijft.
+  const authorized = await prepareFormData(version, design.userId, formData).catch(() => {
+    const withoutImages = { ...formData };
+    for (const f of version.fields) if (f.type === "IMAGE") delete withoutImages[f.key];
+    return prepareFormData(version, design.userId, withoutImages).catch(() => ({}));
+  });
+  const { renderDesign } = await import("@/lib/render/serverRender");
+  const textTransforms = Object.fromEntries(version.fields.map((f) => [f.key, f.textTransform]));
+  const canvas = await renderDesign(schema, authorized, {
+    strict: false,
+    textTransforms,
+    emptyImageFill: PREVIEW_EMPTY_IMAGE_FILL,
+  });
+  const png = await canvas.encode("png");
+  const sharp = (await import("sharp")).default;
+  const data = await sharp(png)
+    .resize({ width: PREVIEW_MAX_SIZE, height: PREVIEW_MAX_SIZE, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 82 })
+    .toBuffer();
+
+  const storage = getStorage();
+  let stored: { url: string; key: string };
+  try {
+    stored = await storage.put({ key: buildKey("previews", design.userId, `${design.id}-r${design.revision}-p${PREVIEW_STYLE_VERSION}-${nanoid(6)}.webp`), data, contentType: "image/webp" });
+  } catch (error) {
+    console.error("[designs] voorbeeld bewaren mislukt", error);
+    return { data, contentType: "image/webp" };
+  }
+  // Alleen bijwerken als er intussen niet opnieuw is opgeslagen.
+  const updated = await prisma.generatedDesign.updateMany({
+    where: { id: design.id, revision: design.revision },
+    data: { previewUrl: stored.url, previewKey: stored.key, previewRevision: design.revision },
+  });
+  if (updated.count === 0) {
+    await storage.delete(stored.key);
+    return { data, contentType: "image/webp" };
+  }
+  if (design.previewKey && design.previewKey !== stored.key) await storage.delete(design.previewKey).catch(() => {});
+  return { url: stored.url };
 }

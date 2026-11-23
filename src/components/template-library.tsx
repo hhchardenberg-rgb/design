@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { DesignThumbnail } from "@/components/design-thumbnail";
 
 export interface LibraryTemplate {
   id: string;
@@ -84,10 +85,7 @@ export function TemplateLibrary({
           </button>
           <Link href={`/templates/${t.slug}/create`}>
             <Card className="group h-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-lg">
-              <div
-                className="aspect-[4/5] bg-surface-muted bg-cover bg-center"
-                style={t.thumbnailUrl ? { backgroundImage: `url(${t.thumbnailUrl})` } : undefined}
-              />
+              <DesignThumbnail src={t.thumbnailUrl} />
               <CardContent className="p-4">
                 <p className="font-semibold">{t.name}</p>
                 {t.description && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{t.description}</p>}

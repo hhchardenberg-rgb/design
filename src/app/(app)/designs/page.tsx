@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DesignDeleteButton } from "@/components/design-delete-button";
 import { EmptyState } from "@/components/empty-state";
+import { DesignThumbnail, designPreviewSrc } from "@/components/design-thumbnail";
 
 export const metadata: Metadata = { title: "Mijn ontwerpen" };
 
@@ -42,10 +43,7 @@ export default async function DesignsPage() {
               <DesignDeleteButton designId={d.id} />
               <Link href={`/templates/${d.templateVersion.template.slug}/create?designId=${d.id}`}>
                 <Card className="overflow-hidden transition-shadow hover:shadow-md">
-                  <div
-                    className="aspect-[4/5] bg-surface-muted bg-cover bg-center"
-                    style={d.exportUrl ? { backgroundImage: `url(${d.exportUrl})` } : undefined}
-                  />
+                  <DesignThumbnail src={designPreviewSrc(d)} />
                   <CardContent className="p-3">
                     <p className="truncate text-sm font-medium">{d.title ?? d.templateVersion.template.name}</p>
                     <Badge variant={d.status === "COMPLETED" ? "success" : "outline"} className="mt-1">

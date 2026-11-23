@@ -10,6 +10,7 @@ import { TEMPLATE_SCHEMA_VERSION } from "@/lib/validations/template";
 import { resolveFontFace, type FontFaceInfo } from "@/lib/fonts/faces";
 import { listFontFaces } from "@/lib/fonts/faces.server";
 import { reportErrors } from "@/lib/psd/import-job.server";
+import { PREVIEW_EMPTY_IMAGE_FILL, PREVIEW_MAX_SIZE, PREVIEW_STYLE_VERSION, templateThumbnailStamp } from "./preview";
 
 /**
  * Levenscyclus van templateversies.
@@ -304,7 +305,9 @@ export async function activateVersion(templateId: string, versionId: string) {
     console.error("[templates] miniatuur maken mislukt", error);
     return null;
   });
-  const updated = thumbnailUrl ? await prisma.template.update({ where: { id: templateId }, data: { thumbnailUrl } }) : template;
+  const updated = thumbnailUrl
+    ? await prisma.template.update({ where: { id: templateId }, data: { thumbnailUrl, thumbnailStamp: templateThumbnailStamp(versionId) } })
+    : template;
   return { template: updated, warnings: issues.filter((i) => i.severity === "warning") };
 }
 
@@ -322,11 +325,43 @@ async function renderThumbnail(versionId: string): Promise<string | null> {
     else if (f.defaultValue) formData[f.key] = f.defaultValue;
   }
   const { renderDesign } = await import("@/lib/render/serverRender");
-  const canvas = await renderDesign(schema, formData, { strict: false });
+  const canvas = await renderDesign(schema, formData, { strict: false, emptyImageFill: PREVIEW_EMPTY_IMAGE_FILL });
   const png = await canvas.encode("png");
   const sharp = (await import("sharp")).default;
-  const thumb = await sharp(png).resize({ width: 600, height: 750, fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+  const thumb = await sharp(png)
+    .resize({ width: PREVIEW_MAX_SIZE, height: PREVIEW_MAX_SIZE, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 82 })
+    .toBuffer();
   const { getStorage, buildKey } = await import("@/lib/storage");
-  const stored = await getStorage().put({ key: buildKey("templates", "thumbnails", `${versionId}.webp`), data: thumb, contentType: "image/webp" });
+  const stored = await getStorage().put({
+    key: buildKey("templates", "thumbnails", `${versionId}-p${PREVIEW_STYLE_VERSION}.webp`),
+    data: thumb,
+    contentType: "image/webp",
+  });
   return stored.url;
+}
+
+/**
+ * Miniatuur van de actieve versie, voor overzichten. Een miniatuur van een
+ * oudere versie of voorbeeldstijl (bv. van vóór deze functie) wordt eenmalig
+ * opnieuw gemaakt. Lukt dat niet, dan blijft de bestaande staan.
+ */
+export async function ensureTemplateThumbnail(slug: string): Promise<string | null> {
+  const template = await prisma.template.findUnique({
+    where: { slug },
+    select: { id: true, activeVersionId: true, thumbnailUrl: true, thumbnailStamp: true, status: true },
+  });
+  if (!template || template.status !== "PUBLISHED" || !template.activeVersionId) return null;
+  const stamp = templateThumbnailStamp(template.activeVersionId);
+  if (template.thumbnailUrl && template.thumbnailStamp === stamp) return template.thumbnailUrl;
+  const url = await renderThumbnail(template.activeVersionId).catch((error) => {
+    console.error("[templates] miniatuur vernieuwen mislukt", error);
+    return null;
+  });
+  if (!url) return template.thumbnailUrl;
+  await prisma.template.updateMany({
+    where: { id: template.id, activeVersionId: template.activeVersionId },
+    data: { thumbnailUrl: url, thumbnailStamp: stamp },
+  });
+  return url;
 }
