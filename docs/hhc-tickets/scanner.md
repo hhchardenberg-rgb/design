@@ -8,6 +8,7 @@ De scanner is een web-app voor de telefoon. De server beslist; zonder verbinding
 |---|---|---|
 | Groen, vinkje, **GELDIG** | Naar binnen. Verdwijnt na 1,6 seconde (of tik). | Doorlaten. |
 | Groen, **OPNIEUW BINNEN** | Seizoenskaart die eerder binnen was, bij een wedstrijd met herintrede. Toont wanneer en waar. | Doorlaten. |
+| Blauw, dubbel vinkje, **NET AL GESCAND** | Hetzelfde ticket is binnen 2 minuten op **dit toestel** al goedgekeurd (dubbel gepiept). Telt niet als tweede binnenkomst. Op een ander toestel geldt dit niet (dan gewoon herintrede of "al gebruikt"). | Is het dezelfde persoon: doorlaten. |
 | Oranje, uitroepteken, **AL GEBRUIKT** | Ticket is al gescand. Toont wanneer en bij welke ingang. | Stoppen, navragen; alleen een supervisor kan met reden toelaten. |
 | Rood, kruis, **NIET GELDIG** | Met reden in gewone taal, en waar mogelijk de oplossing: voor welk vak of welke wedstrijd het ticket wel is. | Niet doorlaten. |
 | Grijs, **NIET GECONTROLEERD** | Er ging iets mis (geen verbinding en geen offline-lijst, geen recht). | Melding lezen, opnieuw proberen. |
@@ -16,7 +17,7 @@ Elke uitslag heeft een eigen geluid en trilpatroon (iPhone trilt niet vanuit een
 
 ## Redenen
 
-`NOT_FOUND` bestaat niet · `OUTDATED` oude versie (na opnieuw versturen of overdragen) · `CANCELLED` geannuleerd · `BLOCKED` geblokkeerd · `EXPIRED` verlopen · `NOT_YET_VALID` · `WRONG_EVENT` (met de juiste wedstrijd erbij) · `WRONG_ZONE` (met het juiste vak erbij) · `EVENT_NOT_ACTIVE` afgelast · `ALREADY_USED` · `PROVIDER_DOWN` Fullhouse niet bereikbaar (supervisor mag met reden toelaten).
+`NOT_FOUND` bestaat niet · `OUTDATED` oude versie (na opnieuw versturen of overdragen) · `CANCELLED` geannuleerd · `BLOCKED` geblokkeerd · `EXPIRED` verlopen · `NOT_YET_VALID` · `WRONG_EVENT` (met de juiste wedstrijd erbij; bij een seizoenskaart waarom niet: duel uitgesloten, alleen thuisduels, ander seizoen of andere competitie) · `WRONG_ZONE` (met het juiste vak erbij) · `EVENT_NOT_ACTIVE` afgelast · `ALREADY_USED` · `PROVIDER_DOWN` Fullhouse niet bereikbaar (supervisor mag met reden toelaten).
 
 Niet te overrulen: bestaat niet, geannuleerd, afgelast, oude versie.
 

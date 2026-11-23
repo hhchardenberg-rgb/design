@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { AlertTriangle, Check, ChevronRight, Flashlight, FlashlightOff, Loader2, RotateCcw, Settings, WifiOff, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCheck, ChevronRight, Flashlight, FlashlightOff, Loader2, RotateCcw, Settings, WifiOff, X } from "lucide-react";
 import Image from "next/image";
 import { formatDay, formatDayTime } from "@/lib/date-format";
 import { checkOffline, cacheExpired, isTestCode, parseHhcCode, scanKey, ticketNumberFrom, TEST_CODES, TEST_DETAIL, TEST_LABEL, type OfflineCache } from "@/lib/tickets/offline-check";
@@ -33,6 +33,8 @@ interface Resp {
   detail?: string | null;
   byNumber?: boolean;
   test?: boolean;
+  /** Zojuist op dit toestel al goedgekeurd: dubbel gescand, geen alarm. */
+  duplicate?: boolean;
   previous: { at: string; where: string | null } | null;
   overridable: boolean;
   offline?: boolean;
@@ -532,16 +534,17 @@ export function ScannerApp() {
                 if (o.result === "VALID") remember(matched, o.key, scannedAt);
                 const reasonLabel =
                   o.result === "WARNING" ? "Ticket is al gebruikt" : o.reason === "NOT_FOUND" ? "Ticket staat niet in de offline-lijst" : o.reason === "WRONG_ZONE" ? "Ticket hoort bij een ander vak dan deze ingang" : o.reason === "EVENT_NOT_ACTIVE" ? "Offline-lijst is verlopen" : null;
-                r = { result: o.result, reasonLabel, reentry: o.reentry, label: o.label, previous: o.result !== "INVALID" && o.previousAt ? { at: o.previousAt, where: null } : null, overridable: false, offline: true, eventId: matched };
+                r = { result: o.result, reasonLabel, reentry: o.reentry, label: o.label, ...(o.result === "WARNING" && o.duplicate ? { duplicate: true, detail: "Dit ticket is zojuist op dit toestel al goedgekeurd. Is het dezelfde persoon, laat dan gewoon door." } : {}), previous: o.result !== "INVALID" && o.previousAt ? { at: o.previousAt, where: null } : null, overridable: false, offline: true, eventId: matched };
               }
             }
           }
         }
         setResult(r);
-        signal(r.result === "VALID" ? "ok" : r.result === "WARNING" ? "warn" : "bad");
-        addRecent({ id: clientId, scanId: r.scanId, test: !!r.test, at: scannedAt, result: r.result, label: r.label, reason: r.result === "VALID" ? (r.reentry ? "Opnieuw binnen" : null) : r.reasonLabel, eventId: r.eventId ?? eventId, key: null, offline: !!r.offline });
+        // Dubbel gescand: kort en rustig signaal, geen alarm.
+        signal(r.result === "VALID" || r.duplicate ? "ok" : r.result === "WARNING" ? "warn" : "bad");
+        addRecent({ id: clientId, scanId: r.scanId, test: !!r.test, at: scannedAt, result: r.result, label: r.label, reason: r.result === "VALID" ? (r.reentry ? "Opnieuw binnen" : null) : r.duplicate ? "Net al gescand" : r.reasonLabel, eventId: r.eventId ?? eventId, key: null, offline: !!r.offline });
         if (dismissTimer.current) clearTimeout(dismissTimer.current);
-        if (r.result === "VALID") dismissTimer.current = setTimeout(() => setResult(null), 1600);
+        if (r.result === "VALID" || r.duplicate) dismissTimer.current = setTimeout(() => setResult(null), 1600);
       } finally {
         checkingRef.current = false;
         setChecking(false);
@@ -954,16 +957,18 @@ function ResultScreen(props: {
   onDismiss: () => void;
 }) {
   const { result: r } = props;
-  const ok = r.result === "VALID";
-  const warn = r.result === "WARNING";
+  const dup = !!r.duplicate;
+  // Dubbel gescand op dit toestel gedraagt zich als groen: tik of wacht om verder te scannen.
+  const ok = r.result === "VALID" || dup;
+  const warn = r.result === "WARNING" && !dup;
   // Oranje met zwarte tekst (wit op oranje is slecht leesbaar in de zon).
-  const tone = ok ? "bg-green-600 text-white" : warn ? "bg-amber-400 text-black" : r.result === "ERROR" ? "bg-neutral-800 text-white" : "bg-red-600 text-white";
-  const title = ok ? (r.reentry ? "OPNIEUW BINNEN" : "GELDIG") : warn ? "AL GEBRUIKT" : r.result === "ERROR" ? "NIET GECONTROLEERD" : "NIET GELDIG";
-  const Icon = ok ? Check : warn ? AlertTriangle : X;
+  const tone = dup ? "bg-sky-700 text-white" : ok ? "bg-green-600 text-white" : warn ? "bg-amber-400 text-black" : r.result === "ERROR" ? "bg-neutral-800 text-white" : "bg-red-600 text-white";
+  const title = dup ? "NET AL GESCAND" : ok ? (r.reentry ? "OPNIEUW BINNEN" : "GELDIG") : warn ? "AL GEBRUIKT" : r.result === "ERROR" ? "NIET GECONTROLEERD" : "NIET GELDIG";
+  const Icon = dup ? CheckCheck : ok ? Check : warn ? AlertTriangle : X;
   const subtle = warn ? "bg-black/10" : "bg-black/25";
   return (
     <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 overflow-y-auto p-6 text-center ${tone}`} onClick={ok ? props.onDismiss : undefined} role="alert" aria-live="assertive">
-      <span className={`flex h-24 w-24 items-center justify-center rounded-full ${warn ? "bg-black text-amber-400" : "bg-white/95"} ${ok ? "text-green-700" : r.result === "INVALID" ? "text-red-600" : r.result === "ERROR" ? "text-neutral-800" : ""}`} aria-hidden>
+      <span className={`flex h-24 w-24 items-center justify-center rounded-full ${warn ? "bg-black text-amber-400" : "bg-white/95"} ${dup ? "text-sky-700" : ok ? "text-green-700" : r.result === "INVALID" ? "text-red-600" : r.result === "ERROR" ? "text-neutral-800" : ""}`} aria-hidden>
         <Icon className="h-16 w-16" strokeWidth={3} />
       </span>
       {r.test && <p className="rounded-full bg-black px-4 py-1 text-base font-bold uppercase tracking-wide text-white">Test · niemand binnengelaten</p>}
@@ -974,7 +979,7 @@ function ResultScreen(props: {
       {r.detail && <p className="max-w-sm text-lg">{r.detail}</p>}
       {r.previous && (
         <p className="text-lg">
-          {ok ? "Eerder binnen" : "Eerder gescand"} om {isToday(r.previous.at) ? timeOf(r.previous.at) : formatDayTime(r.previous.at)}
+          {dup ? "Goedgekeurd" : ok ? "Eerder binnen" : "Eerder gescand"} om {isToday(r.previous.at) ? timeOf(r.previous.at) : formatDayTime(r.previous.at)}
           {r.previous.where ? ` bij ${r.previous.where}` : ""}
         </p>
       )}

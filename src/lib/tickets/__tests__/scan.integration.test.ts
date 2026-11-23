@@ -235,6 +235,10 @@ test("seizoenspassen: overzicht, verlengen (idempotent) en overdragen maakt de o
   const past = new Date(Date.now() - 2 * 86_400_000).toISOString();
   const pastEv = (await catalog.saveEvent(admin, null, { title: "Thuis verleden", startsAt: past, status: "ACTIVE", seasonId, isHome: true }))!.id;
   const card = await issue(typeSeason, []);
+  // Een pas die pas na een duel is uitgegeven, telt dat duel niet als gemist.
+  const fresh = (await sp.seasonPassOverview(admin, { seasonId })).rows.find((r) => r.id === card.id)!;
+  assert.equal(fresh.eligible, 0);
+  await db.ticket.update({ where: { id: card.id }, data: { createdAt: new Date(Date.now() - 30 * 86_400_000) } });
   const before = await sp.seasonPassOverview(admin, { seasonId });
   const row = before.rows.find((r) => r.id === card.id)!;
   assert.ok(row.eligible >= 1);

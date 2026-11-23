@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-guards";
 import { ticketAudit } from "./audit.server";
 import type { TicketsActor } from "./authz.server";
-import { computeValidUntil, defaultEndsAt, type ValidityMode } from "./rules";
+import { amsterdamStartOfDay, computeValidUntil, defaultEndsAt, type ValidityMode } from "./rules";
+import { linkEventsToSeasons, seasonForDate } from "./season-link.server";
 import { eventSchema, fullhouseEventSchema, removeEventSchema, seasonSchema, typeSchema, zoneSchema } from "./schemas";
 
 // Inrichting van Tickets: seizoenen, vakken, wedstrijden en tickettypes.
@@ -34,11 +35,13 @@ export async function saveSeason(actor: TicketsActor, id: string | null, raw: un
           // Seizoenskaarten gelden van begin tot einde van het seizoen: een gecorrigeerde datum loopt mee.
           await tx.ticket.updateMany({
             where: { seasonId: id, validityMode: "SEASON" },
-            data: { validFrom: updated.startsOn, validUntil: computeValidUntil("SEASON", { events: [], seasonEndsOn: updated.endsOn }) },
+            data: { validFrom: amsterdamStartOfDay(updated.startsOn), validUntil: computeValidUntil("SEASON", { events: [], seasonEndsOn: updated.endsOn }) },
           });
           return updated;
         })
       : await prisma.ticketSeason.create({ data });
+    // Duels zonder seizoen die in dit (nieuwe of verschoven) seizoen vallen, horen er nu bij: seizoenskaarten gelden er direct voor.
+    await linkEventsToSeasons();
     await ticketAudit({ action: "season.saved", actor: actorOf(actor), meta: { seasonId: row.id } });
     return row;
   } catch (e) {
@@ -79,15 +82,6 @@ async function checkSeason(seasonId: string | null) {
   if (seasonId && !(await prisma.ticketSeason.findUnique({ where: { id: seasonId }, select: { id: true } }))) throw new ApiError(400, "Het gekozen seizoen bestaat niet (meer).");
 }
 
-/** Kalenderdag in Nederlandse tijd (een aftrap om 00:30 op 1 juli valt op 1 juli, niet op 30 juni UTC). */
-const amsterdamDay = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-
-/** Seizoen waarin een datum valt, als er precies één is. */
-async function seasonForDate(d: Date): Promise<string | null> {
-  const day = asDay(amsterdamDay(d));
-  const rows = await prisma.ticketSeason.findMany({ where: { startsOn: { lte: day }, endsOn: { gte: day } }, select: { id: true } });
-  return rows.length === 1 ? rows[0].id : null;
-}
 
 /** Vervaldatum van gekoppelde tickets (één of meer wedstrijden) opnieuw bepalen na een gewijzigd einde. */
 export async function syncLinkedValidity(tx: Prisma.TransactionClient, eventId: string) {
@@ -116,13 +110,14 @@ export async function saveEvent(actor: TicketsActor, id: string | null, raw: unk
     seasonId: input.seasonId ?? (await seasonForDate(startsAt)),
     status: input.status,
     allowReentry: input.allowReentry,
+    excludeSeasonCards: input.excludeSeasonCards,
     capacity: input.capacity ?? null,
     matchId: input.matchId,
   };
   if (id) {
     const before = await prisma.ticketEvent.findUnique({ where: { id } });
     if (!before) throw new ApiError(404, "Wedstrijd niet gevonden.");
-    if (before.source === "FULLHOUSE") throw new ApiError(400, "Een Fullhouse-evenement wijzig je in Fullhouse; hier kun je alleen de status, het seizoen, de capaciteit en herintrede instellen.");
+    if (before.source === "FULLHOUSE") throw new ApiError(400, "Een Fullhouse-evenement wijzig je in Fullhouse; hier kun je alleen de status, het seizoen, de capaciteit, herintrede en de toegang voor seizoenskaarten instellen.");
     if (before.archivedAt) throw new ApiError(400, "Deze wedstrijd is gearchiveerd. Zet hem eerst terug.");
     const row = await prisma.$transaction(async (tx) => {
       const updated = await tx.ticketEvent.update({ where: { id }, data });
@@ -153,6 +148,7 @@ export async function saveFullhouseEventSettings(actor: TicketsActor, id: string
       ...(input.seasonId !== undefined ? { seasonId: input.seasonId } : {}),
       ...(input.capacity !== undefined ? { capacity: input.capacity } : {}),
       ...(input.allowReentry !== undefined ? { allowReentry: input.allowReentry } : {}),
+      ...(input.excludeSeasonCards !== undefined ? { excludeSeasonCards: input.excludeSeasonCards } : {}),
     },
   });
   await ticketAudit({ action: "event.updated", actor: actorOf(actor), eventId: id, oldStatus: before.status, newStatus: row.status, summary: "Fullhouse-wedstrijd ingesteld" });

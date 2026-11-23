@@ -53,7 +53,8 @@ test("seizoenskaart: seizoen verplicht, geldig tot einde seizoen", () => {
   assert.ok(r.ok);
   assert.equal(r.value.isSeasonCard, true);
   assert.deepEqual(r.value.competitions, ["Eredivisie"]);
-  assert.equal(r.value.validUntil?.toISOString(), "2027-06-30T23:59:59.999Z");
+  assert.equal(r.value.validUntil?.toISOString(), "2027-06-30T21:59:59.999Z", "23:59 Nederlandse tijd");
+  assert.equal(r.value.validFrom?.toISOString(), "2026-06-30T22:00:00.000Z", "00:00 Nederlandse tijd");
 });
 
 test("periode: einddatum verplicht en niet in het verleden", () => {

@@ -115,8 +115,12 @@ Bij een scan gelden deze stappen, in deze volgorde:
 1. Is het formaat herkend? Een HHC-code met een ongeldige handtekening geeft "Ticket bestaat niet".
 2. Bestaat het ticket en klopt de versie? Zo niet: "Ticket bestaat niet".
 3. Is het ticket geannuleerd of geblokkeerd? Dan die reden.
-4. Valt de wedstrijd binnen de geldigheid (SINGLE/MULTI: gekoppelde wedstrijd; SEASON: seizoen en competities; RANGE: datums)? Zo niet: "Hoort bij een andere wedstrijd" of "Verlopen".
-5. Is het ticket al gescand voor deze wedstrijd? Bij een seizoenskaart én herintrede aan voor deze wedstrijd is dat geldig (herintrede). In alle andere gevallen geeft het een **waarschuwing "Al gebruikt"**. Die wordt nooit stil als geldig geregistreerd; alleen een supervisor-override met reden kan dat.
+4. Valt de wedstrijd binnen de geldigheid (SINGLE/MULTI: gekoppelde wedstrijd; SEASON: seizoen en competities; RANGE: datums)? Seizoenskaarten (SEASON en RANGE met "seizoenskaart") gelden niet bij een wedstrijd met "Niet geldig voor seizoenskaarten" (`excludeSeasonCards`); bewust gekoppelde tickets (SINGLE/MULTI) wel. Zo niet: "Hoort bij een andere wedstrijd" (met uitleg) of "Verlopen".
+5. Is het ticket al gescand voor deze wedstrijd? Bij een seizoenskaart én herintrede aan voor deze wedstrijd is dat geldig (herintrede; standaard aan voor nieuwe wedstrijden). Binnen 2 minuten op hetzelfde toestel is het "net al gescand" (geen tweede binnenkomst). In alle andere gevallen geeft het een **waarschuwing "Al gebruikt"**. Die wordt nooit stil als geldig geregistreerd; alleen een supervisor-override met reden kan dat.
+
+**Seizoen en tijdzone.** Elke wedstrijd hoort automatisch bij het seizoen waarin de aftrap (Nederlandse tijd) valt, ook Fullhouse-wedstrijden en wedstrijden van vóór het aanmaken van het seizoen (`season-link.server.ts`, bij Fullhouse-import, seizoen opslaan, de dagelijkse cron en het openen van Seizoenspassen). Seizoens- en periodetickets gelden van 00:00 tot 23:59 Nederlandse tijd; tickets van vóór die correctie (23:59 UTC) worden eenmalig omgezet.
+
+**Aanwezigheid.** Seizoenspassen toont per houder en per duel wie er wel en niet was (eerste geldige scan; ongedaan gemaakte scans tellen niet, supervisor-overrides wel). Afgelaste en uitgesloten duels, en duels van vóór de uitgifte van een pas, tellen niet als gemist. Export: `/api/tickets/seasonpasses/export` (Excel, recht `exports:export`).
 
 ## 8. Privacy en bewaarbeleid
 

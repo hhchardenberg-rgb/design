@@ -27,7 +27,11 @@ export default async function SeasonCardsPage() {
       <div>
         <h1 className="page-title">Seizoenskaarten</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Interne seizoenskaarten gelden voor een seizoen, eventueel beperkt tot thuiswedstrijden, competities en een vak. Alleen seizoenskaarten kunnen opnieuw naar binnen, en alleen bij wedstrijden waar herintrede aan staat ({reentryEvents} komende).
+          Interne seizoenskaarten gelden automatisch voor elk duel van hun seizoen, ook voor duels die later worden toegevoegd of uit Fullhouse binnenkomen, eventueel beperkt tot thuiswedstrijden, competities en een vak. Een duel uitsluiten doe je bij Wedstrijden met &quot;Niet geldig voor seizoenskaarten&quot;. Alleen seizoenskaarten kunnen opnieuw naar binnen, bij wedstrijden waar herintrede aan staat ({reentryEvents} komende). Wie er wel en niet was, zie je bij{" "}
+          <Link className="font-semibold text-hhc-orange-dark hover:underline" href="/tickets/seizoenspassen">
+            Seizoenspassen
+          </Link>
+          .
         </p>
       </div>
       <Card>

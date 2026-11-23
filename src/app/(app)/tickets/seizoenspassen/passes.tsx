@@ -10,14 +10,23 @@ import { api, errorText, PageTitle } from "@/components/tickets/parts";
 import { formatDayTime } from "@/lib/date-format";
 
 interface Overview {
-  seasons: { id: string; name: string }[];
-  season: { id: string; name: string } | null;
+  seasons: { id: string; name: string; label: string }[];
+  season: { id: string; name: string; label: string } | null;
   summary: { passes: number; pastGames: number; upcomingGames: number; averagePct: number | null; noShow: number; streak3: number } | null;
   rows: { id: string; publicId: string; name: string; type: string; zone: string | null; eligible: number; attended: number; streak: number; lastSeen: string | null }[];
 }
 
-export function Passes({ canRenew }: { canRenew: boolean }) {
+interface ByEvent {
+  seasons: { id: string; name: string; label: string }[];
+  season: { id: string; name: string; label: string } | null;
+  events: { id: string; title: string; startsAt: string; status: string; excluded: boolean; past: boolean; live: boolean; expected: number; present: number; absent: number | null; pct: number | null }[];
+}
+
+type View = "houders" | "duels";
+
+export function Passes({ canRenew, canExport }: { canRenew: boolean; canExport: boolean }) {
   const toast = useStableToast();
+  const [view, setView] = useState<View>("houders");
   const [seasonId, setSeasonId] = useState("");
   const [filter, setFilter] = useState<"all" | "noshow" | "streak">("all");
   const [q, setQ] = useState("");
@@ -36,19 +45,59 @@ export function Passes({ canRenew }: { canRenew: boolean }) {
     }
   }, [seasonId, filter, q]);
   useEffect(() => {
+    // Gekozen weergave onthouden (alleen in deze browser).
+    try {
+      const v = localStorage.getItem("hhc.seizoenspassen.weergave");
+      if (v === "duels" || v === "houders") setView(v);
+    } catch {
+      /* geen opslag beschikbaar */
+    }
+  }, []);
+  const switchView = (v: View) => {
+    setView(v);
+    try {
+      localStorage.setItem("hhc.seizoenspassen.weergave", v);
+    } catch {
+      /* geen opslag beschikbaar */
+    }
+  };
+  useEffect(() => {
+    if (view !== "houders") return;
     const t = setTimeout(() => void load(), q ? 300 : 0);
     return () => clearTimeout(t);
-  }, [load, q]);
+  }, [load, q, view]);
 
   const s = data?.summary;
   return (
     <div className="space-y-5">
-      <PageTitle title="Seizoenspassen" description="Wie komt er, en wie niet? Gebruik per houder en duel, verlengen naar een volgend seizoen en overdragen." />
+      <PageTitle title="Seizoenspassen" description="Wie komt er, en wie niet? Aanwezigheid per houder en per duel, verlengen naar een volgend seizoen en overdragen.">
+        {canExport && (
+          <a href={`/api/tickets/seasonpasses/export${seasonId ? `?seizoen=${encodeURIComponent(seasonId)}` : ""}`} className="inline-flex h-10 items-center rounded-md border border-border-strong bg-surface px-4 text-sm font-medium hover:bg-surface-muted">
+            Aanwezigheid exporteren (Excel)
+          </a>
+        )}
+      </PageTitle>
+      <div className="inline-flex rounded-lg border border-border bg-surface p-1 text-sm" role="tablist" aria-label="Weergave">
+        {(
+          [
+            ["houders", "Per houder"],
+            ["duels", "Per duel"],
+          ] as const
+        ).map(([v, l]) => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => switchView(v)} className={`rounded-md px-4 py-1.5 font-medium ${view === v ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {view === "duels" ? (
+        <EventsView seasonId={seasonId} onSeason={setSeasonId} />
+      ) : (
+        <>
       <div className="flex flex-wrap gap-2 text-sm">
         <select value={seasonId} onChange={(e) => setSeasonId(e.target.value)} className="h-10 rounded-md border border-border bg-surface px-3" aria-label="Seizoen">
           {data?.seasons.map((x) => (
             <option key={x.id} value={x.id}>
-              {x.name}
+              {x.label}
             </option>
           ))}
         </select>
@@ -119,8 +168,94 @@ export function Passes({ canRenew }: { canRenew: boolean }) {
         </Card>
       )}
       {data && data.season && data.rows.length === 0 && <p className="text-sm text-muted-foreground">Geen passen voor deze selectie.</p>}
+        </>
+      )}
 
       {canRenew && data && data.seasons.length > 1 && <Renew seasons={data.seasons} defaultFrom={data.season?.id ?? ""} toast={toast} onDone={() => void load()} />}
+    </div>
+  );
+}
+
+function EventsView({ seasonId, onSeason }: { seasonId: string; onSeason: (id: string) => void }) {
+  const [data, setData] = useState<ByEvent | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api<ByEvent>(`/api/tickets/seasonpasses/events${seasonId ? `?seizoen=${encodeURIComponent(seasonId)}` : ""}`)
+      .then((r) => {
+        if (!alive) return;
+        setData(r);
+        setError(null);
+        if (!seasonId && r.season) onSeason(r.season.id);
+      })
+      .catch((e) => alive && setError(errorText(e)));
+    return () => {
+      alive = false;
+    };
+  }, [seasonId, onSeason]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 text-sm">
+        <select value={seasonId} onChange={(e) => onSeason(e.target.value)} className="h-10 rounded-md border border-border bg-surface px-3" aria-label="Seizoen">
+          {data?.seasons.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
+      {data && !data.season && <p className="text-sm text-muted-foreground">Er is nog geen seizoen aangemaakt.</p>}
+      {data && data.season && data.events.length === 0 && <p className="text-sm text-muted-foreground">Nog geen duels in dit seizoen. Duels uit Fullhouse en nieuwe wedstrijden komen hier vanzelf bij.</p>}
+      {data && data.events.length > 0 && (
+        <Card>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-3">Duel</th>
+                  <th className="p-3">Aanwezig</th>
+                  <th className="p-3">Niet aanwezig</th>
+                  <th className="p-3">Opkomst</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.events.map((e) => (
+                  <tr key={e.id}>
+                    <td className="p-3">
+                      <Link className="font-medium underline" href={`/tickets/seizoenspassen/duel/${e.id}`}>
+                        {e.title}
+                      </Link>
+                      <span className="ml-2 text-xs text-muted-foreground">{formatDayTime(e.startsAt)}</span>
+                      {e.excluded && <span className="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs">Geen seizoenskaarten</span>}
+                      {e.status === "CANCELLED" && <span className="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs">Afgelast</span>}
+                      {e.live && <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-hhc-orange-dark">Bezig</span>}
+                    </td>
+                    {e.excluded || e.status === "CANCELLED" ? (
+                      <td className="p-3 text-muted-foreground" colSpan={3}>
+                        –
+                      </td>
+                    ) : !e.past ? (
+                      <td className="p-3 text-muted-foreground" colSpan={3}>
+                        Nog te spelen · {e.expected} houders
+                      </td>
+                    ) : (
+                      <>
+                        <td className="p-3 tabular-nums">
+                          {e.present} van {e.expected}
+                        </td>
+                        <td className="p-3 tabular-nums">{e.absent ?? "–"}</td>
+                        <td className="p-3 tabular-nums">{e.pct === null ? "–" : `${e.pct}%`}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
