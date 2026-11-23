@@ -5,7 +5,7 @@
 // voor dat patroon).
 
 import type { QuickLink } from "@/components/quick-links";
-import { Search, BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, Newspaper, type LucideIcon } from "lucide-react";
+import { Search, BookOpen, Mail, KeyRound, FileSpreadsheet, Smartphone, Ticket, AtSign, Newspaper, Users, type LucideIcon } from "lucide-react";
 
 export interface TicketingModule {
   id: string;
@@ -48,6 +48,14 @@ export const ticketingQuickLinks: QuickLink[] = [
     description: "Webmail",
     href: "https://hhc.nl/mail",
     icon: AtSign,
+    external: true,
+  },
+  {
+    id: "sportlink",
+    title: "Sportlink",
+    description: "Ledenadministratie",
+    href: "https://club.sportlink.com/",
+    icon: Users,
     external: true,
   },
 ];
