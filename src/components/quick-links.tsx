@@ -13,17 +13,24 @@ export interface QuickLink {
 }
 
 // Vaste klassen (Tailwind kan geen samengestelde klassennamen vinden).
-const columns: Record<number, string> = { 1: "sm:grid-cols-1", 2: "sm:grid-cols-2", 3: "sm:grid-cols-3" };
+const columns: Record<number, string> = {
+  1: "sm:grid-cols-1",
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-2 lg:grid-cols-4",
+};
 
-const itemClass = "group flex items-center gap-3.5 p-4 transition-colors hover:bg-[#fafaf8] sm:p-5";
+// Scheidingslijnen via gap-px op een lijnkleurige achtergrond: werkt bij elk
+// aantal kolommen en rijen (ook als de links over twee rijen verdeeld worden).
+const itemClass = "group flex items-center gap-3.5 bg-surface p-4 transition-colors hover:bg-[#fafaf8] sm:p-5";
 
 /** De "Snelle links"-balk bovenaan een startpagina (Klantenservice, Communicatie). */
 export function QuickLinks({ links, children }: { links: QuickLink[]; children?: React.ReactNode }) {
   return (
     <section>
       <h2 className="mb-3 text-[1.0625rem] font-bold leading-tight">Snelle links</h2>
-      <Card>
-        <CardContent className={`grid divide-y divide-border p-0 sm:divide-x sm:divide-y-0 ${columns[Math.min(links.length, 3)] ?? "sm:grid-cols-3"}`}>
+      <Card className="overflow-hidden">
+        <CardContent className={`grid gap-px bg-border p-0 ${columns[Math.min(links.length, 4)] ?? "sm:grid-cols-2 lg:grid-cols-4"}`}>
           {links.map((link) => {
             const content = (
               <>
