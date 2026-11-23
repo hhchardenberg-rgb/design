@@ -14,7 +14,7 @@ const TOKEN_SHA256 = "26c9eac18ca62e6d50fb07fce7432af90e1b8fe7e38eeb56ee870e0d53
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const s = (v: unknown) => (typeof v === "string" ? v : null);
-const docs = (b: unknown): Obj[] => (Array.isArray(b) ? b.filter(isObj) : isObj(b) && Array.isArray(b.docs) ? b.docs.filter(isObj) : []);
+const docs = (b: unknown): Obj[] => (Array.isArray(b) ? b.filter(isObj) : isObj(b) && Array.isArray(b.docs) ? b.docs.filter(isObj) : isObj(b) && Array.isArray(b.rows) ? b.rows.filter(isObj) : []);
 const h = (v: string) => createHash("sha256").update(v).digest("hex").slice(0, 8);
 const count = (xs: (string | null)[]) => xs.reduce<Record<string, number>>((m, x) => ((m[x ?? "(leeg)"] = (m[x ?? "(leeg)"] ?? 0) + 1), m), {});
 
