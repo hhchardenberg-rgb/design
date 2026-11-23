@@ -39,7 +39,8 @@ export const eventSchema = z
     endsAt: optInstant,
     seasonId: optText(40),
     status: z.enum(["DRAFT", "ACTIVE", "CLOSED", "CANCELLED"]).default("ACTIVE"),
-    allowReentry: z.boolean().default(false),
+    allowReentry: z.boolean().default(true),
+    excludeSeasonCards: z.boolean().default(false),
     capacity: z.number().int().min(1).max(100_000).nullish(),
     matchId: optText(40),
   })
@@ -50,6 +51,7 @@ export const fullhouseEventSchema = z.object({
   seasonId: optText(40).optional(),
   capacity: z.number().int().min(1).max(100_000).nullable().optional(),
   allowReentry: z.boolean().optional(),
+  excludeSeasonCards: z.boolean().optional(),
 });
 
 export const removeEventSchema = z.object({

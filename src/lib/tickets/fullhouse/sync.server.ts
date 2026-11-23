@@ -6,6 +6,7 @@ import { codeHash, initialsFromFullName } from "../scan.server";
 import { fullhouseConfigured, ticketProvider } from "./index";
 import { FullhouseError } from "./types";
 import { catalogNameMap, nameKey, syncFullhouseCatalog } from "./catalog.server";
+import { pickSeason, seasonMaintenance } from "../season-link.server";
 import { QUIET_RUN, SCHEDULE_MINUTES, syncHealth } from "./health.server";
 
 // Synchronisatie met Fullhouse (alleen lezen). Fullhouse blijft de bron: de Hub bewaart een
@@ -61,13 +62,16 @@ export async function importEventsAs(actor: { id: string | null; name: string })
   try {
     const list = await ticketProvider().listEvents();
     let created = 0;
+    const seasons = await prisma.ticketSeason.findMany({ select: { id: true, startsOn: true, endsOn: true } });
     for (const e of list) {
       const exists = await prisma.ticketEvent.findUnique({ where: { externalId: e.externalId }, select: { id: true } });
       if (exists) continue;
       const startsAt = e.startsAt ?? new Date(Date.now() + 7 * 86_400_000);
-      await prisma.ticketEvent.create({ data: { title: e.name.slice(0, 120), startsAt, endsAt: new Date(startsAt.getTime() + 6 * 3600_000), status: "ACTIVE", source: "FULLHOUSE", externalId: e.externalId, visible: false } });
+      await prisma.ticketEvent.create({ data: { title: e.name.slice(0, 120), startsAt, endsAt: new Date(startsAt.getTime() + 6 * 3600_000), status: "ACTIVE", source: "FULLHOUSE", externalId: e.externalId, visible: false, seasonId: pickSeason(startsAt, seasons), allowReentry: true } });
       created++;
     }
+    // Duels die eerder zonder seizoen binnenkwamen alsnog koppelen (seizoenskaarten gelden dan direct), en oude geldigheidstijden in Nederlandse tijd zetten.
+    await seasonMaintenance();
     // Kaartsoorten en vakken meenemen; een fout daarin laat het ophalen van evenementen niet mislukken.
     let catalog: Awaited<ReturnType<typeof syncFullhouseCatalog>> | null = null;
     try {

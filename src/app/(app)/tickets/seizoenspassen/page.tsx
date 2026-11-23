@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function PassesPage() {
   const a = await ticketsPageAccess("tickets:read");
   if (!a.allowed) return <NoAccess what="de seizoenspassen van Tickets" />;
-  return <Passes canRenew={a.can("tickets:issue")} />;
+  return <Passes canRenew={a.can("tickets:issue")} canExport={a.can("exports:export")} />;
 }

@@ -4,6 +4,8 @@
 // De handtekening van een HHC-QR kan hier niet gecontroleerd worden (de sleutel blijft op de
 // server); de 80-bits willekeurige ticketkenmerken maken raden onmogelijk.
 
+import { isDuplicateScan } from "./rules";
+
 export interface OfflineCache {
   event: { id: string; title: string };
   generatedAt: string;
@@ -15,7 +17,7 @@ export interface OfflineCache {
 
 export type OfflineResult =
   | { result: "VALID"; reason: null; label: string; reentry: boolean; key: string; previousAt: string | null }
-  | { result: "WARNING"; reason: "ALREADY_USED"; label: string; reentry: false; previousAt: string; key: string }
+  | { result: "WARNING"; reason: "ALREADY_USED"; label: string; reentry: false; previousAt: string; key: string; duplicate?: boolean }
   | { result: "INVALID"; reason: "NOT_FOUND" | "WRONG_ZONE" | "EVENT_NOT_ACTIVE" | "NUMBER_NOT_ALLOWED"; label: null; reentry: false; key: null };
 
 const HHC_RE = /^HHC1\.([0-9A-HJKMNP-TV-Z]{16})\.([1-9]\d{0,5})\.[A-Za-z0-9_-]{22}$/i;
@@ -90,6 +92,9 @@ export function checkOffline(cache: OfflineCache, code: string, sha256Hex: strin
   }
   if (!key || label === null) return invalid("NOT_FOUND");
   const prev = usedAt.get(key);
+  // Op dit toestel zojuist al goedgekeurd (binnen twee minuten): dubbel gescand, geen tweede binnenkomst.
+  const local = usedLocally.get(key);
+  if (local && isDuplicateScan({ at: new Date(local), device: "this" }, { at: now, device: "this" })) return { result: "WARNING", reason: "ALREADY_USED", label, reentry: false, previousAt: local, key, duplicate: true };
   if (prev && !reentry) return { result: "WARNING", reason: "ALREADY_USED", label, reentry: false, previousAt: prev, key };
   return { result: "VALID", reason: null, label, reentry: !!prev, key, previousAt: prev ?? null };
 }

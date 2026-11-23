@@ -1,4 +1,4 @@
-import { computeValidUntil, isValidityMode, type ValidityMode } from "./rules";
+import { amsterdamStartOfDay, computeValidUntil, isValidityMode, type ValidityMode } from "./rules";
 
 // Pure bepaling van de geldigheid van een nieuw ticket, uit het tickettype en de keuzes
 // van de uitgever. Geen database, zodat dit volledig testbaar is.
@@ -84,7 +84,7 @@ export function resolveValidity(
     if (!lookup.season || lookup.season.id !== seasonId) return fail("Het gekozen seizoen bestaat niet (meer).");
     const validUntil = computeValidUntil("SEASON", { events: [], seasonEndsOn: lookup.season.endsOn });
     if (validUntil && validUntil < now) return fail("Dit seizoen is al afgelopen.");
-    return { ok: true, value: { ...base, seasonId, validFrom: lookup.season.startsOn, validUntil, eventIds: [] } };
+    return { ok: true, value: { ...base, seasonId, validFrom: amsterdamStartOfDay(lookup.season.startsOn), validUntil, eventIds: [] } };
   }
 
   // RANGE
@@ -94,7 +94,7 @@ export function resolveValidity(
   if (from && until < from) return fail("De einddatum moet na de begindatum liggen.");
   const validUntil = computeValidUntil("RANGE", { events: [], until });
   if (validUntil && validUntil < now) return fail("De einddatum ligt in het verleden.");
-  return { ok: true, value: { ...base, seasonId: null, validFrom: from, validUntil, eventIds: [] } };
+  return { ok: true, value: { ...base, seasonId: null, validFrom: from ? amsterdamStartOfDay(from) : null, validUntil, eventIds: [] } };
 }
 
 /** Moet een uitgifte van dit aantal tickets eerst worden goedgekeurd? */

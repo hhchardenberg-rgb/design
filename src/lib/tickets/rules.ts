@@ -71,6 +71,8 @@ export interface RuleEvent {
   startsAt: Date;
   endsAt: Date;
   allowReentry: boolean;
+  /** Seizoenskaarten en -passen geven bij deze wedstrijd geen toegang (losse tickets voor dit duel wel). */
+  excludeSeasonCards?: boolean;
 }
 
 export type ScanReason =
@@ -112,7 +114,11 @@ export function coversEvent(t: RuleTicket, e: RuleEvent): boolean {
   switch (t.validityMode) {
     case "SINGLE":
     case "MULTI":
+      // Een bewust aan dit duel gekoppeld ticket geldt altijd, ook als seizoenskaarten zijn uitgesloten.
       return t.eventIds.includes(e.id);
+  }
+  if (t.isSeasonCard && e.excludeSeasonCards) return false;
+  switch (t.validityMode) {
     case "SEASON":
       if (!t.seasonId || e.seasonId !== t.seasonId) return false;
       if (t.homeOnly && !e.isHome) return false;
@@ -120,6 +126,35 @@ export function coversEvent(t: RuleTicket, e: RuleEvent): boolean {
     case "RANGE":
       return (!t.validFrom || e.startsAt >= t.validFrom) && (!t.validUntil || e.startsAt <= t.validUntil);
   }
+}
+
+/**
+ * Waarom een seizoenskaart (of seizoenspas) niet geldt voor dit duel, in gewone taal voor de steward en de
+ * beheerder. Null als de kaart wel geldt of als het geen seizoenskaart is.
+ */
+export function seasonCardMismatch(t: RuleTicket, e: RuleEvent, seasonName: (id: string) => string | null = () => null): string | null {
+  if (!t.isSeasonCard || t.validityMode === "SINGLE" || t.validityMode === "MULTI" || coversEvent(t, e)) return null;
+  if (e.excludeSeasonCards) return "Seizoenskaarten gelden niet voor dit duel.";
+  if (t.validityMode === "SEASON") {
+    if (!e.seasonId) return "Dit duel hoort nog bij geen seizoen. Koppel het duel aan een seizoen onder Wedstrijden.";
+    if (e.seasonId !== t.seasonId) {
+      const n = t.seasonId ? seasonName(t.seasonId) : null;
+      return n ? `Deze kaart geldt voor seizoen ${n}.` : "Deze kaart geldt voor een ander seizoen.";
+    }
+    if (t.homeOnly && !e.isHome) return "Deze kaart geldt alleen voor thuisduels.";
+    if (t.competitions.length) return `Deze kaart geldt alleen voor: ${t.competitions.join(", ")}.`;
+  }
+  return null;
+}
+
+/** Twee scans van hetzelfde ticket op hetzelfde toestel binnen deze tijd zijn dubbel gescand, geen tweede binnenkomst. */
+export const DUPLICATE_SCAN_WINDOW_MS = 2 * 60_000;
+
+/** Is deze scan een dubbele scan (zelfde toestel, kort na een geldige scan)? */
+export function isDuplicateScan(previous: { at: Date; device: string | null } | null, current: { at: Date; device: string | null }): boolean {
+  if (!previous || !previous.device || previous.device !== current.device) return false;
+  const diff = current.at.getTime() - previous.at.getTime();
+  return diff >= -5_000 && diff <= DUPLICATE_SCAN_WINDOW_MS;
 }
 
 /** Mag dit ticket opnieuw naar binnen bij deze wedstrijd? Alleen seizoenskaarten, en alleen als de wedstrijd het toestaat. */
@@ -183,11 +218,37 @@ export function computeValidUntil(
   }
 }
 
-function endOfDay(d: Date): Date {
-  const out = new Date(d);
-  out.setUTCHours(23, 59, 59, 999);
-  return out;
+// Kalenderdagen (opgeslagen als middernacht UTC, bv. de begin- en einddatum van een seizoen) worden
+// omgezet naar het begin en einde van die dag in Nederlandse tijd. Zo verloopt een kaart om 23:59 in
+// Hardenberg, niet om 00:59 of 01:59 de volgende nacht.
+
+const TZ = "Europe/Amsterdam";
+
+/** Verschil tussen Nederlandse tijd en UTC op dit moment, in milliseconden (1 of 2 uur). */
+function amsterdamOffsetMs(at: number): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .formatToParts(new Date(at))
+      .map((x) => [x.type, x.value]),
+  ) as Record<string, string>;
+  const local = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second));
+  return local - Math.floor(at / 1000) * 1000;
 }
+
+/** 00:00 Nederlandse tijd op de kalenderdag van `day` (de UTC-datum van `day`). */
+export function amsterdamStartOfDay(day: Date): Date {
+  const guess = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate());
+  const first = guess - amsterdamOffsetMs(guess);
+  return new Date(guess - amsterdamOffsetMs(first));
+}
+
+/** 23:59:59,999 Nederlandse tijd op de kalenderdag van `day`. */
+export function amsterdamEndOfDay(day: Date): Date {
+  const next = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() + 1));
+  return new Date(amsterdamStartOfDay(next).getTime() - 1);
+}
+
+const endOfDay = amsterdamEndOfDay;
 
 /** Standaard einde van een wedstrijd: aftrap + 6 uur (instelbaar per wedstrijd). */
 export const DEFAULT_EVENT_DURATION_HOURS = 6;

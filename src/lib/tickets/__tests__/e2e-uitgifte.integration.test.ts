@@ -137,11 +137,11 @@ test("seizoensdatums corrigeren: uitgegeven seizoenskaarten lopen mee", { skip }
   const sid = (await catalog.saveSeason(admin, null, { name: "E2E Correctie", startsOn: "2104-07-01", endsOn: "2105-05-31" }))!.id;
   const typeId = (await catalog.saveType(admin, null, { name: "E2E Correctiekaart", category: "SEASON", validityMode: "SEASON", seasonId: sid }))!.id;
   const card = await issueOne(typeId, []);
-  assert.equal(card.validUntil?.toISOString(), "2105-05-31T23:59:59.999Z");
+  assert.equal(card.validUntil?.toISOString(), "2105-05-31T21:59:59.999Z");
   await catalog.saveSeason(admin, sid, { name: "E2E Correctie", startsOn: "2104-07-01", endsOn: "2105-06-30" });
   const after = await db.ticket.findUniqueOrThrow({ where: { id: card.id } });
-  assert.equal(after.validUntil?.toISOString(), "2105-06-30T23:59:59.999Z", "kaart verloopt niet op de oude einddatum");
-  assert.equal(after.validFrom?.toISOString(), "2104-07-01T00:00:00.000Z");
+  assert.equal(after.validUntil?.toISOString(), "2105-06-30T21:59:59.999Z", "kaart verloopt niet op de oude einddatum");
+  assert.equal(after.validFrom?.toISOString(), "2104-06-30T22:00:00.000Z", "begint om 00:00 Nederlandse tijd");
 });
 
 // ── Uitgeven per geldigheid ─────────────────────────────────────────────────
@@ -164,13 +164,14 @@ test("uitgeven per soort: één, meerdere, seizoen en periode met de juiste verv
 
   const season = await issueOne(typeSeason, []);
   assert.equal(season.isSeasonCard, true);
-  assert.equal(season.validUntil?.toISOString(), "2099-06-30T23:59:59.999Z");
+  assert.equal(season.validUntil?.toISOString(), "2099-06-30T21:59:59.999Z");
 
   await assert.rejects(() => svc.issueTickets(admin, { typeId: typeRange, holders: [holder(1)] }), /tot wanneer/);
   await assert.rejects(() => svc.issueTickets(admin, { typeId: typeRange, validFrom: "2030-02-01", validUntil: "2030-01-01", holders: [holder(1)] }), /einddatum/);
   await assert.rejects(() => svc.issueTickets(admin, { typeId: typeRange, validUntil: "2020-01-01", holders: [holder(1)] }), /verleden/);
   const range = await issueOne(typeRange, [], { validFrom: "2030-01-01", validUntil: "2030-01-31" });
-  assert.equal(range.validUntil?.toISOString(), "2030-01-31T23:59:59.999Z");
+  assert.equal(range.validUntil?.toISOString(), "2030-01-31T22:59:59.999Z", "wintertijd: 23:59 in Nederland");
+  assert.equal(range.validFrom?.toISOString(), "2029-12-31T23:00:00.000Z", "wintertijd: 00:00 in Nederland");
 
   // Niet-actief type of vak.
   const inactiveZone = (await catalog.saveZone(admin, null, { name: "E2E Gesloten vak", active: false }))!.id;
@@ -542,9 +543,9 @@ test("tijdzone: datum-tijdinvoer in Nederlandse tijd rond de omschakeling naar z
   }
 });
 
-test("tijdzone: periode- en seizoenskaarten lopen tot het einde van de dag in UTC (gedocumenteerd gedrag)", { skip }, async () => {
+test("tijdzone: periode- en seizoenskaarten lopen van 00:00 tot 23:59 Nederlandse tijd", { skip }, async () => {
   const t = await issueOne(typeRange, [], { validFrom: "2030-03-30", validUntil: "2030-03-31" });
-  // 31 maart 23:59:59 UTC = 1 april 01:59 Nederlandse tijd: het ticket werkt dus nog bijna twee uur na middernacht.
-  assert.equal(t.validUntil?.toISOString(), "2030-03-31T23:59:59.999Z");
-  assert.equal(t.validFrom?.toISOString(), "2030-03-30T00:00:00.000Z");
+  // 31 maart 2030 is de overgang naar zomertijd: einde dag = 21:59:59 UTC; 30 maart is nog wintertijd: begin = 29 maart 23:00 UTC.
+  assert.equal(t.validUntil?.toISOString(), "2030-03-31T21:59:59.999Z");
+  assert.equal(t.validFrom?.toISOString(), "2030-03-29T23:00:00.000Z");
 });

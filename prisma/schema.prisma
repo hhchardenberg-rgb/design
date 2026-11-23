@@ -1964,8 +1964,10 @@ model TicketEvent {
   season       TicketSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   // DRAFT | ACTIVE | CLOSED | CANCELLED
   status       String        @default("DRAFT")
-  // Herintrede voor seizoenskaarten bij deze wedstrijd.
-  allowReentry Boolean       @default(false)
+  // Herintrede voor seizoenskaarten bij deze wedstrijd (standaard aan voor nieuwe wedstrijden).
+  allowReentry Boolean       @default(true)
+  // Seizoenskaarten en -passen geven bij deze wedstrijd geen toegang (bv. bekerduel of oefenwedstrijd met eigen kaartverkoop).
+  excludeSeasonCards Boolean @default(false)
   capacity     Int?
   // HHC | FULLHOUSE
   source       String        @default("HHC")

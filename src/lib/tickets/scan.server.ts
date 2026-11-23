@@ -7,7 +7,7 @@ import { ticketAudit, ticketAuditTx } from "./audit.server";
 import { initialsOf } from "./issue";
 import { ticketProvider } from "./fullhouse";
 import { FullhouseError } from "./fullhouse/types";
-import { coversEvent, evaluateScan, SCAN_REASON_LABELS, type RuleEvent, type RuleTicket, type ScanReason, type TicketStatus, type ValidityMode } from "./rules";
+import { coversEvent, evaluateScan, isDuplicateScan, SCAN_REASON_LABELS, seasonCardMismatch, type RuleEvent, type RuleTicket, type ScanReason, type TicketStatus, type ValidityMode } from "./rules";
 import type { ScanActor } from "./scanner-auth.server";
 import { formatDay } from "@/lib/date-format";
 import { detectSource, parseQrCode, qrCodeFor } from "./token";
@@ -54,6 +54,8 @@ export interface ScanResponse {
   byNumber: boolean;
   /** Een vaste testcode: niets opgeslagen, telt nergens mee. */
   test?: boolean;
+  /** Zelfde ticket kort na een geldige scan op hetzelfde toestel nog eens gescand: geen tweede binnenkomst, geen alarm. */
+  duplicate?: boolean;
   at: string;
 }
 
@@ -67,8 +69,9 @@ const NOT_OVERRIDABLE: ScanReason[] = ["NOT_FOUND", "CANCELLED", "EVENT_NOT_ACTI
 type Extras = { zone?: string | null; detail?: string | null; byNumber?: boolean };
 export const codeHash = (code: string) => createHash("sha256").update(code.trim()).digest("hex");
 
-const rowToResponse = async (row: { id: string; clientId: string; result: string; reason: string | null; reentry: boolean; overrideById: string | null; source: string; holderLabel: string | null; scannedAt: Date; eventId: string; ticketId: string | null; codeHash: string | null }, actor: ScanActor | null, extras: Extras = {}): Promise<ScanResponse> => {
+const rowToResponse = async (row: { id: string; clientId: string; result: string; reason: string | null; reentry: boolean; overrideById: string | null; source: string; holderLabel: string | null; scannedAt: Date; eventId: string; ticketId: string | null; codeHash: string | null; scannerId: string | null; userId: string | null }, actor: ScanActor | null, extras: Extras = {}): Promise<ScanResponse> => {
   let previous: ScanResponse["previous"] = null;
+  let duplicate = false;
   // Bij "al gebruikt" en bij herintrede: wanneer en waar dit ticket eerder binnenkwam.
   if (row.result === "WARNING" || row.reentry) {
     const prev = await prisma.ticketScan.findFirst({
@@ -77,6 +80,7 @@ const rowToResponse = async (row: { id: string; clientId: string; result: string
       include: { scanner: { select: { name: true } } },
     });
     if (prev) {
+      duplicate = row.result === "WARNING" && row.reason === "ALREADY_USED" && prev.scannedAt <= new Date(row.scannedAt.getTime() + 5_000) && isDuplicateScan({ at: prev.scannedAt, device: prev.scannerId ?? prev.userId }, { at: row.scannedAt, device: row.scannerId ?? row.userId });
       const entrance = prev.entranceId ? await prisma.ticketEntrance.findUnique({ where: { id: prev.entranceId }, select: { name: true } }) : null;
       previous = { at: prev.scannedAt.toISOString(), where: entrance?.name ?? prev.scanner?.name ?? null };
     }
@@ -94,15 +98,26 @@ const rowToResponse = async (row: { id: string; clientId: string; result: string
     eventId: row.eventId,
     label: row.holderLabel,
     previous,
-    overridable: !!actor?.canOverride && row.result !== "VALID" && !!reason && !NOT_OVERRIDABLE.includes(reason),
+    overridable: !!actor?.canOverride && !duplicate && row.result !== "VALID" && !!reason && !NOT_OVERRIDABLE.includes(reason),
     zone: extras.zone ?? null,
     detail: extras.detail ?? null,
     byNumber: !!extras.byNumber,
+    ...(duplicate ? { duplicate: true, detail: "Dit ticket is zojuist op dit toestel al goedgekeurd. Is het dezelfde persoon, laat dan gewoon door." } : {}),
     at: row.scannedAt.toISOString(),
   };
 };
 
-const toRuleEvent = (e: { id: string; status: string; seasonId: string | null; competition: string | null; isHome: boolean; startsAt: Date; endsAt: Date; allowReentry: boolean }): RuleEvent => ({ ...e, status: e.status as RuleEvent["status"] });
+const toRuleEvent = (e: { id: string; status: string; seasonId: string | null; competition: string | null; isHome: boolean; startsAt: Date; endsAt: Date; allowReentry: boolean; excludeSeasonCards?: boolean }): RuleEvent => ({
+  id: e.id,
+  status: e.status as RuleEvent["status"],
+  seasonId: e.seasonId,
+  competition: e.competition,
+  isHome: e.isHome,
+  startsAt: e.startsAt,
+  endsAt: e.endsAt,
+  allowReentry: e.allowReentry,
+  excludeSeasonCards: !!e.excludeSeasonCards,
+});
 
 const clampTime = (iso: string | null | undefined, offline: boolean | undefined) => {
   const now = Date.now();
@@ -244,7 +259,10 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
       const reason = "reason" in out ? out.reason : null;
       let detail: string | null = null;
       if (reason === "WRONG_ZONE" && ticket.zone) detail = `Dit ticket is voor vak ${ticket.zone.name}.`;
-      if (reason === "WRONG_EVENT" && rt.eventIds.length) {
+      if (reason === "WRONG_EVENT" && rt.isSeasonCard && rt.validityMode !== "SINGLE" && rt.validityMode !== "MULTI") {
+        const season = rt.seasonId ? await tx.ticketSeason.findUnique({ where: { id: rt.seasonId }, select: { id: true, name: true } }) : null;
+        detail = seasonCardMismatch(rt, ruleEvent, (id) => (season?.id === id ? season.name : null));
+      } else if (reason === "WRONG_EVENT" && rt.eventIds.length) {
         const evs = await tx.ticketEvent.findMany({ where: { id: { in: rt.eventIds } }, orderBy: { startsAt: "asc" }, select: { title: true, startsAt: true }, take: 3 });
         if (evs.length) detail = `Geldig voor: ${evs.map((e) => `${e.title} (${formatDay(e.startsAt)})`).join(", ")}.`;
       }
@@ -282,6 +300,11 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
         let d = await decide(tx);
+        // Dubbel gescand (zelfde toestel, binnen twee minuten na een geldige scan): geen tweede binnenkomst of herintrede registreren.
+        if (d.result === "VALID" && d.reentry && (d.ticketId || d.codeHash)) {
+          const prev = await tx.ticketScan.findFirst({ where: { eventId: event.id, result: "VALID", ...(d.ticketId ? { ticketId: d.ticketId } : { codeHash: d.codeHash }) }, orderBy: { scannedAt: "desc" }, select: { scannedAt: true, scannerId: true, userId: true } });
+          if (prev && isDuplicateScan({ at: prev.scannedAt, device: prev.scannerId ?? prev.userId }, { at: scannedAt, device: actor.scannerId ?? actor.userId })) d = { ...d, result: "WARNING", reason: "ALREADY_USED", reentry: false };
+        }
         let overrideData: { overrideById: string; overrideBy: string; overrideReason: string } | null = null;
         if (input.override && d.result !== "VALID" && d.reason && !NOT_OVERRIDABLE.includes(d.reason)) {
           overrideData = { overrideById: actor.userId ?? actor.scannerId ?? "scanner", overrideBy: actor.name, overrideReason: input.override.reason };

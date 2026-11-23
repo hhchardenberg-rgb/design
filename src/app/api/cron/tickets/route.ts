@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { isTicketsEnabled } from "@/lib/tickets/flag";
 import { syncUpcoming } from "@/lib/tickets/fullhouse/sync.server";
 import { runTicketRetention } from "@/lib/tickets/retention.server";
+import { seasonMaintenance } from "@/lib/tickets/season-link.server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,6 +27,8 @@ export async function GET(req: Request) {
   } catch {
     out.sync = { error: "Synchronisatie mislukt." };
   }
+  // Duels zonder seizoen koppelen (ook zonder Fullhouse), zodat seizoenskaarten er altijd voor gelden.
+  await seasonMaintenance();
   try {
     out.retention = await runTicketRetention();
   } catch {

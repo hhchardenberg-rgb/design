@@ -98,7 +98,7 @@ test("vervaldatum per geldigheidsvorm", () => {
   const a = { endsAt: new Date("2026-11-15T19:30:00Z") };
   const b = { endsAt: new Date("2026-12-01T19:30:00Z") };
   assert.equal(computeValidUntil("MULTI", { events: [a, b] })?.toISOString(), b.endsAt.toISOString());
-  assert.equal(computeValidUntil("SEASON", { events: [], seasonEndsOn: new Date("2027-06-30T00:00:00Z") })?.toISOString(), "2027-06-30T23:59:59.999Z");
+  assert.equal(computeValidUntil("SEASON", { events: [], seasonEndsOn: new Date("2027-06-30T00:00:00Z") })?.toISOString(), "2027-06-30T21:59:59.999Z");
   assert.equal(computeValidUntil("SINGLE", { events: [] }), null);
 });
 

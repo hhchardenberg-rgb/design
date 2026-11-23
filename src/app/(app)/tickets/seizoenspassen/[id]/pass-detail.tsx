@@ -17,7 +17,7 @@ interface Detail {
   type: string;
   zone: string | null;
   status: string;
-  games: { id: string; title: string; startsAt: string; past: boolean; attended: boolean; firstAt: string | null; entrance: string | null }[];
+  games: { id: string; title: string; startsAt: string; past: boolean; attended: boolean; state: "ATTENDED" | "MISSED" | "UPCOMING" | "CANCELLED" | "EXCLUDED" | "NOT_ISSUED"; stateLabel: string; firstAt: string | null; entrance: string | null; scans: number }[];
 }
 
 export function PassDetail({ id, canTransfer, canPersonal }: { id: string; canTransfer: boolean; canPersonal: boolean }) {
@@ -35,8 +35,8 @@ export function PassDetail({ id, canTransfer, canPersonal }: { id: string; canTr
 
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!d) return <p className="text-sm text-muted-foreground">Laden…</p>;
-  const past = d.games.filter((g) => g.past);
-  const came = past.filter((g) => g.attended).length;
+  const came = d.games.filter((g) => g.state === "ATTENDED").length;
+  const played = d.games.filter((g) => g.state === "ATTENDED" || g.state === "MISSED").length;
   return (
     <div className="space-y-5">
       <Link href="/tickets/seizoenspassen" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline">
@@ -46,7 +46,7 @@ export function PassDetail({ id, canTransfer, canPersonal }: { id: string; canTr
         <h1 className="page-title">{d.name}</h1>
         <p className="text-sm text-muted-foreground">
           {d.type}
-          {d.zone ? ` · ${d.zone}` : ""} · {d.publicId} · geweest bij {came} van {past.length} gespeelde duels ·{" "}
+          {d.zone ? ` · ${d.zone}` : ""} · {d.publicId} · geweest bij {came} van {played} gespeelde duels ·{" "}
           <Link className="underline" href={`/tickets/overzicht/${d.id}`}>
             Ticket openen
           </Link>
@@ -62,10 +62,13 @@ export function PassDetail({ id, canTransfer, canPersonal }: { id: string; canTr
             {d.games.map((g) => (
               <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
                 <span>
-                  {g.title} <span className="text-xs text-muted-foreground">{formatDayTime(g.startsAt)}</span>
+                  <Link className="hover:underline" href={`/tickets/seizoenspassen/duel/${g.id}`}>
+                    {g.title}
+                  </Link>{" "}
+                  <span className="text-xs text-muted-foreground">{formatDayTime(g.startsAt)}</span>
                 </span>
-                <span className={g.attended ? "font-medium text-success" : g.past ? "text-amber-600" : "text-muted-foreground"}>
-                  {g.attended ? `Geweest${g.entrance ? ` · ${g.entrance}` : ""}${g.firstAt ? ` · ${formatDayTime(g.firstAt)}` : ""}` : g.past ? "Niet geweest" : "Nog te spelen"}
+                <span className={g.state === "ATTENDED" ? "font-medium text-success" : g.state === "MISSED" ? "text-amber-600" : "text-muted-foreground"}>
+                  {g.state === "ATTENDED" ? `Geweest${g.entrance ? ` · ${g.entrance}` : ""}${g.firstAt ? ` · ${formatDayTime(g.firstAt)}` : ""}${g.scans > 1 ? ` · ${g.scans - 1}× opnieuw binnen` : ""}` : g.stateLabel}
                 </span>
               </li>
             ))}

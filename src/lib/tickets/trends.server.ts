@@ -55,7 +55,7 @@ export async function seasonTrends(actor: TicketsActor, seasonId?: string) {
   if (seasons.length === 0) return { seasons: [], season: null, games: [] as TrendGame[], summary: null, compare: [] as never[] };
   const current = seasons.find((s) => s.id === seasonId) ?? seasons.find((s) => s.startsOn <= now && s.endsOn >= now) ?? seasons[0];
 
-  const events = await prisma.ticketEvent.findMany({ where: { seasonId: { in: seasons.map((s) => s.id) }, status: { not: "CANCELLED" } }, orderBy: { startsAt: "asc" }, select: { id: true, title: true, startsAt: true, endsAt: true, status: true, seasonId: true, competition: true, isHome: true, allowReentry: true, externalId: true } });
+  const events = await prisma.ticketEvent.findMany({ where: { seasonId: { in: seasons.map((s) => s.id) }, status: { not: "CANCELLED" } }, orderBy: { startsAt: "asc" }, select: { id: true, title: true, startsAt: true, endsAt: true, status: true, seasonId: true, competition: true, isHome: true, allowReentry: true, excludeSeasonCards: true, externalId: true } });
   const ids = events.map((e) => e.id);
   const [tickets, scans, external] = await Promise.all([
     // Ook verlopen tickets tellen mee voor wat er toen verkocht of uitgegeven was; alleen ingetrokken tickets niet.
@@ -69,7 +69,7 @@ export async function seasonTrends(actor: TicketsActor, seasonId?: string) {
   const fhSold = new Map(external.map((x) => [x.eventExtId, x._count._all]));
 
   const raw = events.map((e) => {
-    const re = { id: e.id, status: e.status as "ACTIVE", seasonId: e.seasonId, competition: e.competition, isHome: e.isHome, startsAt: e.startsAt, endsAt: e.endsAt, allowReentry: e.allowReentry };
+    const re = { id: e.id, status: e.status as "ACTIVE", seasonId: e.seasonId, competition: e.competition, isHome: e.isHome, startsAt: e.startsAt, endsAt: e.endsAt, allowReentry: e.allowReentry, excludeSeasonCards: e.excludeSeasonCards };
     const hhcSold = ruleTickets.reduce((n, t) => n + (coversEvent(t, re) ? 1 : 0), 0);
     const fullhouseSold = e.externalId ? fhSold.get(e.externalId) ?? 0 : 0;
     const sold = hhcSold + fullhouseSold;

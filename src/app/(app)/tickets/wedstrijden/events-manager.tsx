@@ -28,6 +28,7 @@ interface EventRow {
   season: { name: string } | null;
   status: string;
   allowReentry: boolean;
+  excludeSeasonCards: boolean;
   capacity: number | null;
   source: string;
   matchId: string | null;
@@ -62,6 +63,7 @@ interface Draft {
   seasonId: string;
   status: string;
   allowReentry: boolean;
+  excludeSeasonCards: boolean;
   capacity: string;
   matchId: string;
 }
@@ -69,7 +71,7 @@ interface Draft {
 /** Gelijke vierkante icoonknoppen in de actierij van een wedstrijd. */
 const ICON_BTN = "h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-foreground";
 
-const EMPTY: Draft = { id: null, title: "", opponent: "", competition: "", isHome: true, location: "", startsAt: "", endsAt: "", seasonId: "", status: "ACTIVE", allowReentry: false, capacity: "", matchId: "" };
+const EMPTY: Draft = { id: null, title: "", opponent: "", competition: "", isHome: true, location: "", startsAt: "", endsAt: "", seasonId: "", status: "ACTIVE", allowReentry: true, excludeSeasonCards: false, capacity: "", matchId: "" };
 
 /** Wat elke status doet; staat onder het statusveld. */
 const STATUS_HELP: Record<string, string> = {
@@ -86,6 +88,7 @@ interface FhDraft {
   seasonId: string;
   capacity: string;
   allowReentry: boolean;
+  excludeSeasonCards: boolean;
 }
 
 export function EventsManager({ canManage, canMail = false, canDelete = false, canSeasons = false }: { canManage: boolean; canMail?: boolean; canDelete?: boolean; canSeasons?: boolean }) {
@@ -132,14 +135,14 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
   }
 
   const activate = (e: EventRow) => quick(async () => {
-    await api(`/api/tickets/events/${e.id}`, e.source === "FULLHOUSE" ? { method: "PATCH", body: { status: "ACTIVE" } } : { method: "PUT", body: { title: e.title, opponent: e.opponent, competition: e.competition, isHome: e.isHome, location: e.location, startsAt: e.startsAt, endsAt: e.endsAt, seasonId: e.seasonId, status: "ACTIVE", allowReentry: e.allowReentry, capacity: e.capacity, matchId: e.matchId } });
+    await api(`/api/tickets/events/${e.id}`, e.source === "FULLHOUSE" ? { method: "PATCH", body: { status: "ACTIVE" } } : { method: "PUT", body: { title: e.title, opponent: e.opponent, competition: e.competition, isHome: e.isHome, location: e.location, startsAt: e.startsAt, endsAt: e.endsAt, seasonId: e.seasonId, status: "ACTIVE", allowReentry: e.allowReentry, excludeSeasonCards: e.excludeSeasonCards, capacity: e.capacity, matchId: e.matchId } });
     return `${e.title} staat nu op Actief.`;
   });
 
   async function saveFh() {
     if (!fh) return;
     await quick(async () => {
-      await api(`/api/tickets/events/${fh.id}`, { method: "PATCH", body: { status: fh.status, seasonId: fh.seasonId || null, capacity: fh.capacity ? Number(fh.capacity) : null, allowReentry: fh.allowReentry } });
+      await api(`/api/tickets/events/${fh.id}`, { method: "PATCH", body: { status: fh.status, seasonId: fh.seasonId || null, capacity: fh.capacity ? Number(fh.capacity) : null, allowReentry: fh.allowReentry, excludeSeasonCards: fh.excludeSeasonCards } });
       setFh(null);
       return "Fullhouse-wedstrijd opgeslagen.";
     });
@@ -167,6 +170,7 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
             seasonId: e.seasonId ?? "",
             status: e.status,
             allowReentry: e.allowReentry,
+            excludeSeasonCards: e.excludeSeasonCards,
             capacity: e.capacity ? String(e.capacity) : "",
             matchId: e.matchId ?? "",
           }
@@ -204,6 +208,7 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
         seasonId: draft.seasonId || null,
         status: draft.status,
         allowReentry: draft.allowReentry,
+        excludeSeasonCards: draft.excludeSeasonCards,
         capacity: draft.capacity ? Number(draft.capacity) : null,
         matchId: draft.matchId || null,
       };
@@ -319,6 +324,13 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={draft.allowReentry} onChange={(e) => setDraft({ ...draft, allowReentry: e.target.checked })} /> Herintrede toegestaan voor seizoenskaarten
             </label>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+              <Checkbox className="mt-0.5" checked={draft.excludeSeasonCards} onChange={(e) => setDraft({ ...draft, excludeSeasonCards: e.target.checked })} />
+              <span>
+                Niet geldig voor seizoenskaarten
+                <span className="block text-xs text-muted-foreground">Seizoenskaarten en -passen geven bij dit duel geen toegang en tellen niet als gemist. Losse tickets voor dit duel werken gewoon.</span>
+              </span>
+            </label>
             <div className="flex gap-2 sm:col-span-2">
               <Button onClick={save} disabled={busy || !draft.title || !draft.startsAt}>
                 Opslaan
@@ -369,6 +381,13 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={fh.allowReentry} onChange={(e) => setFh({ ...fh, allowReentry: e.target.checked })} /> Herintrede toegestaan voor seizoenskaarten
             </label>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+              <Checkbox className="mt-0.5" checked={fh.excludeSeasonCards} onChange={(e) => setFh({ ...fh, excludeSeasonCards: e.target.checked })} />
+              <span>
+                Niet geldig voor seizoenskaarten
+                <span className="block text-xs text-muted-foreground">Seizoenskaarten en -passen uit de Hub geven bij dit duel geen toegang en tellen niet als gemist.</span>
+              </span>
+            </label>
             <div className="flex gap-2 sm:col-span-2">
               <Button onClick={saveFh} disabled={busy}>
                 Opslaan
@@ -411,7 +430,7 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
                         {formatDayTime(e.startsAt)} · {e.isHome ? "thuis" : "uit"}
                         {e.competition ? ` · ${e.competition}` : ""}
                         {e.season ? ` · ${e.season.name}` : ""}
-                        {e.allowReentry ? " · herintrede seizoenskaarten" : ""}
+                        {e.excludeSeasonCards ? " · geen seizoenskaarten" : e.allowReentry ? " · herintrede seizoenskaarten" : ""}
                         {e.source === "FULLHOUSE" ? " · Fullhouse" : ""}
                         {e.archivedAt ? ` · gearchiveerd ${formatDayTime(e.archivedAt)}${e.archivedBy ? ` door ${e.archivedBy}` : ""}` : ""}
                       </p>
@@ -439,7 +458,7 @@ export function EventsManager({ canManage, canMail = false, canDelete = false, c
                               size="sm"
                               variant="ghost"
                               className={ICON_BTN}
-                              onClick={() => (e.source === "FULLHOUSE" ? setFh({ id: e.id, title: e.title, status: e.status === "CANCELLED" ? "ACTIVE" : e.status, seasonId: e.seasonId ?? "", capacity: e.capacity ? String(e.capacity) : "", allowReentry: e.allowReentry }) : edit(e))}
+                              onClick={() => (e.source === "FULLHOUSE" ? setFh({ id: e.id, title: e.title, status: e.status === "CANCELLED" ? "ACTIVE" : e.status, seasonId: e.seasonId ?? "", capacity: e.capacity ? String(e.capacity) : "", allowReentry: e.allowReentry, excludeSeasonCards: e.excludeSeasonCards }) : edit(e))}
                               aria-label={`${e.title} wijzigen`}
                               title={e.source === "FULLHOUSE" ? "Status, seizoen en herintrede instellen" : "Wijzigen"}
                             >
