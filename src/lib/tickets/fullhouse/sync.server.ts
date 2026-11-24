@@ -7,6 +7,7 @@ import { fullhouseConfigured, ticketProvider } from "./index";
 import { FullhouseError } from "./types";
 import { catalogNameMap, nameKey, syncFullhouseCatalog } from "./catalog.server";
 import { pickSeason, seasonMaintenance } from "../season-link.server";
+import { needsSoldAtBackfill } from "../fullhouse-season.server";
 import { QUIET_RUN, SCHEDULE_MINUTES, syncHealth } from "./health.server";
 
 // Synchronisatie met Fullhouse (alleen lezen). Fullhouse blijft de bron: de Hub bewaart een
@@ -92,7 +93,7 @@ export async function importEventsAs(actor: { id: string | null; name: string })
 /** Tickets van één Fullhouse-evenement ophalen: volledig, of alleen wat sinds de vorige geslaagde synchronisatie wijzigde. */
 export async function syncEventTickets(who: { id: string | null; name: string }, eventExtId: string, opts: { full?: boolean; quiet?: boolean } = {}) {
   const provider = ticketProvider();
-  const last = opts.full ? null : await prisma.ticketSyncRun.findFirst({ where: { kind: "tickets", eventExtId, status: "OK" }, orderBy: { startedAt: "desc" } });
+  const last = opts.full || (await needsSoldAtBackfill(eventExtId)) ? null : await prisma.ticketSyncRun.findFirst({ where: { kind: "tickets", eventExtId, status: "OK" }, orderBy: { startedAt: "desc" } });
   const full = !last;
   const from = last ? new Date(last.startedAt.getTime() - 5 * 60_000) : undefined;
   const run = await prisma.ticketSyncRun.create({ data: { kind: "tickets", eventExtId, status: "RUNNING", mode: provider.mode, startedBy: who.name } });
@@ -111,7 +112,7 @@ export async function syncEventTickets(who: { id: string | null; name: string },
       for (let i = 0; i < page.tickets.length; i += 100) {
         await prisma.$transaction(
           page.tickets.slice(i, i + 100).map((t) => {
-            const data = { codeHash: codeHash(t.barcode), status: String(t.status), ticketName: t.ticketName, ticketTypeId: t.ticketTypeId, categoryRef: t.categoryRef, area: t.area, holderLabel: t.name ? initialsFromFullName(t.name) : null, syncedAt: now };
+            const data = { codeHash: codeHash(t.barcode), status: String(t.status), ticketName: t.ticketName, ticketTypeId: t.ticketTypeId, categoryRef: t.categoryRef, area: t.area, holderLabel: t.name ? initialsFromFullName(t.name) : null, syncedAt: now, ...(t.soldAt ? { soldAt: t.soldAt } : {}) };
             return prisma.ticketExternalTicket.upsert({ where: { eventExtId_externalId: { eventExtId: t.eventId || eventExtId, externalId: t.externalId } }, create: { eventExtId: t.eventId || eventExtId, externalId: t.externalId, ...data }, update: data });
           }),
         );

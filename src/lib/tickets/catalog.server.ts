@@ -149,6 +149,7 @@ export async function saveFullhouseEventSettings(actor: TicketsActor, id: string
       ...(input.capacity !== undefined ? { capacity: input.capacity } : {}),
       ...(input.allowReentry !== undefined ? { allowReentry: input.allowReentry } : {}),
       ...(input.excludeSeasonCards !== undefined ? { excludeSeasonCards: input.excludeSeasonCards } : {}),
+      ...(input.seasonCardSource !== undefined ? { seasonCardSource: input.seasonCardSource } : {}),
     },
   });
   await ticketAudit({ action: "event.updated", actor: actorOf(actor), eventId: id, oldStatus: before.status, newStatus: row.status, summary: "Fullhouse-wedstrijd ingesteld" });

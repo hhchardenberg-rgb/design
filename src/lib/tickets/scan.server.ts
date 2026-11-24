@@ -12,6 +12,8 @@ import type { ScanActor } from "./scanner-auth.server";
 import { formatDay } from "@/lib/date-format";
 import { detectSource, parseQrCode, qrCodeFor } from "./token";
 import { isTestCode, TEST_CODES, TEST_DETAIL, TEST_LABEL } from "./offline-check";
+import { findFullhouseSeasonCard, fullhouseSeasonCards } from "./fullhouse-season.server";
+import { fullhouseSeasonRuleTicket, isSeasonCardSource } from "./season-cards";
 
 // De scanlogica op de server. De server is de enige die beslist: het apparaat krijgt een
 // uitslag terug. Elke poging (ook een mislukte) wordt vastgelegd. Dubbel scannen wordt
@@ -156,6 +158,9 @@ async function resolveEvent(input: ScanInput) {
       if (ext.found && ext.found.eventExtId === e.externalId) return e;
     }
   }
+  // Fullhouse-seizoenskaart: het gekozen duel waar de kaart voor geldt.
+  const card = await findFullhouseSeasonCard(hash, first.seasonId, null);
+  if (card) return events.find((e) => coversEvent(fullhouseSeasonRuleTicket(card.seasonId), toRuleEvent(e))) ?? first;
   return first;
 }
 
@@ -272,9 +277,24 @@ export async function processScan(actor: ScanActor, raw: unknown): Promise<ScanR
     const hash = codeHash(input.code);
     lockKey = `f:${hash}:${event.id}`;
     const ext = event.externalId ? await externalTicket(event.externalId, input.code, hash) : { found: null as null, unreachable: false };
+    // Staat de kaart niet op dit duel zelf, dan kan het een Fullhouse-seizoenskaart of -pas zijn (die staan op een eigen seizoensevenement).
+    const onThisEvent = !!ext.found && ext.found.eventExtId === event.externalId;
+    const card = onThisEvent ? null : await findFullhouseSeasonCard(hash, event.seasonId, (extId) => externalTicket(extId, input.code, hash));
     // Duel zonder Fullhouse-koppeling: is dit toch een echte Fullhouse-kaart (lokaal bekend of bij Fullhouse, alleen lezen)?
-    const foreign = event.externalId ? false : !!(await prisma.ticketExternalTicket.findFirst({ where: { codeHash: hash }, select: { id: true } })) || !!(await ticketProvider().lookupBarcode(input.code.trim()).catch(() => null));
+    const foreign = event.externalId || card ? false : !!(await prisma.ticketExternalTicket.findFirst({ where: { codeHash: hash }, select: { id: true } })) || !!(await ticketProvider().lookupBarcode(input.code.trim()).catch(() => null));
     decide = async (tx) => {
+      if (card) {
+        // Zelfde regels als een eigen seizoenskaart: seizoen, thuisduel, uitgesloten duel, herintrede.
+        const label = [card.holderLabel, card.ticketName].filter(Boolean).join(" · ") || "Seizoenskaart (Fullhouse)";
+        const base = { reentry: false, ticketId: null, codeHash: hash, holderLabel: label, zone: card.area } as const;
+        if (card.status !== "VALID") return { ...base, result: "INVALID", reason: card.status === "INVALID" ? "CANCELLED" : "BLOCKED" };
+        const rt = fullhouseSeasonRuleTicket(card.seasonId);
+        const prior = await tx.ticketScan.count({ where: { codeHash: hash, eventId: event.id, result: "VALID" } });
+        const out = evaluateScan(rt, ruleEvent, prior, scannedAt, null);
+        const reason = "reason" in out ? out.reason : null;
+        const detail = reason === "WRONG_EVENT" ? (card.seasonId ? seasonCardMismatch(rt, ruleEvent, (id) => (id === card.seasonId ? card.seasonName : null)) : "Het Fullhouse-evenement van deze seizoenskaart hoort nog bij geen seizoen. Koppel het onder Wedstrijden.") : null;
+        return { ...base, result: out.result, reason, reentry: out.result === "VALID" && out.reentry, detail };
+      }
       const f = ext.found;
       const mk = (result: Decision["result"], reason: ScanReason | null, label: string | null = null): Decision => ({ result, reason, reentry: false, ticketId: null, codeHash: hash, holderLabel: label, zone: f?.area ?? null });
       // Duel zonder Fullhouse-koppeling: een bekende Fullhouse-kaart is "andere wedstrijd", al het andere (onzin, onbekend) "bestaat niet".
@@ -347,7 +367,7 @@ async function externalTicket(eventExtId: string, code: string, hash: string): P
     const holder = t.name ? initialsFromFullName(t.name) : null;
     await prisma.ticketExternalTicket.upsert({
       where: { eventExtId_externalId: { eventExtId: t.eventId, externalId: t.externalId } },
-      create: { eventExtId: t.eventId, externalId: t.externalId, codeHash: hash, status: String(t.status), ticketName: t.ticketName, area: t.area, holderLabel: holder },
+      create: { eventExtId: t.eventId, externalId: t.externalId, codeHash: hash, status: String(t.status), ticketName: t.ticketName, area: t.area, holderLabel: holder, soldAt: t.soldAt ?? null },
       update: { codeHash: hash, status: String(t.status), ticketName: t.ticketName, area: t.area, holderLabel: holder },
     });
     return { found: { eventExtId: t.eventId, status: String(t.status), ticketName: t.ticketName, holderLabel: holder, area: t.area ?? null }, unreachable: false };
@@ -468,6 +488,11 @@ export async function offlineCache(eventId: string) {
   const external = event.externalId
     ? await prisma.ticketExternalTicket.findMany({ where: { eventExtId: event.externalId, status: "VALID" }, select: { codeHash: true, holderLabel: true, ticketName: true } })
     : [];
+  // Fullhouse-seizoenskaarten en -passen die voor dit duel gelden (staan op het seizoensevenement, niet op het duel).
+  const seasonCards = event.seasonId && !isSeasonCardSource(event) && coversEvent(fullhouseSeasonRuleTicket(event.seasonId), toRuleEvent(event)) ? await fullhouseSeasonCards(event.seasonId) : [];
+  const fullhouse = new Map<string, { h: string; l: string; r?: boolean }>();
+  for (const c of seasonCards) fullhouse.set(c.codeHash, { h: c.codeHash, l: [c.holderLabel, c.ticketName].filter(Boolean).join(" · "), r: event.allowReentry });
+  for (const e of external) fullhouse.set(e.codeHash, { h: e.codeHash, l: [e.holderLabel, e.ticketName].filter(Boolean).join(" · ") });
   const used = await prisma.ticketScan.findMany({ where: { eventId, result: "VALID" }, select: { ticketId: true, codeHash: true, scannedAt: true } });
   const pids = new Map((await prisma.ticket.findMany({ where: { id: { in: used.map((u) => u.ticketId).filter((x): x is string => !!x) } }, select: { id: true, publicId: true } })).map((t) => [t.id, t.publicId]));
   return {
@@ -476,7 +501,7 @@ export async function offlineCache(eventId: string) {
     // Minstens 24 uur geldig vanaf het laden, en tot 6 uur na afloop van de wedstrijd als dat later is.
     expiresAt: new Date(Math.max(event.endsAt.getTime() + SCAN_WINDOW_AFTER_MS, now + 24 * 3600000)).toISOString(),
     hhc,
-    fullhouse: external.map((e) => ({ h: e.codeHash, l: [e.holderLabel, e.ticketName].filter(Boolean).join(" · ") })),
+    fullhouse: [...fullhouse.values()],
     used: used.map((u) => ({ k: (u.ticketId && pids.get(u.ticketId)) || u.codeHash, at: u.scannedAt.toISOString() })),
   };
 }

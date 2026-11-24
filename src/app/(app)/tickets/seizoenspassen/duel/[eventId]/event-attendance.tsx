@@ -13,7 +13,7 @@ interface Data {
   event: { id: string; title: string; startsAt: string; status: string; excluded: boolean; allowReentry: boolean; past: boolean; live: boolean };
   season: { id: string; name: string; label: string } | null;
   summary: { expected: number; present: number; absent: number };
-  rows: { id: string; publicId: string; name: string; type: string; zone: string | null; state: State; stateLabel: string; firstAt: string | null; entrance: string | null; reentries: number }[];
+  rows: { id: string; publicId: string; source?: "HHC" | "FULLHOUSE"; name: string; type: string; zone: string | null; state: State; stateLabel: string; firstAt: string | null; entrance: string | null; reentries: number }[];
   personal: boolean;
 }
 
@@ -135,6 +135,7 @@ export function EventAttendance({ eventId, canEditEvent }: { eventId: string; ca
                       <Link className="font-medium underline" href={`/tickets/seizoenspassen/${r.id}`}>
                         {r.name}
                       </Link>
+                      {r.source === "FULLHOUSE" && <span className="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-muted-foreground">Fullhouse</span>}
                     </td>
                     <td className="p-3">
                       {r.type}

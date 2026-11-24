@@ -45,6 +45,8 @@ export interface FullhouseTicket {
   row: string | null;
   seat: string | null;
   updatedAt: Date | null;
+  /** Verkoopmoment (vivenu createdAt), als Fullhouse dat meegeeft. */
+  soldAt?: Date | null;
 }
 
 export interface FullhouseScanResult {

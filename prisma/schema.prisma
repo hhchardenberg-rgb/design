@@ -1968,6 +1968,9 @@ model TicketEvent {
   allowReentry Boolean       @default(true)
   // Seizoenskaarten en -passen geven bij deze wedstrijd geen toegang (bv. bekerduel of oefenwedstrijd met eigen kaartverkoop).
   excludeSeasonCards Boolean @default(false)
+  // Alleen Fullhouse: op dit evenement verkoopt Fullhouse seizoenskaarten of -passen (bv. "Seizoenskaarten 2026-27").
+  // Die kaarten geven dan toegang tot alle thuisduels van het seizoen van dit evenement. Leeg = automatisch op naam.
+  seasonCardSource Boolean?
   capacity     Int?
   // HHC | FULLHOUSE
   source       String        @default("HHC")
@@ -2283,6 +2286,8 @@ model TicketExternalTicket {
   area         String?
   // Initialen i.p.v. naam (dataminimalisatie).
   holderLabel  String?
+  // Wanneer Fullhouse het ticket verkocht (vivenu createdAt): een seizoenskaart telt pas mee vanaf dat moment.
+  soldAt       DateTime?
   updatedAt    DateTime @updatedAt
   syncedAt     DateTime @default(now())
 

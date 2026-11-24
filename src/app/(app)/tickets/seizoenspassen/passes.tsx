@@ -12,8 +12,8 @@ import { formatDayTime } from "@/lib/date-format";
 interface Overview {
   seasons: { id: string; name: string; label: string }[];
   season: { id: string; name: string; label: string } | null;
-  summary: { passes: number; pastGames: number; upcomingGames: number; averagePct: number | null; noShow: number; streak3: number } | null;
-  rows: { id: string; publicId: string; name: string; type: string; zone: string | null; eligible: number; attended: number; streak: number; lastSeen: string | null }[];
+  summary: { passes: number; fullhouse?: number; pastGames: number; upcomingGames: number; averagePct: number | null; noShow: number; streak3: number } | null;
+  rows: { id: string; publicId: string; source?: "HHC" | "FULLHOUSE"; name: string; type: string; zone: string | null; eligible: number; attended: number; streak: number; lastSeen: string | null }[];
 }
 
 interface ByEvent {
@@ -114,7 +114,7 @@ export function Passes({ canRenew, canExport }: { canRenew: boolean; canExport: 
       {s && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[
-            ["Actieve passen", s.passes],
+            ["Actieve passen", s.fullhouse ? `${s.passes} (${s.fullhouse} Fullhouse)` : s.passes],
             ["Gemiddelde opkomst", s.averagePct === null ? "–" : `${s.averagePct}%`],
             ["Nog nooit geweest", s.noShow],
             ["3+ duels gemist", s.streak3],
@@ -150,6 +150,7 @@ export function Passes({ canRenew, canExport }: { canRenew: boolean; canExport: 
                       <Link className="font-medium underline" href={`/tickets/seizoenspassen/${r.id}`}>
                         {r.name}
                       </Link>
+                      {r.source === "FULLHOUSE" && <span className="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-muted-foreground">Fullhouse</span>}
                     </td>
                     <td className="p-3">
                       {r.type}

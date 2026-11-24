@@ -52,6 +52,8 @@ export const fullhouseEventSchema = z.object({
   capacity: z.number().int().min(1).max(100_000).nullable().optional(),
   allowReentry: z.boolean().optional(),
   excludeSeasonCards: z.boolean().optional(),
+  /** Seizoenskaarten op dit Fullhouse-evenement: true/false, of null = automatisch op naam. */
+  seasonCardSource: z.boolean().nullable().optional(),
 });
 
 export const removeEventSchema = z.object({
